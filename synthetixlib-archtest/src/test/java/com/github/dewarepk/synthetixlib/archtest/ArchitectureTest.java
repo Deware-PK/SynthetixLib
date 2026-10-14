@@ -12,6 +12,8 @@ import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.library.GeneralCodingRules;
 import java.util.Collection;
 import java.util.Map;
+import org.bukkit.Bukkit;
+import org.bukkit.Server;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.Plugin;
@@ -108,8 +110,20 @@ class ArchitectureTest {
     @Test
     void schedulerOnlyThroughFacade() {
         noClasses().that().resideOutsideOfPackage(LIB + ".core.scheduler..")
-                .should().dependOnClassesThat().resideInAPackage("org.bukkit.scheduler..")
+                .should().dependOnClassesThat()
+                .resideInAnyPackage("org.bukkit.scheduler..", "io.papermc.paper.threadedregions..")
                 .because("Folia: use the SynthetixLib scheduler facade")
+                .check(classes);
+    }
+
+    /** The legacy BukkitScheduler is not region-aware: not even the facade may use it. */
+    @Test
+    void neverLegacyBukkitScheduler() {
+        noClasses().should().callMethod(Bukkit.class, "getScheduler")
+                .orShould().callMethod(Server.class, "getScheduler")
+                .orShould().dependOnClassesThat().haveFullyQualifiedName("org.bukkit.scheduler.BukkitScheduler")
+                .orShould().dependOnClassesThat().haveFullyQualifiedName("org.bukkit.scheduler.BukkitRunnable")
+                .because("Folia: BukkitScheduler is not supported, use Paper's region-aware schedulers")
                 .check(classes);
     }
 

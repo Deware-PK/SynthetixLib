@@ -2,9 +2,12 @@
 
 Package: `com.github.dewarepk.synthetixlib.core` (only this module may use it).
 
-Scope (planned, see docs/plan/ROADMAP.md): `SynthetixLib.init(plugin)`, scheduler facade
-(global / region / entity / async, Folia-safe), MiniMessage text helpers, ItemBuilder on data
-components (`item_model`, no custom model data int), small utils.
+Packages (all under the package above)
+- `core` — `SynthetixLib` (init/close, exposes the services)
+- `core.scheduler` — Folia-safe facade: global / region / entity / async
+- `core.text` — MiniMessage `TextService`
+- `core.item` — `Items` / `ItemBuilder` (item meta, `item_model`, no int custom model data)
+- `core.pdc` — `PdcKeys` / `PdcKey` typed, plugin-namespaced keys
 
 Rules specific to core
 - Core must stay small and dependency-free (only paper-api). Anything needing HikariCP, PacketEvents,

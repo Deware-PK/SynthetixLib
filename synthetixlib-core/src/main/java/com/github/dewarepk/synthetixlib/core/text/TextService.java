@@ -35,6 +35,7 @@ public final class TextService {
      *
      * @return a new service
      */
+    @org.jetbrains.annotations.ApiStatus.Internal
     public static TextService create() {
         return new TextService(TagResolver.empty());
     }

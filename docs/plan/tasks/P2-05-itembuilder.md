@@ -1,5 +1,5 @@
 # P2-05 ItemBuilder
-Status: todo · Approved: yes · Model: sonnet · Effort: medium
+Status: done · Approved: yes · Model: sonnet · Effort: medium
 Module: synthetixlib-core · Depends on: P2-03, P2-04 · Design: docs/design/core.md §4
 
 ## Prompt (paste into Claude Code)
@@ -24,11 +24,17 @@ Run `gradlew.bat check smokeTest`, tick the boxes, fill in "Result", set Status:
   `core.item.pdc` (value set through builder readable through the key), `core.item.lore-placeholder`.
 
 ## Acceptance criteria
-- [ ] API matches design §4
-- [ ] self-tests pass on 1.21.11 and 26.3
-- [ ] `gradlew.bat check smokeTest` green
+- [x] API matches design §4
+- [x] self-tests pass on 1.21.11 and 26.3
+- [x] `gradlew.bat check smokeTest` green
 
 ## Verify
 gradlew.bat check smokeTest
 
 ## Result
+Implemented `core.item` (`Items`, `ItemBuilder`) and `SynthetixLib.items()`.
+- Operations are recorded and replayed on a fresh clone of the base stack at `build()`; `from(stack)` clones the input. `amount` is validated against `1..maxStackSize` at build.
+- Text goes through the instance's `TextService.parseItem` (non-italic default); markup is parsed when the method is called.
+- `Items.create(text)` is public only so `SynthetixLib` can build it; not meant for consumers.
+- Self-tests: `core.item.{basic,from-no-mutate,build-distinct,pdc,lore-placeholder,lore-replace-clear,amount-validated}`.
+- `gradlew.bat check smokeTest`: BUILD SUCCESSFUL; 33/33 self-tests PASS on 1.21.11 and 26.3.

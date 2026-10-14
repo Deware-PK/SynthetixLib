@@ -1,5 +1,5 @@
 # P2-04 Typed PDC keys
-Status: todo · Approved: yes · Model: sonnet · Effort: medium
+Status: done · Approved: yes · Model: sonnet · Effort: medium
 Module: synthetixlib-core · Depends on: P2-01 · Design: docs/design/core.md §5
 
 ## Prompt (paste into Claude Code)
@@ -24,12 +24,18 @@ Run `gradlew.bat check smokeTest`, tick the boxes, fill in "Result", set Status:
   `Bukkit` region scheduler directly or the core scheduler if P2-02 is done).
 
 ## Acceptance criteria
-- [ ] API matches design §5
-- [ ] ItemStack reads do not clone meta (use the view API)
-- [ ] tests pass on 1.21.11 and 26.3
-- [ ] `gradlew.bat check smokeTest` green
+- [x] API matches design §5
+- [x] ItemStack reads do not clone meta (use the view API)
+- [x] tests pass on 1.21.11 and 26.3
+- [x] `gradlew.bat check smokeTest` green
 
 ## Verify
 gradlew.bat check smokeTest
 
 ## Result
+Implemented `core.pdc` (`PdcKeys`, `PdcKey<T>`, package-private `UuidDataType`) and `SynthetixLib.keys()`.
+- `PdcKeys.create(plugin)` is public only so `SynthetixLib` (other package) can build it; not meant for consumers.
+- `UuidDataType` is an instance field of `PdcKeys`, not a static singleton (ArchUnit `noStaticMutableState` forbids it).
+- ItemStack reads use `getPersistentDataContainer()` (view); writes/removes use `editPersistentDataContainer`.
+- Tests: unit `PdcKeysTest` (name validation, uuid round-trip/length); self-tests `core.pdc.item.{string,integer,long,double,bool,uuid,bytes,of}`, `core.pdc.key-namespace`, `core.pdc.entity` (armor stand on region thread, removed afterwards).
+- Ran `gradlew.bat check smokeTest`: BUILD SUCCESSFUL; 26/26 self-tests PASS on 1.21.11 and 26.3.

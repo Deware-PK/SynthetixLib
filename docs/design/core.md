@@ -1,6 +1,6 @@
 # synthetixlib-core — API design
 
-Status: **Approved** (2026-10-14) · Task: P1-01 · Date: 2026-10-14
+Status: **Implemented (0.1.0)** — approved 2026-10-14; no deviations · Task: P1-01 · Date: 2026-10-14
 Package root: `com.github.dewarepk.synthetixlib.core`
 
 Core = the things almost every plugin needs, with **only paper-api** as dependency:

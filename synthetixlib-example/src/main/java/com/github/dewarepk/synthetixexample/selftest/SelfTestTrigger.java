@@ -46,6 +46,9 @@ public final class SelfTestTrigger implements Listener {
         final List<SelfTest> tests = new ArrayList<>();
         tests.addAll(HarnessSelfTests.all(plugin));
         tests.addAll(CoreSelfTests.all(plugin, lib));
+        tests.addAll(CoreSchedulerSelfTests.all(plugin, lib));
+        tests.addAll(CorePdcSelfTests.all(plugin, lib));
+        tests.addAll(CoreItemSelfTests.all(plugin, lib));
         // tests.addAll(ConfigSelfTests.all(...));  <- one line per module as modules are added
 
         new Run(tests).start();
