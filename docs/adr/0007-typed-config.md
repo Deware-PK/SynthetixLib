@@ -8,8 +8,8 @@ String-path config (`getString("a.b")`) is untyped and was buggy in SnapPlug (co
 
 ## Decision
 Config is declared as records/classes and mapped to/from YAML (Okaeri-style) with comments,
-defaults, validation and migration. Locale files use the same mechanism. Library choice is made in
-the config design doc (docs/design/config.md).
+defaults, validation and migration. Locale files use the same mechanism. Written in-house on top of Bukkit
+`YamlConfiguration` (ADR 0012); details in docs/design/config.md.
 
 ## Consequences
 Comments preserved; save only on change; schema versioning enables migrations (e.g. InteractiveAuction 1.0 → 2.0).

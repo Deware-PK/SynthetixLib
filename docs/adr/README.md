@@ -16,3 +16,5 @@ One decision per file, numbered, never renumbered. To change a decision, add a n
 | 0009 | Runtime third-party libs via Paper PluginLoader | Accepted |
 | 0010 | Verification harness (check / smokeTest / bot E2E) | Accepted |
 | 0011 | Publishing: mavenLocal until 1.0.0, then JitPack | Accepted |
+| 0012 | No third-party runtime deps except PacketEvents | Accepted |
+| 0013 | Reflection allowed only in config.mapping | Accepted |

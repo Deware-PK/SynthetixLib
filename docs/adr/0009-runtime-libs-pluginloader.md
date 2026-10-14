@@ -1,6 +1,6 @@
 # 0009. Third-party runtime libraries via Paper PluginLoader
 
-- Status: Accepted
+- Status: Accepted (scope under review, see ADR 0012)
 - Date: 2026-10-14
 
 ## Context

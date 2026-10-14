@@ -1,5 +1,5 @@
 # P2-07 Core polish (review findings)
-Status: review · Approved: yes · Model: sonnet · Effort: low
+Status: done · Approved: yes · Model: sonnet · Effort: low
 Module: synthetixlib-core, repo root · Depends on: P2-06
 
 ## Prompt (paste into Claude Code)
