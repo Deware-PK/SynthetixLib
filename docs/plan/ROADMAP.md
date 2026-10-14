@@ -6,11 +6,11 @@ Status: ☐ todo · ◐ in progress · ☑ done. Each phase is broken into task 
 Multi-module build, build-logic, version catalog, ArchUnit rules, smoke tests on 1.21.11 + 26.x,
 CI, AGENTS.md/CLAUDE.md, ADRs. → `tasks/P0-01-harness.md`
 
-## Phase 1 — API design (no code) ☐
+## Phase 1 — API design (no code) ◐ core approved (docs/design/core.md); other modules later
 One design doc per module in `docs/design/<module>.md`, written as **user-side code examples first**,
 reviewed by the owner before implementation. Start with core. → `tasks/P1-01-core-api-design.md`
 
-## Phase 2 — Modules (in order) ☐
+## Phase 2 — Modules (in order) ☐ core tasks: tasks/P2-01..P2-06
 | # | Module | Scope | Key "never again" |
 |---|---|---|---|
 | 1 | core | init, scheduler (global/region/entity/async), text (MiniMessage), ItemBuilder (data components, item_model), PDC utils | static state, getHolder(false) |

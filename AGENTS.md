@@ -5,9 +5,12 @@ SynthetixLib is a Paper plugin library (rewrite of the old SnapPlug) used to bui
 BuiltByBit, SpigotMC and Hangar (first products: InteractiveAuction 2.0, Farm Workers).
 
 ## Working agreement (read first)
-1. **Propose before coding.** For anything beyond a typo: state plan + affected files, wait for "go".
+1. **Task files with `Approved: yes` are pre-approved:** implement them directly, exactly as specified.
+   Stop and ask only if the spec is ambiguous, contradicts a rule, or needs a public API change.
+   Anything without an approved task: propose plan + affected files first and wait for "go".
 2. **Never commit / push** unless explicitly told.
 3. Work from a task file in `docs/plan/tasks/`. If none fits, propose one (template in that folder).
+   Approved design docs in `docs/design/` are the source of truth for public API.
 4. A decision that changes a locked rule below → write an ADR in `docs/adr/` and get approval first.
 5. Done = verification below passes + task acceptance criteria ticked. Report what you ran.
 

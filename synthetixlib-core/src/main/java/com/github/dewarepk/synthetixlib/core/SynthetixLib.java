@@ -1,5 +1,6 @@
 package com.github.dewarepk.synthetixlib.core;
 
+import com.github.dewarepk.synthetixlib.core.text.TextService;
 import java.util.Objects;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -25,8 +26,15 @@ public final class SynthetixLib implements AutoCloseable {
     private final JavaPlugin plugin;
     private volatile boolean closed;
 
+    private final TextService text = TextService.create();
+
     private SynthetixLib(final JavaPlugin plugin) {
         this.plugin = plugin;
+    }
+
+    /** @return the MiniMessage text service */
+    public TextService text() {
+        return text;
     }
 
     /**

@@ -1,5 +1,5 @@
 # P1-01 Core API design
-Status: todo
+Status: done (core.md approved 2026-10-14)
 Module: synthetixlib-core   Depends on: P0-01
 
 ## Goal
