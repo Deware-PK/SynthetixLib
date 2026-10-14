@@ -1,0 +1,26 @@
+[versions]
+# Compile target: lowest supported Paper. Never compile against 26.x (see docs/adr/0001, 0002).
+paper-api = "1.21.11-R0.1-SNAPSHOT"
+# Servers used by runServer / smokeTest
+paper-run-min = "1.21.11"
+paper-run-latest = "26.3"
+java-target = "21"
+java-latest-runtime = "25"
+
+junit = "5.13.4"
+archunit = "1.5.1"
+
+# Gradle plugins (consumed by build-logic)
+shadow = "9.6.1"
+run-paper = "3.1.0"
+
+[libraries]
+paper-api = { module = "io.papermc.paper:paper-api", version.ref = "paper-api" }
+
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+archunit = { module = "com.tngtech.archunit:archunit", version.ref = "archunit" }
+
+gradle-plugin-shadow = { module = "com.gradleup.shadow:com.gradleup.shadow.gradle.plugin", version.ref = "shadow" }
+gradle-plugin-run-paper = { module = "xyz.jpenilla.run-paper:xyz.jpenilla.run-paper.gradle.plugin", version.ref = "run-paper" }

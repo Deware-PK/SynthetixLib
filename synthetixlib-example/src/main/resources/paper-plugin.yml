@@ -1,0 +1,7 @@
+name: SynthetixExample
+version: '${version}'
+main: com.github.dewarepk.synthetixexample.SynthetixExamplePlugin
+api-version: '1.21'
+description: Test bed and examples for SynthetixLib
+author: Deware
+folia-supported: true
