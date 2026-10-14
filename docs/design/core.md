@@ -29,6 +29,10 @@ public final class AuctionPlugin extends JavaPlugin {
 - Instance exposes services: `scheduler()`, `text()`, `items()`, `keys()`, `plugin()`.
   Services are created eagerly in `init`, are thread-safe, and become unusable after `close()`
   (scheduling after close throws `IllegalStateException`).
+- `lib.attach(AutoCloseable)` ties a module service (e.g. `Configs`) to the lib: on `close()` attached
+  resources are closed first, in reverse registration order (they may still need the scheduler to flush),
+  then the scheduler. A failure closing one resource is logged and does not stop the others;
+  `attach` after close throws `IllegalStateException`.
 - **Bootstrap hook: not in core yet.** The first module that needs `PluginBootstrap`
   (command or dialog) designs it. Core stays bootstrap-free.
 

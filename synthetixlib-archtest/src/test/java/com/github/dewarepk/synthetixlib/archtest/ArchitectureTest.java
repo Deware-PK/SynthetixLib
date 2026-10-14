@@ -6,10 +6,19 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.fields;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noFields;
 
+import static com.tngtech.archunit.core.domain.JavaAccess.Predicates.target;
+import static com.tngtech.archunit.core.domain.properties.HasName.Predicates.nameMatching;
+import static com.tngtech.archunit.core.domain.properties.HasOwner.Predicates.With.owner;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import com.github.dewarepk.synthetixlib.archtest.fixture.SetsAccessible;
 import com.tngtech.archunit.core.domain.JavaClasses;
+import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.library.GeneralCodingRules;
+import java.lang.reflect.AccessibleObject;
 import java.util.Collection;
 import java.util.Map;
 import org.bukkit.Bukkit;
@@ -30,6 +39,15 @@ class ArchitectureTest {
     private static final String LIB = "com.github.dewarepk.synthetixlib";
     private static JavaClasses classes;
 
+    /**
+     * ADR 0013: Field/Method/Constructor override setAccessible, so match on the call target's
+     * owner being any AccessibleObject subtype (also covers trySetAccessible and the static overload).
+     */
+    static final ArchRule NO_SET_ACCESSIBLE = noClasses().should().callMethodWhere(
+                    target(nameMatching("setAccessible|trySetAccessible"))
+                            .and(target(owner(assignableTo(AccessibleObject.class)))))
+            .because("ADR 0013: setAccessible is forbidden everywhere");
+
     @BeforeAll
     static void importClasses() {
         classes = new ClassFileImporter()
@@ -38,6 +56,17 @@ class ArchitectureTest {
         if (classes.isEmpty()) {
             throw new IllegalStateException("No SynthetixLib classes imported - check archtest dependencies");
         }
+    }
+
+    /** The setAccessible rule must really fire on Field/Method calls, trySetAccessible and the static overload. */
+    @Test
+    void setAccessibleRuleCatchesViolations() {
+        final JavaClasses fixture = new ClassFileImporter().importClasses(SetsAccessible.class);
+        final AssertionError error = assertThrows(AssertionError.class, () -> NO_SET_ACCESSIBLE.check(fixture));
+        final String message = error.getMessage();
+        assertTrue(message.contains("Field.setAccessible"), message);
+        assertTrue(message.contains("Method.trySetAccessible"), message);
+        assertTrue(message.contains("AccessibleObject.setAccessible"), message);
     }
 
     /** ADR 0008: no NMS / CraftBukkit internals. */
@@ -49,12 +78,17 @@ class ArchitectureTest {
                 .check(classes);
     }
 
-    /** ADR 0008 + ADR 0005: no reflection, no class lookups by name (breaks after relocation). */
+    /**
+     * ADR 0008 + ADR 0013 + ADR 0005: reflection only in config.mapping, no setAccessible,
+     * no class lookups by name (breaks after relocation).
+     */
     @Test
     void noReflection() {
-        noClasses().should().dependOnClassesThat().resideInAPackage("java.lang.reflect..")
-                .because("ADR 0008: no reflection")
+        noClasses().that().resideOutsideOfPackage(LIB + ".config.mapping..")
+                .should().dependOnClassesThat().resideInAPackage("java.lang.reflect..")
+                .because("ADR 0013: java.lang.reflect is allowed only in config.mapping")
                 .check(classes);
+        NO_SET_ACCESSIBLE.check(classes);
         noClasses().should().callMethod(Class.class, "forName", String.class)
                 .orShould().callMethod(Class.class, "forName", String.class, boolean.class, ClassLoader.class)
                 .because("ADR 0005: class names in strings break after relocation")

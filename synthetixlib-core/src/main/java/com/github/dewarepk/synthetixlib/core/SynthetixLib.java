@@ -5,6 +5,7 @@ import com.github.dewarepk.synthetixlib.core.pdc.PdcKeys;
 import com.github.dewarepk.synthetixlib.core.scheduler.Scheduler;
 import com.github.dewarepk.synthetixlib.core.text.TextService;
 import java.util.Objects;
+import java.util.logging.Level;
 import org.bukkit.plugin.java.JavaPlugin;
 
 /**
@@ -32,9 +33,12 @@ public final class SynthetixLib implements AutoCloseable {
     private final Scheduler scheduler;
     private final PdcKeys keys;
     private final Items items;
+    private final Resources resources;
 
     private SynthetixLib(final JavaPlugin plugin) {
         this.plugin = plugin;
+        this.resources = new Resources((resource, t) -> plugin.getLogger().log(Level.SEVERE,
+                "Failed to close attached resource " + resource.getClass().getSimpleName(), t));
         this.scheduler = Scheduler.create(plugin);
         this.keys = PdcKeys.create(plugin);
         this.items = Items.create(text);
@@ -74,6 +78,22 @@ public final class SynthetixLib implements AutoCloseable {
         return new SynthetixLib(plugin);
     }
 
+    /**
+     * Ties a resource (usually a module service such as {@code Configs}) to this instance's lifecycle.
+     * On {@link #close()} attached resources are closed first, in reverse registration order (they may
+     * still need the scheduler to flush), then the scheduler is closed. An exception while closing one
+     * resource is logged and does not stop the others.
+     *
+     * @param resource the resource to close with this instance
+     * @throws IllegalStateException if this instance is already closed
+     */
+    public void attach(final AutoCloseable resource) {
+        if (closed) {
+            throw new IllegalStateException("SynthetixLib is closed");
+        }
+        resources.attach(resource);
+    }
+
     /** @return the plugin this instance belongs to */
     public JavaPlugin plugin() {
         return plugin;
@@ -88,6 +108,10 @@ public final class SynthetixLib implements AutoCloseable {
     @Override
     public void close() {
         closed = true;
-        scheduler.close();
+        try {
+            resources.close();
+        } finally {
+            scheduler.close();
+        }
     }
 }
