@@ -1,5 +1,6 @@
 package com.github.dewarepk.synthetixlib.config;
 
+import com.github.dewarepk.synthetixlib.config.codec.Codecs;
 import com.github.dewarepk.synthetixlib.core.SynthetixLib;
 import java.util.Objects;
 
@@ -13,6 +14,7 @@ import java.util.Objects;
 public final class Configs implements AutoCloseable {
 
     private final SynthetixLib lib;
+    private final Codecs codecs = Codecs.create();
     private volatile boolean closed;
 
     private Configs(final SynthetixLib lib) {
@@ -36,6 +38,11 @@ public final class Configs implements AutoCloseable {
     /** @return the library instance this service belongs to */
     public SynthetixLib lib() {
         return lib;
+    }
+
+    /** @return the codec registry of this service: built-ins plus whatever you register */
+    public Codecs codecs() {
+        return codecs;
     }
 
     /** @return {@code true} after {@link #close()} */

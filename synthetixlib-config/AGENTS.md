@@ -15,3 +15,4 @@ Rules specific to config
   never `setAccessible` (ArchUnit enforces).
 - No third-party dependencies (ADR 0012); `Configs.create(lib)` attaches itself to the lib lifecycle.
 - Never re-save a file on a plain reload; keep comments (SnapPlug bug #6).
+- Mapped records must be `public` (reflection without `setAccessible`); no static `Codec`/registry fields (ArchUnit) - codecs are built per `Codecs` instance.

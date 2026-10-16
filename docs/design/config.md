@@ -51,6 +51,8 @@ Rules
 - Keys: component name camelCase → kebab-case; `@Key` overrides.
 - Annotations: `@Comment` (component or type, multi-line via `String[]`), `@Key`, `@Range(min,max)`,
   `@NotEmpty`. Records may implement `Validated` (`List<String> validate()`) for cross-field rules.
+- Nullable components: use `org.jspecify.annotations.Nullable` (or `Optional<T>`); `org.jetbrains.annotations.Nullable`
+  is not visible at runtime and is ignored.
 - Defaults come from a `Supplier<T>` (usually `T::defaults`), not from a resource file → single source of truth.
 
 ## 2. Loading and using
