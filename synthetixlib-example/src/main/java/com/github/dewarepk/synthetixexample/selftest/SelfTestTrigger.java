@@ -50,6 +50,8 @@ public final class SelfTestTrigger implements Listener {
         tests.addAll(CorePdcSelfTests.all(plugin, lib));
         tests.addAll(CoreItemSelfTests.all(plugin, lib));
         tests.addAll(ConfigSelfTests.all(plugin));
+        tests.addAll(ConfigBukkitSelfTests.all(plugin, lib));
+        tests.addAll(ConfigFileSelfTests.all(plugin, lib));
         // one line per module as modules are added
 
         new Run(tests).start();

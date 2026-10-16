@@ -20,7 +20,7 @@ import java.util.function.Function;
  * A record as a data section: one key per component. Collects every problem (missing, invalid, out of range)
  * before failing, and warns about unknown keys.
  */
-final class RecordCodec<T> implements Codec<T> {
+final class RecordCodec<T> implements Codec<T>, LenientCodec {
 
     private record Slot(RecordMeta.Component component, Codec<Object> codec, boolean optional) {
     }
@@ -29,7 +29,7 @@ final class RecordCodec<T> implements Codec<T> {
     private final TypeRef ref;
     private List<Slot> slots = List.of();
     private Set<String> keys = Set.of();
-    private volatile String sealedName;   // type name when this record is a leaf of a sealed type
+    private String sealedName;   // type name when this record is a leaf of a sealed type; set in link
 
     RecordCodec(final RecordMeta meta, final TypeRef ref) {
         this.meta = meta;
@@ -50,11 +50,8 @@ final class RecordCodec<T> implements Codec<T> {
         }
         this.slots = List.copyOf(linked);
         this.keys = Set.copyOf(linkedKeys);
-    }
-
-    /** Marks this record as a sealed leaf, so a {@code type} key equal to its own name is not an unknown key. */
-    void markSealedLeaf(final String name) {
-        this.sealedName = name;
+        // A sealed leaf may be decoded directly, so a `type` key equal to its own name is not an unknown key.
+        this.sealedName = SealedCodec.hasSealedAncestor(meta.type()) ? SealedCodec.nameOf(meta.type()) : null;
     }
 
     boolean hasKey(final String key) {
@@ -94,16 +91,88 @@ final class RecordCodec<T> implements Codec<T> {
                 problems.addAll(e.problems());
             }
         }
+        warnUnknownKeys(map, ctx);
+        if (!problems.isEmpty()) {
+            throw new DecodeException(problems);
+        }
+        return construct(values, ctx);
+    }
+
+    /**
+     * Like {@link #decode} but a missing or invalid component takes the value from {@code defaults} (a record of
+     * this type) instead of failing; nested records and maps recurse. Missing keys are reported so the YAML layer
+     * can add them to the file.
+     */
+    @Override
+    public Object decodeLenient(final Object raw, final Object defaults, final DecodeContext ctx,
+                                final LenientReport report) {
+        if (!(raw instanceof Map<?, ?> map)) {
+            report.invalid(ctx.expected("a section", raw), "using default");
+            return defaults;
+        }
+        final Object[] values = new Object[slots.size()];
+        for (int i = 0; i < values.length; i++) {
+            final Slot slot = slots.get(i);
+            final Object fallback = read(slot.component(), defaults);
+            report.enter(slot.component().key());
+            try {
+                values[i] = decodeSlotLenient(slot, map, ctx.at(slot.component().key()), fallback, report);
+            } catch (final DecodeException e) {
+                report.invalid(e, using(slot, fallback));
+                values[i] = fallback;
+            } finally {
+                report.exit();
+            }
+        }
+        warnUnknownKeys(map, ctx);
+        try {
+            return construct(values, ctx);
+        } catch (final DecodeException e) {
+            report.invalid(e, "using default");
+            return defaults;
+        }
+    }
+
+    private Object decodeSlotLenient(final Slot slot, final Map<?, ?> map, final DecodeContext at,
+                                     final Object fallback, final LenientReport report) {
+        final RecordMeta.Component component = slot.component();
+        if (!map.containsKey(component.key())) {
+            final Object encoded = fallback == null ? null : encodeSlot(slot, fallback);
+            if (encoded != null) {
+                report.missing(encoded);
+            }
+            return fallback;
+        }
+        if (map.get(component.key()) == null) {
+            return decodeSlot(slot, map, at);   // empty value: Optional / @Nullable accept it, others fail
+        }
+        final Object raw = map.get(component.key());
+        final Object value = fallback != null && slot.codec() instanceof LenientCodec lenient
+                ? lenient.decodeLenient(raw, fallback, at, report)
+                : slot.codec().decode(raw, at);
+        validate(component, value, at);
+        return value;
+    }
+
+    private String using(final Slot slot, final Object fallback) {
+        return "using " + (fallback == null ? Preview.of(null) : Preview.of(encodeSlot(slot, fallback)));
+    }
+
+    private Object encodeSlot(final Slot slot, final Object value) {
+        try {
+            return slot.codec().encode(value);
+        } catch (final IllegalArgumentException e) {
+            return String.valueOf(value);
+        }
+    }
+
+    private void warnUnknownKeys(final Map<?, ?> map, final DecodeContext ctx) {
         for (final Object key : map.keySet()) {
             final String name = String.valueOf(key);
             if (!keys.contains(name) && !isOwnDiscriminator(name, map.get(key))) {
                 ctx.at(name).warn("unknown key");
             }
         }
-        if (!problems.isEmpty()) {
-            throw new DecodeException(problems);
-        }
-        return construct(values, ctx);
     }
 
     private boolean isOwnDiscriminator(final String key, final Object value) {

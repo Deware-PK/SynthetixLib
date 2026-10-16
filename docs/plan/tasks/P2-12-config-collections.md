@@ -1,6 +1,6 @@
 # P2-12 Config collections (one file per object)
 Status: todo · Approved: yes · Model: sonnet · Effort: high
-Module: synthetixlib-config · Depends on: P2-11 · Design: config.md §4b
+Module: synthetixlib-config · Depends on: P2-11a · Design: config.md §4b
 
 ## Prompt (paste into Claude Code)
 Read AGENTS.md, docs/design/config.md and docs/plan/tasks/P2-12-config-collections.md, then implement the task.

@@ -11,7 +11,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 
 /** {@code List<T>} and {@code Set<T>} (a data list; sets keep their order). Decoded values are unmodifiable. */
-final class ListCodec implements Codec<Collection<Object>> {
+final class ListCodec implements Codec<Collection<Object>>, LenientCodec {
 
     private final Codec<Object> element;
     private final boolean set;
@@ -37,6 +37,29 @@ final class ListCodec implements Codec<Collection<Object>> {
         }
         if (!problems.isEmpty()) {
             throw new DecodeException(problems);
+        }
+        return set ? Collections.unmodifiableSet(new LinkedHashSet<>(values)) : Collections.unmodifiableList(values);
+    }
+
+    /**
+     * Keeps the valid elements in order and drops each invalid one ({@code path[i]: message -> element ignored});
+     * elements decode strictly, there is no default per element. Only a value that is not a list at all falls back
+     * to {@code defaults}.
+     */
+    @Override
+    public Object decodeLenient(final Object raw, final Object defaults, final DecodeContext ctx,
+                                final LenientReport report) {
+        if (!(raw instanceof List<?> items)) {
+            report.invalid(ctx.expected("a list", raw), "using default");
+            return defaults;
+        }
+        final List<Object> values = new ArrayList<>(items.size());
+        for (int i = 0; i < items.size(); i++) {
+            try {
+                values.add(Nulls.decode(element, items.get(i), ctx.at(i)));
+            } catch (final DecodeException e) {
+                report.invalid(e, "element ignored");
+            }
         }
         return set ? Collections.unmodifiableSet(new LinkedHashSet<>(values)) : Collections.unmodifiableList(values);
     }

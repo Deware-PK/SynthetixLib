@@ -2,6 +2,7 @@ package com.github.dewarepk.synthetixlib.config.mapping;
 
 import com.github.dewarepk.synthetixlib.config.codec.Codec;
 import com.github.dewarepk.synthetixlib.config.codec.DecodeContext;
+import com.github.dewarepk.synthetixlib.config.codec.DecodeException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -65,6 +66,29 @@ public final class CodecResolver {
     /** Decodes {@code raw}; {@code null} is accepted only for {@code Optional}. */
     public Object decode(final TypeRef ref, final Object raw, final DecodeContext ctx) {
         return Nulls.decode(resolve(ref), raw, ctx);
+    }
+
+    /**
+     * Decodes config file data where a missing or invalid field takes its value from {@code defaults} instead of
+     * failing (see {@link LenientCodec}). A type that is not a record or map is all-or-nothing: on failure the whole
+     * value is replaced by {@code defaults}.
+     */
+    public LenientResult<Object> decodeLenient(final TypeRef ref, final Object raw, final Object defaults,
+                                               final DecodeContext ctx) {
+        final Codec<?> codec = resolve(ref);
+        final LenientReport report = new LenientReport();
+        Object value;
+        if (codec instanceof LenientCodec lenient) {
+            value = lenient.decodeLenient(raw, defaults, ctx, report);
+        } else {
+            try {
+                value = Nulls.decode(codec, raw, ctx);
+            } catch (final DecodeException e) {
+                report.invalid(e, "using default");
+                value = defaults;
+            }
+        }
+        return new LenientResult<>(value, report.errors(), ctx.warnings(), report.missing());
     }
 
     /** Encodes {@code value} using the codec of the declared type {@code ref}. */

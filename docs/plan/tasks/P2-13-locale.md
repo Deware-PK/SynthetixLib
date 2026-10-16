@@ -1,6 +1,6 @@
 # P2-13 Locale
 Status: todo · Approved: yes · Model: sonnet · Effort: medium
-Module: synthetixlib-config · Depends on: P2-11 · Design: config.md §5
+Module: synthetixlib-config · Depends on: P2-11a · Design: config.md §5
 
 ## Prompt (paste into Claude Code)
 Read AGENTS.md, docs/design/config.md and docs/plan/tasks/P2-13-locale.md, then implement the task.

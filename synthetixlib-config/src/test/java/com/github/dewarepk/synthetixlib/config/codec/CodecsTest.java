@@ -462,6 +462,18 @@ class CodecsTest {
     }
 
     @Test
+    void aSealedLeafOnAFreshInstanceAcceptsItsOwnTypeKey() {
+        final Codecs fresh = Codecs.create();   // the sealed interface is never resolved here
+        final DecodeContext ctx = fresh.newContext();
+        assertEquals(new ItemReward("DIAMOND", 5),
+                fresh.decode(map("type", "item", "material", "DIAMOND", "chance", 5), ItemReward.class, ctx));
+        assertEquals(List.of(), ctx.warnings());
+        final DecodeContext other = fresh.newContext();
+        fresh.decode(map("type", "other", "material", "DIAMOND", "chance", 5), ItemReward.class, other);
+        assertEquals(List.of("type: unknown key"), other.warnings().stream().map(Problem::toString).toList());
+    }
+
+    @Test
     void typeNamesDoNotDependOnTheDeclaredRoot() {
         final List<Fixtures.Angular> angular = List.of(new Fixtures.SquareShape(2), new Fixtures.TriangleShape(3, 4));
         final Object asAngular = codecs.encode(angular, new TypeToken<List<Fixtures.Angular>>() { });

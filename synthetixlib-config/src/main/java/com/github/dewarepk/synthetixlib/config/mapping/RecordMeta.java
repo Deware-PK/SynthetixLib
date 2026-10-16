@@ -1,5 +1,6 @@
 package com.github.dewarepk.synthetixlib.config.mapping;
 
+import com.github.dewarepk.synthetixlib.config.annotation.Comment;
 import com.github.dewarepk.synthetixlib.config.annotation.Key;
 import com.github.dewarepk.synthetixlib.config.annotation.NotEmpty;
 import com.github.dewarepk.synthetixlib.config.annotation.Range;
@@ -28,9 +29,10 @@ final class RecordMeta {
      * @param nullable    marked with jspecify {@code @Nullable}
      * @param range       {@code @Range} or {@code null}
      * @param notEmpty    marked with {@code @NotEmpty}
+     * @param comment     lines of {@code @Comment}, empty if absent
      */
     record Component(String name, String key, Type genericType, Method accessor, boolean nullable,
-                     Range range, boolean notEmpty) {
+                     Range range, boolean notEmpty, List<String> comment) {
     }
 
     private final Class<?> type;
@@ -45,6 +47,9 @@ final class RecordMeta {
 
     /** @throws IllegalArgumentException if the record cannot be mapped (not public, duplicate keys, blank {@code @Key}) */
     static RecordMeta of(final Class<?> type) {
+        if (!type.isRecord()) {
+            throw new IllegalArgumentException(type.getName() + " must be a record");
+        }
         if (!Modifier.isPublic(type.getModifiers())) {
             throw new IllegalArgumentException("Record " + type.getName() + " must be public so it can be mapped "
                     + "(the library never uses setAccessible)");
@@ -66,6 +71,7 @@ final class RecordMeta {
                 throw new IllegalArgumentException("Record " + type.getName() + " has two components with the key '"
                         + key + "'");
             }
+            final Comment comment = component.getAnnotation(Comment.class);
             components.add(new Component(
                     component.getName(),
                     key,
@@ -73,7 +79,8 @@ final class RecordMeta {
                     component.getAccessor(),
                     component.getAnnotatedType().isAnnotationPresent(Nullable.class),
                     component.getAnnotation(Range.class),
-                    component.isAnnotationPresent(NotEmpty.class)));
+                    component.isAnnotationPresent(NotEmpty.class),
+                    comment == null ? List.of() : List.of(comment.value())));
         }
         try {
             return new RecordMeta(type, List.copyOf(components), type.getDeclaredConstructor(parameterTypes));

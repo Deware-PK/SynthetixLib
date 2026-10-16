@@ -83,6 +83,19 @@ Load algorithm (fixes bug #6)
 5. **Save only if** step 1/3 happened or keys were added. Plain reload never rewrites the file.
    User comments are preserved (round-trip through `YamlConfiguration` with parsed comments).
 
+Known limits (P2-11 / P2-11a)
+- **Invalid values, per container:** a record field falls back to its default; a **list/set** keeps its valid
+  elements and drops each invalid one (`path[i]: ... -> element ignored`; all dropped + `@NotEmpty` = field default);
+  a **map** entry falls back to the default entry with the same key, or is ignored if there is none
+  (`-> entry ignored`) and a map entry the user removed is never added back. In every case the file keeps the
+  user's text.
+- **Comments** are written only for keys with a fixed path (record components, also in nested records and
+  `Optional<Record>`), not for records inside `Map`/`List` entries.
+- **A write re-serialises the file:** comments are kept, blank lines between entries are not. Writes happen only
+  when the file is created, migrated or gets keys added.
+- **`ConfigTree` paths use dots**, so they cannot address a key that contains a dot (map keys such as `vip.gold`
+  are fine everywhere else).
+
 ## 3. Supported types
 `boolean/int/long/double/float` (+ boxed), `String`, enums (case-insensitive), `Duration` (`30s`, `5m`,
 `1h30m`, `250ms`), `UUID`, `NamespacedKey`, `Key`, registry types by key (`Material`, `Sound`,

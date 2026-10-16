@@ -1,6 +1,7 @@
 package com.github.dewarepk.synthetixlib.config.codec;
 
 import com.github.dewarepk.synthetixlib.config.mapping.CodecResolver;
+import com.github.dewarepk.synthetixlib.config.mapping.LenientResult;
 import com.github.dewarepk.synthetixlib.config.mapping.TypeRef;
 import java.util.List;
 import java.util.Map;
@@ -122,6 +123,21 @@ public final class Codecs {
     private <T> T decodeRef(final Object raw, final TypeRef ref, final DecodeContext ctx) {
         Objects.requireNonNull(ctx, "ctx");
         return (T) resolver.decode(ref, raw, ctx);
+    }
+
+    /**
+     * Decodes file data where a missing or invalid field takes its value from {@code defaults} instead of failing,
+     * recursing into nested records and maps. Never throws for bad data.
+     *
+     * @param defaults a non-null value of {@code type}
+     * @apiNote Internal: used by the YAML layer; use {@link #decode(Object, Class)} for strict decoding
+     */
+    @org.jetbrains.annotations.ApiStatus.Internal
+    @SuppressWarnings("unchecked")
+    public <T> LenientResult<T> decodeLenient(final Object raw, final Class<T> type, final T defaults) {
+        Objects.requireNonNull(defaults, "defaults");
+        return (LenientResult<T>) (LenientResult<?>) resolver.decodeLenient(
+                TypeRef.of(Objects.requireNonNull(type, "type")), raw, defaults, newContext());
     }
 
     // --- JSON -------------------------------------------------------------------------------------------------

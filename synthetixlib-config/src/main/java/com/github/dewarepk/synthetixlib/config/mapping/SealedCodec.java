@@ -49,9 +49,6 @@ final class SealedCodec implements Codec<Object> {
                         + DISCRIMINATOR + "', which is the discriminator of " + type.getName()
                         + "; rename it with @Key");
             }
-            if (codec instanceof RecordCodec<?> record) {
-                record.markSealedLeaf(leaf.getKey());
-            }
             linked.put(leaf.getKey(), Nulls.any(codec));
         }
         this.codecs = Collections.unmodifiableMap(linked);
@@ -73,6 +70,20 @@ final class SealedCodec implements Codec<Object> {
             }
         }
         return into;
+    }
+
+    /** @return {@code true} if {@code type} implements or extends a sealed type, directly or indirectly */
+    static boolean hasSealedAncestor(final Class<?> type) {
+        final List<Class<?>> parents = new ArrayList<>(List.of(type.getInterfaces()));
+        if (type.getSuperclass() != null) {
+            parents.add(type.getSuperclass());
+        }
+        for (final Class<?> parent : parents) {
+            if (parent.isSealed() || hasSealedAncestor(parent)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

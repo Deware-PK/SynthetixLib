@@ -1,5 +1,5 @@
 # P2-11 YAML file configs (ConfigHandle): load algorithm, comments, reload, migrations
-Status: todo · Approved: yes · Model: sonnet · Effort: high
+Status: done · Approved: yes · Model: sonnet · Effort: high
 Module: synthetixlib-config · Depends on: P2-09a · Design: config.md §1, §2, §4
 
 ## Prompt (paste into Claude Code)
@@ -39,10 +39,39 @@ path reported, file bytes keep the user's value; unknown key kept; **unchanged r
 migrations chain; reload listener called with new snapshot; atomic write leaves no temp files.
 
 ## Acceptance criteria
-- [ ] behaviour matches config.md §2 exactly; SnapPlug bug #6 covered by tests
-- [ ] `gradlew.bat check smokeTest` green
+- [x] behaviour matches config.md §2 exactly; SnapPlug bug #6 covered by tests
+- [x] `gradlew.bat check smokeTest` green
 
 ## Verify
 gradlew.bat check smokeTest
 
 ## Result
+Ran `gradlew.bat check smokeTest`: green (163 unit tests in config, smokeTest 47/47 on 1.21.11 and 26.3).
+Public API (all new, per design §2/§4): `Configs.file(...)` -> `ConfigFileBuilder` (`version`, `migrate`, `load`) ->
+`ConfigHandle` (`get`, `reload`, `reloadAsync`, `onReload`, `path`), `ReloadResult(errors, warnings, changed)` +
+`ok()`, `config.migration.ConfigTree`. Internal (`@Internal`): `yaml.FileConfig` (the load algorithm),
+`yaml.AtomicFiles` (shared with P2-12), `yaml.YamlTrees`, `migration.Migration`, `mapping.Schema`/`LenientResult`,
+`Codecs.decodeLenient`. `Problem` is unchanged. Package-private `ConfigHost` lets `ConfigHandle` be tested without a server.
+- Per-field fallback: `RecordCodec`/`MapCodec` implement an internal `LenientCodec`. Missing key -> default, reported
+  with its path and encoded default so the YAML layer adds it with the comment; invalid -> default, error text
+  `<path>: <message> -> using <default>`. Map entries: invalid entry with a default under the same key falls back to it,
+  one without is left out (`-> entry ignored`, stays in the file); a missing map entry is never added back.
+- Carry-over: `RecordCodec.sealedName` is set in `link` from `SealedCodec.nameOf` (test on a fresh `Codecs`);
+  `markSealedLeaf` removed.
+- Decisions to review:
+  - `reload()` calls listeners only when the snapshot changed (`equals`), on the calling thread; `reloadAsync()` does IO on
+    `async()` and runs listeners + completes the future on the global thread. A listener that throws is logged.
+  - YAML that cannot be parsed (or read): `value == null` -> a reload keeps the current snapshot and reports the error,
+    first `load()` uses the defaults in memory; the file is never touched.
+  - A file with a newer `config-version` than the plugin: warning, file never written. A failing migration: error,
+    file untouched (backup stays), values decoded from the original data.
+  - Bukkit's path separator is replaced by a control char (`YamlTrees`), so map keys with dots (`vip.gold`) stay one
+    key. Consequence: `ConfigTree` paths cannot address keys that contain a dot.
+  - `ConfigTree.rename(path, newName)` renames the last segment (use `move` for another place); `move`/`rename`
+    overwrite an existing target and carry the key's comments; `importFrom(Path)` merges the other file into the tree
+    (its values win) and returns false if the file does not exist (design §4 left the semantics open).
+  - A file without `config-version` gets it added as the first key (one write); header comment = type-level `@Comment`.
+  - Writes re-serialize through `YamlConfiguration`: user comments are kept, but blank lines between entries are
+    not (Bukkit limitation seen in a probe). Only happens when a write is needed.
+- Tests: `FileConfigTest`, `AtomicFilesTest`, `ConfigTreeTest`, `ConfigHandleTest`, sealed-leaf case in `CodecsTest`;
+  self-tests `config.file.bukkit-types`, `config.file.migrate`, `config.file.reload-async`.

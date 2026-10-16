@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 /** {@code Map<String, T>} (a data section). Keys keep their order; decoded maps are unmodifiable. */
-final class MapCodec implements Codec<Map<String, Object>> {
+final class MapCodec implements Codec<Map<String, Object>>, LenientCodec {
 
     private final Codec<Object> value;
 
@@ -36,6 +36,43 @@ final class MapCodec implements Codec<Map<String, Object>> {
         }
         if (!problems.isEmpty()) {
             throw new DecodeException(problems);
+        }
+        return Collections.unmodifiableMap(values);
+    }
+
+    /**
+     * Entries with a counterpart in {@code defaults} (same key) fall back to it when invalid; entries without one
+     * are left out. Keys missing from the data are not added back: a map's entries are the user's to remove.
+     */
+    @Override
+    public Object decodeLenient(final Object raw, final Object defaults, final DecodeContext ctx,
+                                final LenientReport report) {
+        final Map<?, ?> defaultEntries = (Map<?, ?>) defaults;
+        if (!(raw instanceof Map<?, ?> entries)) {
+            report.invalid(ctx.expected("a section", raw), "using default");
+            return defaults;
+        }
+        final Map<String, Object> values = new LinkedHashMap<>();
+        for (final Map.Entry<?, ?> entry : entries.entrySet()) {
+            final String key = String.valueOf(entry.getKey());
+            final Object fallback = defaultEntries.get(key);
+            report.enter(key);
+            try {
+                if (fallback != null && entry.getValue() != null && value instanceof LenientCodec lenient) {
+                    values.put(key, lenient.decodeLenient(entry.getValue(), fallback, ctx.at(key), report));
+                } else {
+                    values.put(key, Nulls.decode(value, entry.getValue(), ctx.at(key)));
+                }
+            } catch (final DecodeException e) {
+                if (fallback != null) {
+                    report.invalid(e, "using " + Preview.of(value.encode(fallback)));
+                    values.put(key, fallback);
+                } else {
+                    report.invalid(e, "entry ignored");
+                }
+            } finally {
+                report.exit();
+            }
         }
         return Collections.unmodifiableMap(values);
     }
