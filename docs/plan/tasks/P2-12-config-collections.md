@@ -1,5 +1,5 @@
 # P2-12 Config collections (one file per object)
-Status: todo · Approved: yes · Model: sonnet · Effort: high
+Status: done · Approved: yes · Model: sonnet · Effort: high
 Module: synthetixlib-config · Depends on: P2-11a · Design: config.md §4b
 
 ## Prompt (paste into Claude Code)
@@ -29,11 +29,37 @@ broken file skipped with error while others load; concurrent updates from N thre
 Self-test `config.collection.basic` on a real server (create → update → reload → delete, events observed).
 
 ## Acceptance criteria
-- [ ] API matches config.md §4b
-- [ ] no lost updates under concurrency (test), atomic writes
-- [ ] `gradlew.bat check smokeTest` green
+- [x] API matches config.md §4b
+- [x] no lost updates under concurrency (test), atomic writes
+- [x] `gradlew.bat check smokeTest` green
 
 ## Verify
 gradlew.bat check smokeTest
 
 ## Result
+Ran `gradlew.bat check smokeTest`: green (Paper 1.21.11 and 26.3, 49/49 self-tests incl. `config.collection.basic`).
+- New public API in `config`: `Configs#collection` -> `ConfigCollectionBuilder` (`version`, `migrate`, `template`, `load`) ->
+  `ConfigCollection` (`create` x2, `update`, `get`, `all`, `ids`, `rename`, `delete`, `reload`, `reloadAsync`, `onChange`),
+  sealed `Change` (`Added | Updated | Removed`, nested records), `FilesReloadResult` (per-file `ReloadResult` + removed ids;
+  shared with locale).
+- Design points beyond the spec text:
+  - Two locks: `lock` (snapshot swap, short, no IO) and `ioLock` (whoever touches files: async drain, reload, close;
+    always taken before `lock`). Writes are a FIFO queue drained by one async task at a time; `update` runs under `lock`,
+    so concurrent updates cannot be lost.
+  - `reload()` first drains the queue (so files are never behind the snapshot) and remembers ids mutated while it runs,
+    which it does not touch (no mutation is reverted by a reload). Per-file `FileConfig.load` is reused, so missing keys
+    are added and a broken file is skipped and keeps its old value.
+  - `update` writes only keys that differ between `encode(old)` and `encode(new)` (`YamlTrees.applyChanges`), so comments,
+    hand edits and unknown keys survive; a file that is no longer valid YAML is not touched (logged, change stays in memory).
+  - Template: `create` copies the template (its comments too) and fills missing keys from `defaults(id)`; the template file
+    is never written. Needed `FileConfig.compute()` (= `load()` without the write) and `FileConfig.render(value)`.
+  - `delete` -> `.deleted/<id>-<yyyyMMdd-HHmmss>[-n].yml`; `rename` = file move (Removed old, Added new). A pending-ops count
+    per id lets an id be re-created right after its delete although the file is still on disk.
+  - Errors: invalid id -> `IllegalArgumentException`; `create` of an existing id (or of an id whose file exists but is
+    broken) -> `IllegalStateException`; `update`/`rename` of a missing id -> `NoSuchElementException`; `delete` returns
+    `false` if absent; `get` of an invalid id is just empty.
+  - `Configs.close()` flushes every collection (waits up to 5 s for the writer, then logs the writes that were lost).
+  - Known limit: every `update` is one file write (a burst of N updates = N writes; ~3 ms each on Windows).
+- Tests: `ConfigCollectionTest` (30: files + snapshot, template, ignored/broken files, invalid values, hand edit reload,
+  8 threads x 60 updates with no lost update, concurrent creates, mutations racing reloads, delete/rename/re-create, close).
+

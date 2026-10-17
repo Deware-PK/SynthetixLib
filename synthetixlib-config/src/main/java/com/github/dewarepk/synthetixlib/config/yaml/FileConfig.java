@@ -60,6 +60,16 @@ public final class FileConfig<T> {
     public record Result<T>(@Nullable T value, List<Problem> errors, List<Problem> warnings) {
     }
 
+    /**
+     * What {@link #compute()} found and what it would write.
+     *
+     * @param result what {@link #load()} would return, before any write error is added
+     * @param text   the complete new content of the file, or {@code null} if the file stays as it is
+     * @param <T>    the config record
+     */
+    public record Computed<T>(Result<T> result, @Nullable String text) {
+    }
+
     private final Path file;
     private final Class<T> type;
     private final Supplier<T> defaults;
@@ -110,13 +120,36 @@ public final class FileConfig<T> {
      * @throws NullPointerException     if the defaults supplier returns {@code null}
      */
     public Result<T> load() {
+        final Computed<T> computed = compute();
+        final Result<T> result = computed.result();
+        if (computed.text() == null) {
+            return result;
+        }
+        final List<Problem> errors = new ArrayList<>(result.errors());
+        try {
+            AtomicFiles.write(file, computed.text().getBytes(StandardCharsets.UTF_8));
+        } catch (final IOException e) {
+            errors.add(new Problem("", "cannot save " + file.getFileName() + ": " + e));
+        }
+        return new Result<>(result.value(), errors, result.warnings());
+    }
+
+    /**
+     * Does everything {@link #load()} does except writing the file: returns the content it would write instead. The
+     * only side effect is the {@code .bak} copy before a migration. Lets a caller that owns the write order (a
+     * collection) decide when and where the text goes.
+     *
+     * @throws IllegalArgumentException if {@code type} or the defaults cannot be mapped (a programming error)
+     * @throws NullPointerException     if the defaults supplier returns {@code null}
+     */
+    public Computed<T> compute() {
         final T defaultValue = Objects.requireNonNull(defaults.get(), "defaults must not return null");
         final Map<String, List<String>> comments = Schema.comments(type);
         final List<Problem> errors = new ArrayList<>();
         final List<Problem> warnings = new ArrayList<>();
         if (!Files.exists(file)) {
-            createDefaults(defaultValue, comments, errors);
-            return new Result<>(defaultValue, errors, warnings);
+            final String created = createDefaults(defaultValue, comments);
+            return new Computed<>(new Result<>(defaultValue, errors, warnings), created);
         }
 
         final String text;
@@ -124,14 +157,14 @@ public final class FileConfig<T> {
             text = Files.readString(file, StandardCharsets.UTF_8);
         } catch (final IOException e) {
             errors.add(new Problem("", "cannot read " + file.getFileName() + ": " + e));
-            return new Result<>(null, errors, warnings);
+            return new Computed<>(new Result<>(null, errors, warnings), null);
         }
         YamlConfiguration yaml;
         try {
             yaml = YamlTrees.parse(text);
         } catch (final InvalidConfigurationException e) {
             errors.add(new Problem("", "invalid YAML, the file is left as it is: " + firstLine(e.getMessage())));
-            return new Result<>(null, errors, warnings);
+            return new Computed<>(new Result<>(null, errors, warnings), null);
         }
 
         boolean save = false;
@@ -163,16 +196,23 @@ public final class FileConfig<T> {
             save |= addMissing(yaml, missing, comments);
         }
 
-        if (save && mayWrite) {
-            write(yaml, errors);
-        }
-        return new Result<>(decoded.value(), errors, warnings);
+        final String out = save && mayWrite ? yaml.saveToString() : null;
+        return new Computed<>(new Result<>(decoded.value(), errors, warnings), out);
+    }
+
+    /**
+     * The content of a new file holding {@code value}: header, version, keys and comments, as written on first
+     * start. Reads and writes nothing.
+     *
+     * @throws IllegalArgumentException if {@code value} cannot be encoded
+     */
+    public String render(final T value) {
+        return createDefaults(Objects.requireNonNull(value, "value"), Schema.comments(type));
     }
 
     // --- first start --------------------------------------------------------------------------------------------
 
-    private void createDefaults(final T defaultValue, final Map<String, List<String>> comments,
-                                final List<Problem> errors) {
+    private String createDefaults(final T defaultValue, final Map<String, List<String>> comments) {
         final YamlConfiguration yaml = YamlTrees.create();
         final List<String> header = Schema.header(type);
         if (!header.isEmpty()) {
@@ -184,7 +224,7 @@ public final class FileConfig<T> {
             final String key = String.valueOf(entry.getKey());
             YamlTrees.put(yaml, key, entry.getValue(), key, comments);
         }
-        write(yaml, errors);
+        return yaml.saveToString();
     }
 
     // --- migrations ---------------------------------------------------------------------------------------------
@@ -255,14 +295,6 @@ public final class FileConfig<T> {
         }
         YamlTrees.put(section, path.get(path.size() - 1), missing.value(), String.join(".", path), comments);
         return true;
-    }
-
-    private void write(final YamlConfiguration yaml, final List<Problem> errors) {
-        try {
-            AtomicFiles.write(file, yaml.saveToString().getBytes(StandardCharsets.UTF_8));
-        } catch (final IOException e) {
-            errors.add(new Problem("", "cannot save " + file.getFileName() + ": " + e));
-        }
     }
 
     private static String firstLine(final @Nullable String message) {

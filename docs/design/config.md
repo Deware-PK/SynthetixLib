@@ -1,6 +1,6 @@
 # synthetixlib-config — API design
 
-Status: **Approved** (2026-10-14, all §9 defaults accepted) · Date: 2026-10-14
+Status: **Implemented (0.2.0)** — approved 2026-10-14 (all §9 defaults accepted); deviations in §10 · Date: 2026-10-14
 Package root: `com.github.dewarepk.synthetixlib.config` · Depends on: core, paper-api only (ADR 0012)
 
 Typed config + locale, written in-house on top of Bukkit `YamlConfiguration` (SnakeYAML ships in Paper).
@@ -193,6 +193,9 @@ Rules
   the per-object default; invalid fields → default + error, file kept (same as §2).
 - Records get `with...` copy helpers by hand (Java has no withers); `update` takes `UnaryOperator<T>`.
 - Same atomic write is used for `file(...)` saves.
+- As built (P2-12): `reload()` returns a `FilesReloadResult` (one `ReloadResult` per file); `update` writes only the keys
+  that differ; `reload` first writes what is queued and never reverts a mutation made while it runs; `Change` is a sealed
+  interface with nested records `Change.Added | Updated | Removed`; `delete` returns `boolean`.
 
 ## 4c. Extra types needed by collections
 - `Location` → `{world, x, y, z, yaw, pitch}` (world by name; unknown world = validation error, kept in file).
@@ -221,9 +224,13 @@ LocaleHandle<Messages> lang = configs.locale("lang", Messages.class, Messages::d
 lang.send(player, Messages::bidPlaced,
         Placeholder.unparsed("amount", "100"), Placeholder.component("item", itemName));
 Component c = lang.get(player, Messages::outbid);
+lang.sendLines(player, Messages::help);                  // List<String> message: one chat line per entry
 ```
 - Messages are MiniMessage strings rendered through `lib.text()` (so `text.with(prefix)` tags work).
-- Empty string = message disabled (`send` does nothing). `List<String>` = one line each.
+- Empty string = message disabled (`send` does nothing). `List<String>` = one line each, via `sendLines` / `getLines`
+  (not overloads of `send` / `get`: same erasure).
+- Language of an audience: exact tag (`th_TH`) -> language file (`th`) -> any file of that language -> default;
+  `Player#locale()` / Adventure `Identity.LOCALE`; tags compared ignoring case; `perPlayer` default `false`.
 - Same load/migrate/no-resave rules as configs. Locale files reload together.
 
 ## 6. Reflection (ADR 0013)
@@ -255,3 +262,15 @@ per-player locale send.
 8. **Template file** `_template.yml` optional per collection (chosen) — lets server owners set their own defaults.
 9. **Serialization layer reusable outside config** (§3b, chosen) incl. sealed-interface polymorphism with `type:`
    and JSON via Paper's Gson.
+
+## 10. Deviations from this design (as built, 0.2.0)
+- **Custom codecs:** `configs.codecs().register(Type.class, codec)` (with `Codec.of` / `Codec.string`), not `configs.codec(...)`.
+- **No `Validated` interface:** cross-field rules are not built in; use `@Range` / `@NotEmpty` per component, or check the
+  snapshot in `onReload`. (Can be added later without breaking anything.)
+- **Locale lists:** `sendLines` / `getLines` instead of overloads of `send` / `get` (same erasure). An explicit `Locale`
+  argument is always honoured; `perPlayer` only decides whether an `Audience` is asked for its locale.
+- **Collections:** `reload()` returns `FilesReloadResult`; `Change` is a sealed interface with nested records; `delete`
+  returns `boolean`; `create` reports a file that differs from the id only in letter case (`MyDrop.yml`).
+- **Invalid values** fall back per container (record field / list element / map entry) rather than the whole file; see the
+  known limits in §2.
+- **Not implemented:** file watcher (reload is explicit), `Set`/`Map` comments inside collection entries.

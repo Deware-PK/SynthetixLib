@@ -5,6 +5,16 @@ import java.util.Objects;
 /**
  * One decode problem or warning at a location in the data tree.
  *
+ * <pre>{@code
+ * try {
+ *     codecs.fromJson(json, Zone.class);
+ * } catch (DecodeException e) {
+ *     for (Problem problem : e.problems()) {
+ *         logger.warning(problem.toString());   // "radius: must be >= 1 (was 0)"
+ *     }
+ * }
+ * }</pre>
+ *
  * @param path    dotted path with list indices, e.g. {@code zones.spawn.radius} or {@code rewards[1].chance};
  *                empty for the root
  * @param message human readable description, e.g. {@code must be >= 1 (was 0)}
