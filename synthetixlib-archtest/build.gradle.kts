@@ -8,6 +8,7 @@ dependencies {
     // Every published library module MUST be listed here, otherwise its classes are not checked.
     testImplementation(project(":synthetixlib-core"))
     testImplementation(project(":synthetixlib-config"))
+    testImplementation(project(":synthetixlib-command"))
 
     testImplementation(libs.archunit)
 }

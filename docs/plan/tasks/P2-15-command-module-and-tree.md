@@ -1,5 +1,5 @@
 # P2-15 Command module, CommandService, spec tree, CommandCall basics
-Status: todo · Approved: yes · Model: sonnet · Effort: high
+Status: done · Approved: yes · Model: sonnet · Effort: high
 Module: synthetixlib-command · Depends on: P2-14 · Design: command.md §1, §2, §3, §5 (permission / playerOnly only)
 
 ## Prompt (paste into Claude Code)
@@ -46,11 +46,48 @@ Self-test `command.basic`: register a test command, `Bukkit.dispatchCommand(cons
 a playerOnly node (reply checked via a capturing sender if possible, else log) and an alias.
 
 ## Acceptance criteria
-- [ ] API matches command.md §1-§3 (deviations listed in Result)
-- [ ] no static state, no reflection (ArchUnit green, rules untouched)
-- [ ] `gradlew.bat check smokeTest` green
+- [x] API matches command.md §1-§3 (deviations listed in Result)
+- [x] no static state, no reflection (ArchUnit green, rules untouched)
+- [x] `gradlew.bat check smokeTest` green
 
 ## Verify
 gradlew.bat check smokeTest
 
 ## Result
+
+Ran `gradlew.bat check smokeTest`: BUILD SUCCESSFUL. 29 new unit tests in `synthetixlib-command` (tree shape, aliases,
+optional expansion, inheritance/override, duplicates, `requires`, playerOnly, label, typed get, fail, exception,
+8-thread run, registry rules); smoke 52/52 on Paper 1.21.11 (Java 21) and 26.3 (Java 25), incl. `command.basic`,
+`command.player-only`, `command.messages-in-lang`. ArchUnit rules untouched. Nothing committed.
+
+**Surprises (Paper API)**
+- `LifecycleEvents.COMMANDS` fires right after `onEnable`, i.e. before `ServerLoadEvent`. The self-test command is
+  therefore registered in the `SelfTestTrigger` constructor (called from `onEnable`), not inside the test body.
+- `Commands.register(node, description, aliases)` registers aliases as redirect nodes; a redirect does not re-run the
+  target's `requires`, so `Executor` re-checks the permission (belt and braces, unit-tested).
+- Brigadier checks `requires` on every node of the path: a subcommand can add a permission, never loosen its parent's
+  (documented in `SpecBuilder` and the module AGENTS.md).
+- `Bukkit.dispatchCommand` throws `CommandException` for a vanilla range error (`add 1000 1`) but only reports an
+  incomplete command (`echo`) without throwing; the self-test only asserts that no handler ran.
+- A capturing `CommandSender` cannot be dispatched (Paper refuses unknown sender types), so the playerOnly reply is
+  asserted in the unit tests (Proxy senders) and seen in the server log; the self-test asserts the handler did not run.
+- Config writes lang keys kebab-case (`player-only:` under `commands:`).
+
+**Deviations / decisions**
+- `SubCommand.spec()` is called once at the parent's `build()`, not at `register`, so duplicate children are caught
+  at `build()` as the spec also demands. `register` only stores built specs.
+- `executesAsync` exists and throws `UnsupportedOperationException` (P2-17). `cooldownLeft` = ZERO,
+  `resetCooldown`/`skipCooldown` no-ops, `isAsync` = false; `runOnSender` is real (entity scheduler for a player,
+  global otherwise).
+- `CommandCall.locale()` is the player's locale, else `Locale.US`: `LocaleHandle` exposes no default locale.
+- `ctx.get(arg)` of an `optional` argument returns the default declared in the spec when it was not typed;
+  `optional(arg)` / `has(arg)` / `getOrDefault` look at what was actually typed.
+- `Arg.suggests` takes `Function<CommandSourceStack, Collection<String>>` (the design left the parameter open);
+  `ArgType` = `nativeType()` + `read(context, name)` + optional `suggestions()`.
+- `CommandSpec.literal(..)` returns `CommandSpec.Builder`; `SubSpec` is itself the (fluent) result of `SubSpec.literal`,
+  both extend the sealed `SpecBuilder`. `CommandService.register` returns the service.
+- Extra build-time checks: node with arguments but no handler, node with neither handler nor subs, duplicate argument
+  names, greedy argument not last, alias equal to name / used twice (all `IllegalArgumentException`).
+- `label()` is the first token of the whole input as the spec says, so under `/execute ... run auction` it is `execute`.
+- If a root name is taken by another plugin, the service logs a warning with the namespaced name.
+

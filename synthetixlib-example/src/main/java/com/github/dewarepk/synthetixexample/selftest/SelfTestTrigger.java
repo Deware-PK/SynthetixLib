@@ -29,11 +29,14 @@ public final class SelfTestTrigger implements Listener {
 
     private final JavaPlugin plugin;
     private final SynthetixLib lib;
+    private final CommandSelfTests commandTests;
     private boolean ran;
 
+    /** Created in {@code onEnable}: the test commands must be registered before Paper fires its COMMANDS event. */
     public SelfTestTrigger(final JavaPlugin plugin, final SynthetixLib lib) {
         this.plugin = plugin;
         this.lib = lib;
+        this.commandTests = CommandSelfTests.install(plugin, lib);
     }
 
     @EventHandler
@@ -54,6 +57,7 @@ public final class SelfTestTrigger implements Listener {
         tests.addAll(ConfigFileSelfTests.all(plugin, lib));
         tests.addAll(ConfigCollectionSelfTests.all(plugin, lib));
         tests.addAll(ConfigLocaleSelfTests.all(plugin, lib));
+        tests.addAll(commandTests.all());
         // one line per module as modules are added
 
         new Run(tests).start();

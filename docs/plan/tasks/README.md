@@ -11,11 +11,13 @@ Tasks are written by the planner (owner + Claude in Cowork) and executed by Clau
   - **medium**: normal feature work with a clear spec
   - **high**: concurrency, security/dupe logic, tricky APIs, or many interacting parts
 - `Depends on`: tasks that must be done first
+- `Ship: yes (<module> <version>)`: only on a module's wrap-up task — the agent runs `scripts/ship-module.ps1`
+  after Verify is green (commit + tag + push to `main`). All other tasks: never commit.
 
 ## Agent loop
 1. Read AGENTS.md + the task (+ linked design doc). 2. Implement. 3. Run the Verify commands.
 4. Tick acceptance boxes, set `Status: review`, write a short "Result" section (what changed, anything
-   surprising). 5. Do not commit.
+   surprising). 5. Do not commit — unless the task says `Ship: yes`, then run `scripts/ship-module.ps1`.
 
 ## Template
 ```md

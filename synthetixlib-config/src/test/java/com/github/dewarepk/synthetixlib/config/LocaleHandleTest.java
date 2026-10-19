@@ -141,8 +141,9 @@ class LocaleHandleTest {
 
     @Test
     void theDefaultLocaleCanBeSetAndNamesItsFile() throws IOException {
-        handle(false, Locale.GERMANY);
+        final LocaleHandle<Messages> lang = handle(false, Locale.GERMANY);
 
+        assertEquals(Locale.GERMANY, lang.defaultLocale());
         assertTrue(Files.exists(lang().resolve("de_DE.yml")));
         assertFalse(Files.exists(lang().resolve("en_US.yml")));
     }
@@ -158,6 +159,33 @@ class LocaleHandleTest {
         assertTrue(text.contains("bid-placed: <green>You bid <amount>"), "filled from the defaults: " + text);
         assertEquals("คุณถูกประมูลแซง", plain(lang.get(Locale.of("th", "TH"), Messages::outbid)));
         assertEquals("You were outbid!", plain(lang.get(Locale.US, Messages::outbid)));
+    }
+
+    @Test
+    void aCopiedBundledFileGetsTheCommentsOfTheRecordButKeepsItsOwn() throws IOException {
+        host.resources.put("lang/th_TH.yml", "bid-placed: <green>ประมูล <amount>\n"
+                + "# own comment\noutbid: <red>คุณถูกประมูลแซง\n");
+
+        handle(true, Locale.US, "th_TH");
+
+        final String text = read("th_TH");
+        assertTrue(text.contains("# Placeholders: <amount>\nbid-placed: <green>ประมูล <amount>"), text);
+        assertTrue(text.contains("# own comment\noutbid: <red>คุณถูกประมูลแซง"), text);
+    }
+
+    @Test
+    void anExistingBundledFileKeepsItsBytesOnReload() throws IOException {
+        host.resources.put("lang/th_TH.yml", "outbid: from the jar\n");
+        write("th_TH", "outbid: edited\nbid-placed: a\nhelp: [x]\ndisabled: ''\n");
+        final LocaleHandle<Messages> lang = handle(true, Locale.US, "th_TH");
+        final Path file = lang().resolve("th_TH.yml");
+        final String before = read("th_TH");
+        final var modified = Files.getLastModifiedTime(file);
+
+        lang.reload();
+
+        assertEquals(before, read("th_TH"));
+        assertEquals(modified, Files.getLastModifiedTime(file));
     }
 
     @Test

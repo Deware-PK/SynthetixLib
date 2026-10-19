@@ -3,6 +3,8 @@ package com.github.dewarepk.synthetixexample;
 import com.github.dewarepk.synthetixexample.demo.Airdrop;
 import com.github.dewarepk.synthetixexample.demo.Messages;
 import com.github.dewarepk.synthetixexample.demo.Settings;
+import com.github.dewarepk.synthetixexample.demo.command.ExampleCommand;
+import com.github.dewarepk.synthetixlib.command.CommandService;
 import com.github.dewarepk.synthetixexample.selftest.SelfTestTrigger;
 import com.github.dewarepk.synthetixlib.config.ConfigCollection;
 import com.github.dewarepk.synthetixlib.config.ConfigHandle;
@@ -51,7 +53,7 @@ public final class SynthetixExamplePlugin extends JavaPlugin implements Listener
         enableConfigDemo();
     }
 
-    /** settings.yml, airdrops/*.yml and lang/*.yml; there are no commands yet, so it only logs what it loaded. */
+    /** settings.yml, airdrops/*.yml and lang/*.yml, and the {@code /example} command on top of them. */
     private void enableConfigDemo() {
         final Configs configs = Configs.create(lib);
         settings = configs.file("settings.yml", Settings.class, Settings::defaults).load();
@@ -71,6 +73,10 @@ public final class SynthetixExamplePlugin extends JavaPlugin implements Listener
         lang.send(getServer().getConsoleSender(), Messages::airdropsLoaded,
                 Placeholder.unparsed("count", String.valueOf(airdrops.ids().size())),
                 Placeholder.unparsed("ids", String.join(", ", airdrops.ids())));
+
+        CommandService.create(lib)
+                .messages(lang, Messages::commands)
+                .register(ExampleCommand.build(settings, airdrops, lang));
     }
 
     @EventHandler

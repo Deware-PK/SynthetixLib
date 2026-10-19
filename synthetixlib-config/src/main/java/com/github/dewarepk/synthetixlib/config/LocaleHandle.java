@@ -8,6 +8,7 @@ import com.github.dewarepk.synthetixlib.config.yaml.FileConfig;
 import com.github.dewarepk.synthetixlib.core.text.TextService;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -82,6 +83,7 @@ public final class LocaleHandle<T> {
     private final Codecs codecs;
     private final int version;
     private final List<Migration> migrations;
+    private final Locale defaultLocale;
     private final String defaultTag;
     private final List<String> bundled;
     private final boolean perPlayer;
@@ -101,6 +103,7 @@ public final class LocaleHandle<T> {
         this.codecs = codecs;
         this.version = version;
         this.migrations = List.copyOf(migrations);
+        this.defaultLocale = defaultLocale;
         this.defaultTag = tagOf(defaultLocale);
         this.bundled = List.copyOf(bundled);
         this.perPlayer = perPlayer;
@@ -127,6 +130,20 @@ public final class LocaleHandle<T> {
     }
 
     // --- reading ------------------------------------------------------------------------------------------------
+
+    /**
+     * The locale whose file is used when nothing better matches; also what to use for a receiver that has no locale,
+     * e.g. the console.
+     *
+     * <pre>{@code
+     * Locale forConsole = lang.defaultLocale();
+     * }</pre>
+     *
+     * @return the default locale given to the builder
+     */
+    public Locale defaultLocale() {
+        return defaultLocale;
+    }
 
     /**
      * Sends a message in the language of {@code audience}.
@@ -311,7 +328,10 @@ public final class LocaleHandle<T> {
                         List.of(), false));
                 return;
             }
-            AtomicFiles.write(file, in.readAllBytes());
+            final String jarText = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            final String commented = new FileConfig<>(file, type, defaults, codecs, version, migrations)
+                    .computeBundled(jarText).text();
+            AtomicFiles.write(file, (commented != null ? commented : jarText).getBytes(StandardCharsets.UTF_8));
         } catch (final IOException e) {
             results.put(tag, new ReloadResult(List.of("cannot copy bundled " + resource + ": " + e), List.of(),
                     false));

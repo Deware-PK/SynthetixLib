@@ -159,6 +159,25 @@ public final class FileConfig<T> {
             errors.add(new Problem("", "cannot read " + file.getFileName() + ": " + e));
             return new Computed<>(new Result<>(null, errors, warnings), null);
         }
+        return computeText(text, defaultValue, comments, false);
+    }
+
+    /**
+     * Like {@link #compute()} for text that is not on disk yet, e.g. a file shipped in the plugin jar and about to be
+     * copied: besides the missing keys, every key without a comment gets the comment of the record. The returned
+     * text is the complete content to write once.
+     *
+     * @param text the YAML text to start from
+     */
+    public Computed<T> computeBundled(final String text) {
+        final T defaultValue = Objects.requireNonNull(defaults.get(), "defaults must not return null");
+        return computeText(text, defaultValue, Schema.comments(type), true);
+    }
+
+    private Computed<T> computeText(final String text, final T defaultValue,
+                                    final Map<String, List<String>> comments, final boolean fillComments) {
+        final List<Problem> errors = new ArrayList<>();
+        final List<Problem> warnings = new ArrayList<>();
         YamlConfiguration yaml;
         try {
             yaml = YamlTrees.parse(text);
@@ -169,6 +188,9 @@ public final class FileConfig<T> {
 
         boolean save = false;
         boolean mayWrite = true;
+        if (fillComments) {
+            save |= fillComments(yaml, comments);
+        }
         final int found = readVersion(yaml, warnings);
         if (found > version) {
             warnings.add(new Problem(VERSION_KEY, found + " is newer than the " + version
@@ -278,6 +300,24 @@ public final class FileConfig<T> {
         }
         warnings.add(new Problem(VERSION_KEY, "must be a whole number from 1, assuming 1 (was " + raw + ")"));
         return 1;
+    }
+
+    /** Gives every existing key that has no comment the comment of the record; returns whether any was added. */
+    private static boolean fillComments(final YamlConfiguration yaml, final Map<String, List<String>> comments) {
+        boolean changed = false;
+        for (final Map.Entry<String, List<String>> entry : comments.entrySet()) {
+            final String[] path = entry.getKey().split("\\.");
+            ConfigurationSection section = yaml;
+            for (int i = 0; i < path.length - 1 && section != null; i++) {
+                section = section.getConfigurationSection(path[i]);
+            }
+            final String key = path[path.length - 1];
+            if (section != null && section.contains(key, true) && section.getComments(key).isEmpty()) {
+                section.setComments(key, entry.getValue());
+                changed = true;
+            }
+        }
+        return changed;
     }
 
     // --- writing ------------------------------------------------------------------------------------------------

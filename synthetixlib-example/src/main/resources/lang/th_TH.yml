@@ -1,3 +1,12 @@
 welcome: <green>ยินดีต้อนรับ <name>!
 airdrops-loaded: "<gray>โหลด airdrop แล้ว <count> รายการ: <ids>"
 airdrop-created: <green>สร้าง airdrop <id> แล้ว
+commands:
+  player-only: <red>ใช้ได้เฉพาะผู้เล่น
+  cooldown: <red>รอ <time> ก่อนใช้ /<label> อีกครั้ง
+  busy: <red>รอสักครู่ /<label> ยังทำงานอยู่
+  player-not-found: "<red>ไม่พบผู้เล่น: <input>"
+  invalid-value: "<red><input> ไม่ถูกต้อง: <reason>"
+  error: <red>เกิดข้อผิดพลาด ดูที่คอนโซล
+  help-header: "<yellow>คำสั่งของ /<command>:"
+  help-line: <yellow>/<command> <usage> <gray>- <description>

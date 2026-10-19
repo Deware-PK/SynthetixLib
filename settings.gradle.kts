@@ -15,6 +15,7 @@ rootProject.name = "SynthetixLib"
 // Library modules (published). Add new ones here AND to synthetixlib-archtest dependencies.
 include("synthetixlib-core")
 include("synthetixlib-config")
+include("synthetixlib-command")
 
 // Internal modules (not published)
 include("synthetixlib-example")

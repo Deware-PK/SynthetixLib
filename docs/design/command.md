@@ -1,6 +1,6 @@
 # synthetixlib-command — API design
 
-Status: **Approved** 2026-10-17 (all §9 defaults accepted, 3 and 10 chosen by owner) · Task: P1-02 · Date: 2026-10-17
+Status: **Implemented (0.3.0)** — approved 2026-10-17 (all §9 defaults accepted, 3 and 10 chosen by owner) · Task: P1-02 · Date: 2026-10-17
 Package root: `com.github.dewarepk.synthetixlib.command` · Depends on: core, config (locale), paper-api only
 
 Native Brigadier commands (ADR 0006) behind one fluent API: typed arguments with client-side validation and
@@ -204,6 +204,8 @@ Rules
 - `throw ctx.fail(...)` stops the handler: the message is sent, the cooldown is not started, Brigadier gets 0.
   `CommandFailure` is unchecked (no checked exceptions in fluent APIs).
 - Any other exception is caught and logged with `input()`; the sender gets `CommandMessages.error`.
+- `executesAsync` returns success (1) to Brigadier as soon as the handler is queued, not when it finishes; failures
+  and exceptions inside it are reported to the sender like in `executes`.
 - `reply` / `fail` are safe from any thread. `player()` and world access follow the thread rules below.
 - `<label>` (alias used) and `<sender>` (sender name) are available in every reply and locale message.
 - The implementation is per execution and immutable apart from the cooldown flags — no shared state (bug #7).
@@ -258,16 +260,25 @@ Every type maps to a **native** Brigadier/Paper argument type, so the client val
   a restart clears cooldowns (persistent cooldowns are the product's job, e.g. via the database module).
   Console and command blocks have no cooldown. Reply: `CommandMessages.cooldown` with `<time>` (formatted like config
   durations, rounded up to seconds).
+- **One async run at a time:** every `executesAsync` node, with or without a cooldown, runs at most once per player
+  at a time (a double `/auction bid` must not hit the database twice). The `(player, node)` pair is reserved atomically
+  after the cooldown check and before the arguments are read; a second run meanwhile gets `CommandMessages.busy`
+  (`<label>`, `<sender>`) and returns 0. The reservation is released on every path (normal return, `fail`, exception,
+  argument error, scheduler refusing the task) and *after* the cooldown has started, so there is no gap in which a
+  second run could slip in (both present for a moment is harmless: the cooldown is checked first).
+  Quitting does **not** drop it: a rejoin while the handler still runs must not start a second run; only the
+  handler's own `finally` releases it (a token keeps a stale release from dropping a newer run). Console and command blocks (no UUID) and sync nodes (one region thread) are not guarded.
 
 ## 6. Messages (bug #7: all through locale)
 
 ```java
-public record CommandMessages(String playerOnly, String cooldown, String playerNotFound, String invalidValue,
-                              String error, String disabled) {
+public record CommandMessages(String playerOnly, String cooldown, String busy, String playerNotFound,
+                              String invalidValue, String error, String disabled) {
     public static CommandMessages defaults() {
         return new CommandMessages(
                 "<red>Only players can use this.",
                 "<red>Wait <time> before using /<label> again.",
+                "<red>Please wait, /<label> is still running.",
                 "<red>No player found: <input>",
                 "<red><input> is not valid: <reason>",
                 "<red>Something went wrong, see the console.",
@@ -317,9 +328,19 @@ public record Messages(CommandMessages commands, String bidPlaced, String notEno
 4. **Register in `onEnable` only** (chosen); no `PluginBootstrap` support until a module needs it (dialog).
 5. **Sync `executes` on Paper's thread + opt-in `executesAsync`** (chosen) vs always async.
 6. **Cooldowns per player per executable node, in memory, consumed on success, cleared on quit** (chosen).
+   `executesAsync` nodes also allow only one run per player at a time (`CommandMessages.busy`; owner, 2026-10-17).
 7. **Failures via `throw ctx.fail(...)`** (unchecked, chosen) vs returning a result value from every handler.
 8. **`playerOnly` nodes stay visible to console with a message** (chosen) vs hidden.
 9. **Help is opt-in** (`helpSub()`, chosen) vs auto help for every command.
 10. **`CommandCall` is an interface** with sender/arg/reply/cooldown/thread helpers (chosen by owner 2026-10-17).
     Naming follows the rest of the lib (`player()`, `isPlayer()`, like `lib.scheduler()` / `config.get()`), not
     Bukkit's `getPlayer()`.
+
+## 10. Deviations from the design (as built, 0.3.0)
+- `helpSub()` is on the shared builder (`SpecBuilder`), so any node can have it, not only the root. A group without a
+  handler below such a node (e.g. `/auction admin`) shows the help of its branch; help never starts a cooldown.
+  A subcommand named `help` next to `helpSub()` is rejected at `build()`.
+- `CommandMessages` gained `helpHeader` (`<command>`) and `helpLine` (`<command>`, `<usage>`, `<description>`);
+  `<command>` is the path with the alias actually typed, e.g. `ex airdrop`.
+- Cooldown/in-flight order and quit behaviour changed as described in §5 (P2-18 review fixes).
+- `invalidValue` has no `<label>` (the alias is not known while Brigadier parses), see `CommandMessages`.

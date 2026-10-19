@@ -1,0 +1,29 @@
+package com.github.dewarepk.synthetixexample.demo.command;
+
+import com.github.dewarepk.synthetixexample.demo.Airdrop;
+import com.github.dewarepk.synthetixexample.demo.Messages;
+import com.github.dewarepk.synthetixexample.demo.Settings;
+import com.github.dewarepk.synthetixlib.command.CommandSpec;
+import com.github.dewarepk.synthetixlib.config.ConfigCollection;
+import com.github.dewarepk.synthetixlib.config.ConfigHandle;
+import com.github.dewarepk.synthetixlib.config.LocaleHandle;
+
+/** The demo command {@code /example} (alias {@code /ex}); every subcommand is its own class. */
+public final class ExampleCommand {
+
+    private ExampleCommand() {
+    }
+
+    /** @return the spec to hand to {@code CommandService.register} */
+    public static CommandSpec build(final ConfigHandle<Settings> settings, final ConfigCollection<Airdrop> airdrops,
+                                    final LocaleHandle<Messages> lang) {
+        return CommandSpec.literal("example")
+                .aliases("ex")
+                .description("SynthetixLib example plugin")
+                .sub(new AirdropCommand(airdrops, lang))
+                .sub(new GiveCommand(lang))
+                .sub(new ReloadCommand(settings, airdrops, lang))
+                .helpSub()
+                .build();
+    }
+}

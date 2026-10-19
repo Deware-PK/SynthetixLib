@@ -23,3 +23,6 @@ records `durationMs` per test and shuts the server down from the global region t
 
 Package is `com.github.dewarepk.synthetixexample` on purpose: a consumer package must not start with
 `com.github.dewarepk.synthetixlib`, otherwise relocation would also rewrite it.
+
+Modules whose registration is tied to server start (commands) install in the `SelfTestTrigger` constructor, because
+Paper fires `LifecycleEvents.COMMANDS` right after `onEnable`, before `ServerLoadEvent`; see `CommandSelfTests`.

@@ -8,7 +8,11 @@ BuiltByBit, SpigotMC and Hangar (first products: InteractiveAuction 2.0, Farm Wo
 1. **Task files with `Approved: yes` are pre-approved:** implement them directly, exactly as specified.
    Stop and ask only if the spec is ambiguous, contradicts a rule, or needs a public API change.
    Anything without an approved task: propose plan + affected files first and wait for "go".
-2. **Never commit / push** unless explicitly told.
+2. **Never commit / push** unless explicitly told — **except** a task with `Ship: yes` in its header
+   (the module's wrap-up task): when its Verify is green and its boxes are ticked, set `Status: review`,
+   then run `powershell -ExecutionPolicy Bypass -File scripts/ship-module.ps1 -Module <m> -Version <x.y.z>`
+   (values from the task header). It re-verifies, commits everything, tags `v<x.y.z>` and pushes `main`.
+   If it aborts, do not commit by hand: report the reason and stop. Never use `--no-verify` / force-push.
 3. Work from a task file in `docs/plan/tasks/`. If none fits, propose one (template in that folder).
    Approved design docs in `docs/design/` are the source of truth for public API.
 4. A decision that changes a locked rule below → write an ADR in `docs/adr/` and get approval first.
