@@ -1,6 +1,12 @@
 welcome: <green>ยินดีต้อนรับ <name>!
 airdrops-loaded: "<gray>โหลด airdrop แล้ว <count> รายการ: <ids>"
 airdrop-created: <green>สร้าง airdrop <id> แล้ว
+airdrop-claimed: <green>รับ <id> แล้ว ตอนนี้มีคนรับ <count> ครั้ง
+airdrop-stats: "<gray><id>: รับแล้ว <count> ครั้ง ล่าสุด: <players>"
+airdrop-claims: <gray>ถูกรับ <count> ครั้ง
+db-failed: <red>ฐานข้อมูลมีปัญหา ดูที่คอนโซล
+db-copied: <green>คัดลอก <rows> รายการไป MySQL แล้ว
+db-copy-failed: "<red>คัดลอกไม่สำเร็จ: <reason>"
 commands:
   player-only: <red>ใช้ได้เฉพาะผู้เล่น
   cooldown: <red>รอ <time> ก่อนใช้ /<label> อีกครั้ง

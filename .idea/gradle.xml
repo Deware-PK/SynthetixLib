@@ -25,6 +25,7 @@
             <option value="$PROJECT_DIR$/synthetixlib-command" />
             <option value="$PROJECT_DIR$/synthetixlib-config" />
             <option value="$PROJECT_DIR$/synthetixlib-core" />
+            <option value="$PROJECT_DIR$/synthetixlib-database" />
             <option value="$PROJECT_DIR$/synthetixlib-example" />
             <option value="$PROJECT_DIR$/synthetixlib-gui" />
           </set>

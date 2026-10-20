@@ -39,7 +39,8 @@ public final class DemoMenus {
 
     /** Builds both menus; their files are copied from the jar on the first start and never overwritten. */
     public static DemoMenus create(final SynthetixLib lib, final Configs configs,
-                                   final ConfigCollection<Airdrop> airdrops, final LocaleHandle<Messages> lang) {
+                                   final ConfigCollection<Airdrop> airdrops, final LocaleHandle<Messages> lang,
+                                   final ClaimStore claims) {
         final GuiService gui = GuiService.create(lib, configs).messages(lang, Messages::gui);
         final PdcKey<Boolean> notify = lib.keys().bool("demo_notify");
 
@@ -53,7 +54,7 @@ public final class DemoMenus {
         final MenuType<Void> demo = gui.menu("demo")
                 .placeholder("balance", view -> Component.text(view.player().getLevel()))
                 .placeholder("time", view -> Component.text(LocalTime.now().format(CLOCK)))
-                .list("airdrops", view -> entries(airdrops), (entry, view) -> icon(lib, entry))
+                .list("airdrops", view -> entries(airdrops), (entry, view) -> icon(lib, lang, claims, entry, view.player()))
                 .onListClick("airdrops", (Entry entry, MenuClick<Void> click) -> airdropMenu.open(click.player(), entry))
                 .state("notify", view -> notify.get(view.player()).orElse(false) ? "on" : "off")
                 .action("toggle-notify", click -> {
@@ -73,10 +74,15 @@ public final class DemoMenus {
         return entries;
     }
 
-    private static ItemStack icon(final SynthetixLib lib, final Entry entry) {
+    /** The claim count comes from memory (see {@link ClaimStore}), so drawing the menu never waits for the database. */
+    private static ItemStack icon(final SynthetixLib lib, final LocaleHandle<Messages> lang, final ClaimStore claims,
+                                  final Entry entry, final Player viewer) {
         return lib.items().of(Material.CHEST)
                 .name("<gold>" + lib.text().escape(entry.airdrop().name()))
-                .lore("<gray>" + lib.text().escape(entry.id()))
+                .lore(List.of(
+                        lib.text().parse("<gray>" + lib.text().escape(entry.id())),
+                        lang.get(viewer, Messages::airdropClaims,
+                                Placeholder.unparsed("count", String.valueOf(claims.count(entry.id()))))))
                 .build();
     }
 

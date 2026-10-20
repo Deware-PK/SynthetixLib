@@ -1,6 +1,9 @@
 package com.github.dewarepk.synthetixexample;
 
 import com.github.dewarepk.synthetixexample.demo.Airdrop;
+import com.github.dewarepk.synthetixexample.demo.ClaimStore;
+import com.github.dewarepk.synthetixlib.database.Database;
+import com.github.dewarepk.synthetixlib.database.DatabaseSettings;
 import com.github.dewarepk.synthetixexample.demo.DemoMenus;
 import com.github.dewarepk.synthetixexample.demo.Messages;
 import com.github.dewarepk.synthetixexample.demo.Settings;
@@ -57,6 +60,7 @@ public final class SynthetixExamplePlugin extends JavaPlugin implements Listener
     /** settings.yml, airdrops/*.yml and lang/*.yml, and the {@code /example} command on top of them. */
     private void enableConfigDemo() {
         final Configs configs = Configs.create(lib);
+        DatabaseSettings.register(configs.codecs());
         settings = configs.file("settings.yml", Settings.class, Settings::defaults).load();
         lang = configs.locale("lang", Messages.class, Messages::defaults)
                 .defaultLocale(Locale.US)
@@ -75,10 +79,14 @@ public final class SynthetixExamplePlugin extends JavaPlugin implements Listener
                 Placeholder.unparsed("count", String.valueOf(airdrops.ids().size())),
                 Placeholder.unparsed("ids", String.join(", ", airdrops.ids())));
 
+        // Closed together with lib; onEnable may block on the first migration.
+        final Database database = Database.create(lib, settings.get().database());
+        final ClaimStore claims = ClaimStore.open(database);
+
         CommandService.create(lib)
                 .messages(lang, Messages::commands)
                 .register(ExampleCommand.build(settings, airdrops, lang,
-                        DemoMenus.create(lib, configs, airdrops, lang)));
+                        DemoMenus.create(lib, configs, airdrops, lang, claims), database, claims));
     }
 
     @EventHandler

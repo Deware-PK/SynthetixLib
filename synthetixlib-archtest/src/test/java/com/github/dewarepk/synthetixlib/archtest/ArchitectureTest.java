@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.github.dewarepk.synthetixlib.archtest.fixture.SetsAccessible;
 import com.github.dewarepk.synthetixlib.archtest.fixture.StaticArray;
+import com.github.dewarepk.synthetixlib.archtest.fixture.UsesHikari;
 import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
@@ -61,6 +62,15 @@ class ArchitectureTest {
             .should().haveRawType(DescribedPredicate.describe("an array", JavaClass::isArray))
             .because("SnapPlug bug #4/#7: static arrays are mutable global state (arrays are mutable even when final)");
 
+    /**
+     * ADR 0014: HikariCP is loaded by the consumer's PluginLoader and only the database module may use it; inside it
+     * one class does, so a missing HikariCP shows up as one clear error.
+     */
+    static final ArchRule HIKARI_ONLY_IN_DATABASE_POOL = noClasses()
+            .that().doNotHaveFullyQualifiedName(LIB + ".database.HikariConnectionSource")
+            .should().dependOnClassesThat().resideInAPackage("com.zaxxer..")
+            .because("ADR 0014: HikariCP is touched by database.HikariConnectionSource only");
+
     @BeforeAll
     static void importClasses() {
         classes = new ClassFileImporter()
@@ -88,6 +98,20 @@ class ArchitectureTest {
         final JavaClasses fixture = new ClassFileImporter().importClasses(StaticArray.class);
         final AssertionError error = assertThrows(AssertionError.class, () -> NO_STATIC_ARRAYS.check(fixture));
         assertTrue(error.getMessage().contains("VALUES"), error.getMessage());
+    }
+
+    /** The HikariCP rule must really fire on a class that uses it. */
+    @Test
+    void hikariRuleCatchesViolations() {
+        final JavaClasses fixture = new ClassFileImporter().importClasses(UsesHikari.class);
+        final AssertionError error = assertThrows(AssertionError.class, () -> HIKARI_ONLY_IN_DATABASE_POOL.check(fixture));
+        assertTrue(error.getMessage().contains("HikariConfig"), error.getMessage());
+    }
+
+    /** ADR 0014: HikariCP only in the database module's pool class. */
+    @Test
+    void hikariOnlyInTheDatabasePool() {
+        HIKARI_ONLY_IN_DATABASE_POOL.check(classes);
     }
 
     /** ADR 0008: no NMS / CraftBukkit internals. */

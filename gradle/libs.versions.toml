@@ -8,6 +8,11 @@ java-target = "21"
 java-latest-runtime = "25"
 
 junit = "5.13.4"
+# Runtime-loaded by the consumer PluginLoader (ADR 0014); also the version SynthetixLibraries.database() adds.
+hikaricp = "7.1.0"
+# Test-only JDBC drivers (Paper ships its own at runtime).
+sqlite-jdbc = "3.49.1.0"
+mysql-connector = "9.2.0"
 archunit = "1.5.1"
 
 # Gradle plugins (consumed by build-logic)
@@ -20,6 +25,9 @@ paper-api = { module = "io.papermc.paper:paper-api", version.ref = "paper-api" }
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+hikaricp = { module = "com.zaxxer:HikariCP", version.ref = "hikaricp" }
+sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version.ref = "sqlite-jdbc" }
+mysql-connector = { module = "com.mysql:mysql-connector-j", version.ref = "mysql-connector" }
 archunit = { module = "com.tngtech.archunit:archunit", version.ref = "archunit" }
 
 gradle-plugin-shadow = { module = "com.gradleup.shadow:com.gradleup.shadow.gradle.plugin", version.ref = "shadow" }
