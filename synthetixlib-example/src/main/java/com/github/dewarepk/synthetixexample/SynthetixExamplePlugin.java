@@ -1,6 +1,7 @@
 package com.github.dewarepk.synthetixexample;
 
 import com.github.dewarepk.synthetixexample.demo.Airdrop;
+import com.github.dewarepk.synthetixexample.demo.DemoMenus;
 import com.github.dewarepk.synthetixexample.demo.Messages;
 import com.github.dewarepk.synthetixexample.demo.Settings;
 import com.github.dewarepk.synthetixexample.demo.command.ExampleCommand;
@@ -76,7 +77,8 @@ public final class SynthetixExamplePlugin extends JavaPlugin implements Listener
 
         CommandService.create(lib)
                 .messages(lang, Messages::commands)
-                .register(ExampleCommand.build(settings, airdrops, lang));
+                .register(ExampleCommand.build(settings, airdrops, lang,
+                        DemoMenus.create(lib, configs, airdrops, lang)));
     }
 
     @EventHandler

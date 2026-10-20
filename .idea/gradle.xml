@@ -26,6 +26,7 @@
             <option value="$PROJECT_DIR$/synthetixlib-config" />
             <option value="$PROJECT_DIR$/synthetixlib-core" />
             <option value="$PROJECT_DIR$/synthetixlib-example" />
+            <option value="$PROJECT_DIR$/synthetixlib-gui" />
           </set>
         </option>
       </GradleProjectSettings>

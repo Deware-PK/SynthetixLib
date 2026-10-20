@@ -1,0 +1,67 @@
+# The /example menu: a paginated list of airdrops, a toggle, a placeholder, a ticking clock, an input slot and buttons.
+# Everything you see is in this file; the behaviour it refers to by name (list, state, action) is registered in DemoMenus.java.
+# Texts are <lang:key> from lang/<locale>.yml (section "gui"); write plain MiniMessage here if you do not need languages.
+title: '<lang:demo-title>'
+type: chest
+rows: 6
+update-every: 20t        # re-renders the clock every second
+layout:
+  - "#########"
+  - "#LLLLLLL#"
+  - "#LLLLLLL#"
+  - "#LLLLLLL#"
+  - "#########"
+  - "<TBKSOX>#"
+items:
+  '#':
+    material: gray_stained_glass_pane
+    hide-tooltip: true
+  'L':
+    list: airdrops
+    empty: { material: air }
+  '<':
+    material: arrow
+    name: '<lang:demo-previous>'
+    lore: ['<lang:demo-page>']
+    hide-when: first-page
+    click: [page-previous]
+    sound: ui.button.click
+  '>':
+    material: arrow
+    name: '<lang:demo-next>'
+    lore: ['<lang:demo-page>']
+    hide-when: last-page
+    click: [page-next]
+    sound: ui.button.click
+  'T':
+    state: notify
+    states:
+      'on':
+        material: lime_dye
+        name: '<lang:demo-notify-on>'
+        lore: ['<lang:demo-toggle-hint>']
+        click: ['action:toggle-notify']
+      'off':
+        material: gray_dye
+        name: '<lang:demo-notify-off>'
+        lore: ['<lang:demo-toggle-hint>']
+        click: ['action:toggle-notify']
+  'B':
+    material: experience_bottle
+    name: '<lang:demo-balance> <white><balance>'
+  'K':
+    material: clock
+    name: '<lang:demo-clock> <white><time>'
+  'S':
+    input: true
+    accept: ['*']
+    max-amount: 64
+  'O':
+    material: emerald
+    name: '<lang:demo-confirm>'
+    lore: ['<lang:demo-input>']
+    click: ['action:confirm']
+  'X':
+    material: barrier
+    name: '<lang:demo-close>'
+    click: [close]

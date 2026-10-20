@@ -1,6 +1,7 @@
 package com.github.dewarepk.synthetixlib.core.text;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -37,6 +38,18 @@ class TextServiceTest {
     void parseItemItalicDefaultFalse() {
         assertEquals(TextDecoration.State.FALSE, text.parseItem("x").decoration(TextDecoration.ITALIC));
         assertEquals(TextDecoration.State.TRUE, text.parseItem("<italic>x").decoration(TextDecoration.ITALIC));
+    }
+
+    @Test
+    void hasTagKnowsStandardTagsAndTheOnesTheServiceWasDerivedWith() {
+        assertTrue(text.hasTag("red"));
+        assertTrue(text.hasTag("Gradient"));
+        assertTrue(text.hasTag("lang"));
+        assertFalse(text.hasTag("balance"));
+
+        final TextService derived = text.with(Placeholder.unparsed("balance", "1"));
+        assertTrue(derived.hasTag("BALANCE"));
+        assertFalse(text.hasTag("balance"));
     }
 
     @Test

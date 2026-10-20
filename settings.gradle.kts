@@ -16,6 +16,7 @@ rootProject.name = "SynthetixLib"
 include("synthetixlib-core")
 include("synthetixlib-config")
 include("synthetixlib-command")
+include("synthetixlib-gui")
 
 // Internal modules (not published)
 include("synthetixlib-example")

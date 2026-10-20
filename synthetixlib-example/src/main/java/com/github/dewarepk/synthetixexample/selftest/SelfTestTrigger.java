@@ -58,6 +58,7 @@ public final class SelfTestTrigger implements Listener {
         tests.addAll(ConfigCollectionSelfTests.all(plugin, lib));
         tests.addAll(ConfigLocaleSelfTests.all(plugin, lib));
         tests.addAll(commandTests.all());
+        tests.addAll(GuiSelfTests.all(plugin, lib));
         // one line per module as modules are added
 
         new Run(tests).start();

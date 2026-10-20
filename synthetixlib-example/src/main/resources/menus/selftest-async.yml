@@ -1,0 +1,11 @@
+# Menu used by the gui.async-list self-test: two list slots that show the loading item until the async source answers.
+title: '<white>Async'
+type: hopper
+layout:
+  - "AA###"
+items:
+  'A':
+    list: lots
+    loading: { material: clock, name: '<gray>Loading...' }
+  '#':
+    material: stone

@@ -12,4 +12,5 @@ dependencies {
     implementation(project(":synthetixlib-core"))
     implementation(project(":synthetixlib-config"))
     implementation(project(":synthetixlib-command"))
+    implementation(project(":synthetixlib-gui"))
 }

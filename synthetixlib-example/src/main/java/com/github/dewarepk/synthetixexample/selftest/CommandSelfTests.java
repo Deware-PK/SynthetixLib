@@ -133,6 +133,7 @@ final class CommandSelfTests {
                             ctx.runOnSender(() -> asyncResult.complete("offGlobal=" + offGlobal
                                     + " backOnGlobal=" + lib.scheduler().isGlobalThread()));
                         }))
+                        .helpSub()
                         .build());
     }
 
@@ -265,6 +266,18 @@ final class CommandSelfTests {
                     return asyncResult.thenAccept(result -> require(
                             result.equals("offGlobal=true backOnGlobal=true"),
                             "async handler off the global thread, runOnSender back on it: " + result));
+                }),
+                SelfTest.sync("command.help", () -> {
+                    final List<String> received = Collections.synchronizedList(new ArrayList<>());
+                    final CommandSender capture = Bukkit.createCommandSender(message ->
+                            received.add(PlainTextComponentSerializer.plainText().serialize(message)));
+                    log.clear();
+                    dispatch(capture, "sxtest help");
+                    final String all = String.join(" | ", received);
+                    require(all.contains("sxtest add"), "help lists a normal subcommand: " + received);
+                    require(!all.contains("sxtest players"),
+                            "help hides a player-only subcommand from a non-player: " + received);
+                    require(log.isEmpty(), "help ran no handler of the tree: " + log);
                 }),
                 SelfTest.sync("command.messages-in-lang", () -> {
                     final Path file = plugin.getDataFolder().toPath().resolve("selftest-command-lang")

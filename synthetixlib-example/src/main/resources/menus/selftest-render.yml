@@ -1,0 +1,29 @@
+# Menu used by the gui.render self-test: a list of three slots with a previous/next button, a state and placeholders.
+title: '<white>Render <gray>(<page>/<pages>)'
+rows: 2
+layout:
+  - "LLL<>S   "
+  - "#       B"
+items:
+  'L':
+    list: lots
+    empty: { material: barrier, name: '<red>none' }
+  '<':
+    material: arrow
+    hide-when: first-page
+    click: [page-previous]
+  '>':
+    material: arrow
+    hide-when: last-page
+    click: [page-next]
+  'S':
+    state: mode
+    states:
+      'on': { material: lime_dye }
+      'off': { material: gray_dye }
+  '#':
+    material: stone
+  'B':
+    material: gold_ingot
+    name: '<gold>Balance <balance>'
+    lore: ['<gray>for <player>']

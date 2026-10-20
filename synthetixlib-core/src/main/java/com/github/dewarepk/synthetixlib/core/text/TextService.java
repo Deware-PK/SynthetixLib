@@ -1,5 +1,6 @@
 package com.github.dewarepk.synthetixlib.core.text;
 
+import java.util.Locale;
 import java.util.Objects;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
@@ -82,6 +83,24 @@ public final class TextService {
      */
     public TextService with(final TagResolver... resolvers) {
         return new TextService(TagResolver.resolver(base, TagResolver.resolver(resolvers)));
+    }
+
+    /**
+     * Whether {@code <name>} is a tag of its own: a standard MiniMessage tag ({@code red}, {@code bold},
+     * {@code gradient}, {@code lang}...) or one of the tags this service was derived with
+     * ({@link #with(TagResolver...)}). Tags passed to a single {@link #parse} call are not known here.
+     *
+     * <pre>{@code
+     * text.hasTag("red");        // true
+     * text.hasTag("balance");    // false, unless text.with(Placeholder...) added it
+     * }</pre>
+     *
+     * @param name the tag name without brackets, case insensitive
+     * @return {@code true} if MiniMessage would treat {@code <name>} as a tag
+     */
+    public boolean hasTag(final String name) {
+        final String lower = Objects.requireNonNull(name, "name").toLowerCase(Locale.ROOT);
+        return TagResolver.standard().has(lower) || base.has(lower);
     }
 
     /**

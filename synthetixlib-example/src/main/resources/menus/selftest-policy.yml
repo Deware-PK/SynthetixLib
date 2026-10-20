@@ -1,0 +1,16 @@
+# Menu used by the gui.policy self-test: two input slots that take diamonds and emeralds (at most 8 each) and one button.
+title: '<white>Policy'
+rows: 2
+layout:
+  - "#SS#B####"
+  - "#########"
+items:
+  '#':
+    material: stone
+  'S':
+    input: true
+    accept: [diamond, emerald]
+    max-amount: 8
+  'B':
+    material: paper
+    click: ['action:take']

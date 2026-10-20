@@ -1,0 +1,21 @@
+# Menu used by the gui.menu-files self-test. It holds two deliberate mistakes:
+#   'B' uses an action that code never registers  -> the item is inert
+#   'U' uses an action the file format does not know -> a config error, the item has no clicks
+title: '<white>Self test <gray>(<page>/<pages>)'
+type: hopper
+layout:
+  - "#KBU#"
+items:
+  '#':
+    material: black_stained_glass_pane
+    hide-tooltip: true
+  'K':
+    material: lime_dye
+    name: '<green>Known <player>'
+    click: ['action:known', close]
+  'B':
+    material: barrier
+    click: ['action:missing']
+  'U':
+    material: stone
+    click: ['teleport:spawn']

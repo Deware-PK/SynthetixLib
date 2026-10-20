@@ -1,0 +1,15 @@
+# Menu used by the gui.lang self-test: <lang:key> in a title, a name and a lore line (one key does not exist).
+title: '<lang:title> <gray>(<page>/<pages>)'
+type: hopper
+layout:
+  - "NM###"
+items:
+  'N':
+    material: paper
+    name: '<lang:hello>'
+  'M':
+    material: paper
+    name: '<lang:nope> and text'
+    lore: ['<lang:hello>']
+  '#':
+    material: stone

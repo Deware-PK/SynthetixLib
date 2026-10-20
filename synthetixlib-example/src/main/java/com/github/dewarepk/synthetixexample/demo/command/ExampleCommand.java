@@ -1,6 +1,7 @@
 package com.github.dewarepk.synthetixexample.demo.command;
 
 import com.github.dewarepk.synthetixexample.demo.Airdrop;
+import com.github.dewarepk.synthetixexample.demo.DemoMenus;
 import com.github.dewarepk.synthetixexample.demo.Messages;
 import com.github.dewarepk.synthetixexample.demo.Settings;
 import com.github.dewarepk.synthetixlib.command.CommandSpec;
@@ -16,12 +17,13 @@ public final class ExampleCommand {
 
     /** @return the spec to hand to {@code CommandService.register} */
     public static CommandSpec build(final ConfigHandle<Settings> settings, final ConfigCollection<Airdrop> airdrops,
-                                    final LocaleHandle<Messages> lang) {
+                                    final LocaleHandle<Messages> lang, final DemoMenus menus) {
         return CommandSpec.literal("example")
                 .aliases("ex")
                 .description("SynthetixLib example plugin")
                 .sub(new AirdropCommand(airdrops, lang))
                 .sub(new GiveCommand(lang))
+                .sub(new MenuCommand(menus))
                 .sub(new ReloadCommand(settings, airdrops, lang))
                 .helpSub()
                 .build();

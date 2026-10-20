@@ -3,8 +3,12 @@ package com.github.dewarepk.synthetixlib.command;
 import java.util.List;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 
-/** The handler behind {@code helpSub()}: lists the subcommands of one node that the sender may use. */
+/**
+ * The handler behind {@code helpSub()}: lists the subcommands of one node that the sender may use. Player-only ones
+ * are left out for non-players, who could not run them.
+ */
 final class Help implements CommandHandler {
 
     private final String path;
@@ -36,6 +40,9 @@ final class Help implements CommandHandler {
     }
 
     private static boolean allowed(final CommandSender sender, final Node node) {
+        if (node.playerOnly() && !(sender instanceof Player)) {
+            return false; // a console could not run it, so help does not offer it
+        }
         for (final String permission : node.permissions()) {
             if (!sender.hasPermission(permission)) {
                 return false;

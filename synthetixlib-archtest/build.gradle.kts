@@ -9,6 +9,7 @@ dependencies {
     testImplementation(project(":synthetixlib-core"))
     testImplementation(project(":synthetixlib-config"))
     testImplementation(project(":synthetixlib-command"))
+    testImplementation(project(":synthetixlib-gui"))
 
     testImplementation(libs.archunit)
 }

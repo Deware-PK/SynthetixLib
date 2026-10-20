@@ -1,0 +1,19 @@
+# Menu used by the gui.title-passthrough and gui.item-components self-tests: resource-pack strings in the title and
+# the item keys that make a pack's art show (item-model, tooltip-style, hide-tooltip).
+title: ':offset_-8::auction_bg:<white>Pack <glyph:bg_main><gray>(<page>/<pages>)'
+type: hopper
+layout:
+  - "MSH##"
+items:
+  'M':
+    material: stone
+    item-model: 'selftest:invisible'
+  'S':
+    material: paper
+    name: '<white>Styled'
+    tooltip-style: 'selftest:fancy'
+  'H':
+    material: stone
+    hide-tooltip: true
+  '#':
+    material: stone

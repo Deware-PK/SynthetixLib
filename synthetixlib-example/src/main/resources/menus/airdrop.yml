@@ -1,0 +1,29 @@
+# Opened from the airdrop list of demo.yml; the airdrop is the context of the view (<name>, <interval>, <players>, <rewards>).
+title: '<lang:airdrop-title>'
+type: chest
+rows: 3
+layout:
+  - "#########"
+  - "#I  P  R#"
+  - "####B###X"
+items:
+  '#':
+    material: gray_stained_glass_pane
+    hide-tooltip: true
+  'I':
+    material: clock
+    name: '<lang:airdrop-interval>'
+  'P':
+    material: player_head
+    name: '<lang:airdrop-players>'
+  'R':
+    material: chest
+    name: '<lang:airdrop-rewards>'
+  'B':
+    material: arrow
+    name: '<lang:demo-back>'
+    click: [back]
+  'X':
+    material: barrier
+    name: '<lang:demo-close>'
+    click: [close]
