@@ -83,10 +83,6 @@ final class Renderer<C> {
         }
     }
 
-    /** Keys that start like this are vanilla translation keys: not being in a language file is normal. */
-    private static final String[] VANILLA_PREFIXES = {"block.", "item.", "entity.", "effect.", "enchantment.",
-            "biome.", "container.", "gui.", "key.", "options.", "attribute.", "advancements.", "stat."};
-
     private final Set<String> warnedKeys = ConcurrentHashMap.newKeySet();
     private final TextService text;
     private final Items items;
@@ -411,12 +407,15 @@ final class Renderer<C> {
     }
 
     private static boolean isVanillaKey(final String key) {
-        for (final String prefix : VANILLA_PREFIXES) {
-            if (key.startsWith(prefix)) {
-                return true;
-            }
+        final int dot = key.indexOf('.');
+        if (dot < 0) {
+            return false;
         }
-        return false;
+        return switch (key.substring(0, dot)) {
+            case "block", "item", "entity", "effect", "enchantment", "biome", "container", "gui", "key",
+                    "options", "attribute", "advancements", "stat" -> true;
+            default -> false;
+        };
     }
 
     /** @return a pass for page {@code page} (from 0) of {@code pages} */

@@ -1,5 +1,5 @@
 # P2-23 GUI wrap-up: demo, docs, help carry-over, publish 0.4.0
-Status: review · Approved: yes · Model: sonnet · Effort: medium · Ship: yes (gui 0.4.0)
+Status: done · Approved: yes · Model: sonnet · Effort: medium · Ship: yes (gui 0.4.0)
 Module: synthetixlib-gui, synthetixlib-example · Depends on: P2-22 · Design: gui.md
 
 ## Prompt (paste into Claude Code)
@@ -24,7 +24,7 @@ If the in-game check cannot be done by you, mark it [~] and still ship only if e
   deviations section; ROADMAP row 4 done; module AGENTS.md final. Version → `0.4.0-SNAPSHOT`.
 
 ## Acceptance criteria
-- [~] `runServer`: demo menu works in game (pages, toggle, input + confirm, back/close), no item can be taken out — NOT done by the agent (needs a client); owner to check `/example menu`
+- [x] `runServer`: demo menu works in game (pages, toggle, input + confirm, back/close), no item can be taken out — checked in game by the owner 2026-10-20
 - [x] `gradlew.bat check smokeTest publishToMavenLocal` green
 
 ## Verify
@@ -43,3 +43,7 @@ gradlew.bat check smokeTest publishToMavenLocal
 - gui.md Status "Implemented (0.4.0)" + §11 deviations, ROADMAP row 4 done, gui AGENTS.md final, version 0.4.0-SNAPSHOT.
 - Note: ArchUnit forbids static collections, so the vanilla prefixes are a `String[]` (not weakened).
 - Not done: in-game play-test of the demo menu (no client available to the agent).
+
+
+## Review (planner, 2026-10-20)
+Approved. Owner played the demo in game: all functional and dupe checks passed. Follow-up: P2-23a (static array loophole).

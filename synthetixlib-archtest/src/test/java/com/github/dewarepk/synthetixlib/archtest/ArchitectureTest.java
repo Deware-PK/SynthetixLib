@@ -13,7 +13,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.github.dewarepk.synthetixlib.archtest.fixture.SetsAccessible;
+import com.github.dewarepk.synthetixlib.archtest.fixture.StaticArray;
+import com.tngtech.archunit.base.DescribedPredicate;
+import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
+import com.tngtech.archunit.core.domain.JavaModifier;
 import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
@@ -48,6 +52,15 @@ class ArchitectureTest {
                             .and(target(owner(assignableTo(AccessibleObject.class)))))
             .because("ADR 0013: setAccessible is forbidden everywhere");
 
+    /**
+     * A static array is mutable global state even when the field is final. Synthetic fields are
+     * compiler output ({@code $VALUES} of enums, {@code $SwitchMap$} of switches), not written code.
+     */
+    static final ArchRule NO_STATIC_ARRAYS = noFields().that().areStatic()
+            .and().doNotHaveModifier(JavaModifier.SYNTHETIC)
+            .should().haveRawType(DescribedPredicate.describe("an array", JavaClass::isArray))
+            .because("SnapPlug bug #4/#7: static arrays are mutable global state (arrays are mutable even when final)");
+
     @BeforeAll
     static void importClasses() {
         classes = new ClassFileImporter()
@@ -67,6 +80,14 @@ class ArchitectureTest {
         assertTrue(message.contains("Field.setAccessible"), message);
         assertTrue(message.contains("Method.trySetAccessible"), message);
         assertTrue(message.contains("AccessibleObject.setAccessible"), message);
+    }
+
+    /** The static-array rule must really fire on a static final array. */
+    @Test
+    void staticArrayRuleCatchesViolations() {
+        final JavaClasses fixture = new ClassFileImporter().importClasses(StaticArray.class);
+        final AssertionError error = assertThrows(AssertionError.class, () -> NO_STATIC_ARRAYS.check(fixture));
+        assertTrue(error.getMessage().contains("VALUES"), error.getMessage());
     }
 
     /** ADR 0008: no NMS / CraftBukkit internals. */
@@ -130,6 +151,7 @@ class ArchitectureTest {
                 .should().beFinal()
                 .because("ADR 0004: no static mutable state (every plugin has its own relocated copy)")
                 .check(classes);
+        NO_STATIC_ARRAYS.check(classes);
         noFields().that().areStatic()
                 .should().haveRawType(assignableTo(Map.class).or(assignableTo(Collection.class)))
                 .because("SnapPlug bug #4/#7: static maps leak and race; keep state per SynthetixLib instance")
