@@ -1,5 +1,5 @@
 # P2-33 Dialog wrap-up: demo, docs, Geyser check, publish 0.6.0
-Status: todo · Approved: yes · Model: sonnet · Effort: medium · Ship: yes (dialog 0.6.0)
+Status: review · Approved: yes · Model: sonnet · Effort: medium · Ship: yes (dialog 0.6.0)
 Module: synthetixlib-dialog, synthetixlib-example · Depends on: P2-32 · Design: dialog.md
 
 ## Prompt (paste into Claude Code)
@@ -15,6 +15,11 @@ If the in-game / Geyser checks cannot be done by you, mark them [~] and still sh
   - `/example dialog confirm`: confirmation; `/example dialog menu`: multi-action with `menu:demo` (gui link) and
     `open:sell`; demo gui menu gets a `dialog:sell` button.
   - Quick-actions `help` dialog from P2-32.
+- Carry-over from P2-32 review (security): registry-dialog clicks (`ViewManager.registryClick`) get a per-player guard:
+  one handler at a time per player (a click while the previous registry handler still runs, incl. submitAsync, is
+  ignored) and a minimum interval between registry clicks, `DialogSettings.registryClickInterval` (default 250ms).
+  State lives in the service (cleared on quit), not static. Unit test: 100 clicks in a burst → one handler run; after the
+  interval → runs again. Document in dialog.md §4 + §7.
 - Javadoc with snippet on every public type, package-info everywhere; dialog.md Status "Implemented (0.6.0)" +
   §13 deviations + §9 Bedrock table (filled by owner); ROADMAP row 6 done; module AGENTS.md final; version 0.6.0-SNAPSHOT.
 
@@ -27,12 +32,16 @@ If the in-game / Geyser checks cannot be done by you, mark them [~] and still sh
    (notice / confirmation / multi-action / list / links, each input kind) works / partly / no in dialog.md §9.
 
 ## Acceptance criteria
-- [ ] `runServer`: owner test step 1 passed
-- [ ] Geyser table filled (owner, step 2)
-- [ ] `gradlew.bat check smokeTest publishToMavenLocal` green
+- [~] `runServer`: owner test step 1 passed (owner, not run by the agent)
+- [~] Geyser table filled (owner, step 2; table is in dialog.md §9 as _pending_)
+- [x] `gradlew.bat check smokeTest publishToMavenLocal` green
 
 ## Verify
 gradlew.bat check smokeTest publishToMavenLocal
 
 ## Result
-(agent fills in)
+Demo: `/example dialog sell|confirm|menu` (DemoDialogs, dialogs/sell|confirm|menu.yml, th_TH + en_US, demo gui menu has a
+`dialog:sell` button, gui<->dialog linked in the plugin). Registry click guard: `ClickGuard` + `DialogSettings.registryClickInterval`
+(250 ms), unit-tested (100-click burst -> 1 run; after interval -> runs again; busy async -> ignored). Docs: dialog.md status, §4, §7,
+§9 table (pending), §13 deviations; ROADMAP row 6; module AGENTS.md; version 0.6.0-SNAPSHOT. Ran: `gradlew.bat check smokeTest publishToMavenLocal`.
+Owner still to do: in-game test step 1, Geyser step 2, callback-thread note in dialog.md §13.

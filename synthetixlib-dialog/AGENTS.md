@@ -3,8 +3,7 @@
 Package: `com.github.dewarepk.synthetixlib.dialog` (only this module may use it). Design: docs/design/dialog.md.
 Depends on core + config (dialog files are read with the config codecs; no dependency on gui, see design §12.4).
 
-Status: **in progress** (P2-29 module + files + `DialogService.dialog()`, P2-30 rendering + views + one-use callbacks done;
-P2-31 typed submit done; registry dialogs + links P2-32, wrap-up P2-33).
+Status: **complete, 0.6.0** (P2-29..P2-33). Open for the owner: Geyser table + callback thread note in docs/design/dialog.md.
 
 Types
 - `DialogService` - one per `SynthetixLib`; `dialog(id)` -> `DialogBuilder<Void>`; `reload()` re-reads every dialog file.
@@ -67,3 +66,17 @@ Rules specific to dialog
   shown above the body of the next showing, `DialogViewImpl.failures`). Input keys go to the client with `-` as `_`
   (`InputKeys.wire`; Paper refuses `-`), answers are stored by file key. `submitAsync`: view `defer()`s, `finishAsync()` closes it
   unless the handler asked for something. `ResponseImpl` = `click.response()`.
+- Registry dialogs (P2-32): `SynthetixDialogs.bootstrap(ctx)` (public; made in a `PluginBootstrap`, kept by the plugin through
+  `createPlugin`, handed to `DialogService#bootstrapped`) reads `dialogs/<id>.yml` with its own `Codecs` (Material by
+  `matchMaterial`; the Bukkit codecs need a server), `register(fileId, "ns:key")` in `RegistryEvents.DIALOG.compose()`,
+  `quickActions/pauseScreen` in the postFlatten tags. Rendered by `DialogRenderer` in static mode (`StaticKeys`): a button
+  that is not a lone `url:`/`copy:` is `customClick(Key ns:path/<button>)`, lists point at registry keys. Static problems
+  (placeholders incl. `<player>`, `slot:`/`placeholder:` items) are logged as errors and shown as text / a barrier.
+  Service side: `DialogService#registered(key)` -> `DialogBuilder` (registrar `registerRegistry`), `ViewManager` routes
+  `PlayerCustomClickEvent` by `ns:path/button` (`routeClick`; `DialogService#click` is the self-test hook), builds a fresh
+  `DialogViewImpl`, reads answers, then runs the normal `click()` path (submit validation, re-show dynamic). The client can send
+  these keys any time: handlers must check their state. Configuration-phase connections are ignored.
+- Registry click guard (P2-33): `ClickGuard` per player in `ViewManager.registryGuards` (one handler at a time incl. `submitAsync`, via
+  `asyncDone`, plus `DialogSettings.registryClickInterval`, default 250 ms); cleared on quit/close, never static.
+- Links (P2-32): `DialogService#link("menu", opener)` (only `menu`), `#opener()` (also finds registry keys); `menu:` ends the dialog view
+  when the opener opened something. `DialogSettings.debug` -> `ViewManager#debug` logs at INFO instead of FINE.

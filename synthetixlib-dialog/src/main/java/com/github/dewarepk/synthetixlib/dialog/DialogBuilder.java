@@ -36,7 +36,7 @@ public final class DialogBuilder<C> {
 
     private static final Pattern NAME = Pattern.compile(ClickAction.NAME_PATTERN);
 
-    private final DialogRegistry registry;
+    private final Registrar registry;
     private final String id;
     private final Map<String, Function<DialogView<C>, Component>> placeholders = new LinkedHashMap<>();
     private final Map<String, Function<DialogView<C>, ItemStack>> items = new LinkedHashMap<>();
@@ -46,7 +46,12 @@ public final class DialogBuilder<C> {
     private @Nullable Consumer<DialogView<C>> onClose;
     private boolean built;
 
-    DialogBuilder(final DialogRegistry registry, final String id) {
+    /** Where build() puts the dialog: the service, or the registry dialogs of its bootstrap. */
+    interface Registrar {
+        <C> DialogType<C> register(String id, Registrations<C> registrations);
+    }
+
+    DialogBuilder(final Registrar registry, final String id) {
         this.registry = registry;
         this.id = id;
     }

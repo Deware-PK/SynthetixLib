@@ -1,0 +1,13 @@
+# dialog.link: items that open a dialog ('A', linked) and something nobody is linked to ('B', inert)
+title: 'Link'
+type: chest
+rows: 1
+layout:
+  - "AB       "
+items:
+  'A':
+    material: stone
+    click: ['dialog:selftest-linkdlg']
+  'B':
+    material: stone
+    click: ['elsewhere:somewhere']

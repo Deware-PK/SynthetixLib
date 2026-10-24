@@ -36,6 +36,11 @@ record Registrations<C>(Map<String, Function<DialogView<C>, Component>> placehol
     record Submit<C>(Class<?> form, BiConsumer<Object, DialogClick<C>> handler, boolean async) {
     }
 
+    /** Nothing registered: what a registry dialog has until code calls {@code registered(key)}. */
+    static <C> Registrations<C> none() {
+        return new Registrations<>(Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), null);
+    }
+
     /** Tags every text has without registering them. */
     static boolean isBuiltInPlaceholder(final String name) {
         return name.equals("player");

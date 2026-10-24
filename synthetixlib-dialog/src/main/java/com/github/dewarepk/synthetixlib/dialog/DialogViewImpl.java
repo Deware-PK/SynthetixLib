@@ -56,7 +56,8 @@ final class DialogViewImpl<C> implements DialogView<C> {
     /**
      * A view of a dialog shown to {@code player}; {@code player} is {@code null} for a preview.
      *
-     * @param parent the view of the list this dialog is shown inside, {@code null} for a dialog of its own
+     * @param manager {@code null} only for the throwaway view a registry dialog is rendered from at bootstrap
+     * @param parent  the view of the list this dialog is shown inside, {@code null} for a dialog of its own
      */
     DialogViewImpl(final ViewManager manager, final DialogType<C> type, final @Nullable Player player,
                    final String playerName, final @Nullable C context, final @Nullable DialogViewImpl<?> parent) {
@@ -140,6 +141,10 @@ final class DialogViewImpl<C> implements DialogView<C> {
         return answers;
     }
 
+    void answers(final Map<String, Object> value) {
+        answers = Map.copyOf(value);
+    }
+
     void registerCallback(final String path, final DialogActionCallback callback) {
         callbacks.put(path, callback);
     }
@@ -181,6 +186,7 @@ final class DialogViewImpl<C> implements DialogView<C> {
 
     /** The async handler is over: close the dialog unless it asked for something else (reopen, next, close). */
     void finishAsync() {
+        manager.asyncDone(root);
         if (!root.requested) {
             manager.closeView(root);
         }

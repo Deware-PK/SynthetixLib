@@ -3,20 +3,25 @@ package com.github.dewarepk.synthetixlib.dialog;
 import com.github.dewarepk.synthetixlib.config.Configs;
 import com.github.dewarepk.synthetixlib.config.FilesReloadResult;
 import com.github.dewarepk.synthetixlib.config.LocaleHandle;
+import com.github.dewarepk.synthetixlib.core.ScreenOpener;
 import com.github.dewarepk.synthetixlib.core.SynthetixLib;
 import com.github.dewarepk.synthetixlib.dialog.file.ClickAction;
 import com.github.dewarepk.synthetixlib.dialog.file.ClickActions;
+import com.github.dewarepk.synthetixlib.dialog.file.DialogFile;
 import java.nio.file.Path;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
+import io.papermc.paper.dialog.DialogResponseView;
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.ApiStatus;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Dialogs for one plugin; one instance per {@link SynthetixLib}, closed with it. Every dialog is a YAML file in
@@ -47,6 +52,8 @@ public final class DialogService implements AutoCloseable {
     private final Configs configs;
     private final DialogRegistry registry;
     private final ViewManager views;
+    private final Map<String, DialogType<?>> registered = new ConcurrentHashMap<>();
+    private volatile @Nullable SynthetixDialogs bootstrap;
 
     private DialogService(final SynthetixLib lib, final Configs configs) {
         this.lib = lib;
@@ -58,6 +65,7 @@ public final class DialogService implements AutoCloseable {
         this.views = new ViewManager(lib, configs.codecs());
         this.registry = new DialogRegistry(loader, lib.plugin().getLogger(), views);
         views.siblings(registry::find);
+        views.registryDialogs(registered::get);
     }
 
     /**
@@ -161,6 +169,140 @@ public final class DialogService implements AutoCloseable {
         ensureOpen();
         views.executor(Objects.requireNonNull(executor, "executor"));
         return this;
+    }
+
+    /**
+     * Connects the dialogs that the plugin registered in its bootstrap ({@link SynthetixDialogs}): their buttons are now
+     * routed to the handlers of {@link #registered}, and {@link #opener()} finds them by registry key. Call once, in
+     * {@code onEnable}, before {@link #registered}.
+     *
+     * @param registry the object made in the bootstrap
+     * @return this
+     * @throws IllegalStateException if the service is closed or has a registry already
+     */
+    public DialogService bootstrapped(final SynthetixDialogs registry) {
+        Objects.requireNonNull(registry, "registry");
+        ensureOpen();
+        synchronized (registered) {
+            if (bootstrap != null) {
+                throw new IllegalStateException("bootstrapped() was called already");
+            }
+            bootstrap = registry;
+            for (final SynthetixDialogs.Entry entry : registry.entries()) {
+                final String key = entry.key().asString();
+                registered.put(key, new DialogType<Void>(key, Registrations.none(),
+                        new DialogLoader.Resolved(entry.file(), java.util.Set.of()), views));
+            }
+        }
+        return this;
+    }
+
+    /**
+     * Starts registering the code of a registry dialog, which {@link SynthetixDialogs#register} registered: the same
+     * {@code action}, {@code submit} and {@code onClose} as for any dialog, answered when a player presses its buttons
+     * (a custom click event, routed by the key). Placeholders do not exist: the dialog is static.
+     *
+     * <p>Nothing stops a client from sending the click of a registry dialog's button without having the dialog open, so
+     * a handler must check its own state (does the player have the item, the money) exactly as it would for a command.
+     * Validation of the inputs of a {@code submit} is the same as for other dialogs.
+     *
+     * <pre>{@code
+     * dialogs.registered("auction:help").action("open-auction", click -> auction.open(click.player())).build();
+     * }</pre>
+     *
+     * @param key the registry key given to {@link SynthetixDialogs#register}
+     * @return a builder for the dialog without a context
+     * @throws IllegalArgumentException if no dialog was registered under the key
+     * @throws IllegalStateException    if the service is closed or {@link #bootstrapped} was not called
+     */
+    public DialogBuilder<Void> registered(final String key) {
+        Objects.requireNonNull(key, "key");
+        ensureOpen();
+        synchronized (registered) {
+            if (bootstrap == null) {
+                throw new IllegalStateException("call bootstrapped(...) before registered(...)");
+            }
+            if (!registered.containsKey(key)) {
+                throw new IllegalArgumentException("no dialog was registered under the key '" + key + "'");
+            }
+        }
+        return new DialogBuilder<>(new DialogBuilder.Registrar() {
+            @Override
+            public <C> DialogType<C> register(final String id, final Registrations<C> registrations) {
+                return registerRegistry(id, registrations);
+            }
+        }, key);
+    }
+
+    private <C> DialogType<C> registerRegistry(final String key, final Registrations<C> registrations) {
+        synchronized (registered) {
+            ensureOpen();
+            final DialogFile file = registered.get(key).file();
+            final DialogChecker.Checked checked = DialogChecker.check(file, registrations, lib.text(), configs.codecs());
+            final String name = key;
+            checked.warnings().forEach(problem -> lib.plugin().getLogger().warning("[dialogs/" + name + "] " + problem));
+            final DialogType<C> type = new DialogType<>(key, registrations,
+                    new DialogLoader.Resolved(file, checked.inert()), views);
+            registered.put(key, type);
+            return type;
+        }
+    }
+
+    /**
+     * Lets dialog files open screens of another module with the prefix {@code menu}: {@code click: ['menu:shop']}. Link
+     * before the dialogs that use it are clicked.
+     *
+     * <pre>{@code
+     * dialogs.link("menu", gui.opener());
+     * }</pre>
+     *
+     * @param prefix must be {@code menu}, the only prefix dialog files have for another module
+     * @param opener opens the menu with the id after the colon for a player
+     * @return this
+     * @throws IllegalArgumentException if the prefix is not {@code menu}
+     * @throws IllegalStateException    if the service is closed
+     */
+    public DialogService link(final String prefix, final ScreenOpener opener) {
+        Objects.requireNonNull(prefix, "prefix");
+        Objects.requireNonNull(opener, "opener");
+        ensureOpen();
+        if (!prefix.equals("menu")) {
+            throw new IllegalArgumentException("dialog files can only link the prefix 'menu', not '" + prefix + "'");
+        }
+        views.menuOpener(opener);
+        return this;
+    }
+
+    /**
+     * @return opens the dialog with the given id (a dialog built by this service, or the registry key of one
+     *         registered in the bootstrap) for a player; {@code false} if there is none. Hand it to another module's
+     *         {@code link}.
+     */
+    public ScreenOpener opener() {
+        return (player, id) -> {
+            DialogType<?> found = registry.find(id);
+            if (found == null) {
+                found = registered.get(id);
+            }
+            if (found == null) {
+                return false;
+            }
+            found.open(player);
+            return true;
+        };
+    }
+
+    /**
+     * Sends the click of a registry dialog's button through the same routing as the client's custom click event, so a
+     * self-test with no client can press a button.
+     *
+     * @param key      {@code namespace:path/button}
+     * @param player   who clicked
+     * @param response the answers, {@code null} if none
+     */
+    @ApiStatus.Internal
+    public void click(final String key, final Player player, final DialogResponseView response) {
+        views.routeClick(Objects.requireNonNull(key, "key"), Objects.requireNonNull(player, "player"), response);
     }
 
     private void ensureOpen() {

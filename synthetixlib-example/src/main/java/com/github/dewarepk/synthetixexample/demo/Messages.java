@@ -28,7 +28,10 @@ public record Messages(@Comment("Messages of the command module itself") Command
                        @Comment("Placeholders: <reason>") String dbCopyFailed,
                        @Comment("Placeholders: <count>") String inputConfirmed,
                        String inputEmpty,
-                       @Comment("Texts of the menus (menus/*.yml), used there as <lang:key>") Map<String, String> gui) {
+                       @Comment("Placeholders: <item>, <price>, <duration>, <note>, <who>") String dialogSold,
+                       String dialogConfirmed,
+                       @Comment("Texts of the menus (menus/*.yml), used there as <lang:key>") Map<String, String> gui,
+                       @Comment("Texts of the dialogs (dialogs/*.yml), used there as <lang:key>") Map<String, String> dialog) {
 
     public static Messages defaults() {
         return new Messages(
@@ -54,6 +57,8 @@ public record Messages(@Comment("Messages of the command module itself") Command
                 "<red>Copy failed: <reason>",
                 "<green>Received <count> item(s); they are in your inventory again.",
                 "<red>Put an item in the slot first.",
+                "<green>Listed <item> for <price> coins, <duration>. Note: <note> (<who>)",
+                "<green>You said yes.",
                 Map.ofEntries(
                         Map.entry("demo-title", "<dark_gray>Example menu"),
                         Map.entry("demo-balance", "<gold>XP levels:"),
@@ -68,10 +73,37 @@ public record Messages(@Comment("Messages of the command module itself") Command
                         Map.entry("demo-confirm", "<green>Confirm"),
                         Map.entry("demo-close", "<red>Close"),
                         Map.entry("demo-back", "<yellow>Back"),
+                        Map.entry("demo-dialog", "<yellow>Sell form (dialog)"),
                         Map.entry("airdrop-title", "<dark_gray>Airdrop <name>"),
                         Map.entry("airdrop-interval", "<gray>Every <interval>"),
                         Map.entry("airdrop-players", "<gray>Needs <players> player(s) online"),
                         Map.entry("airdrop-rewards", "<gray>Rewards: <rewards>"),
-                        Map.entry("airdrop-open", "<gray>Click to open")));
+                        Map.entry("airdrop-open", "<gray>Click to open")),
+                Map.ofEntries(
+                        Map.entry("sell-title", "<gold>Sell an item"),
+                        Map.entry("sell-external", "<gold>Sell"),
+                        Map.entry("sell-info", "<gray>Set the price and how long the lot stays on sale."),
+                        Map.entry("sell-item", "<gray>The item you are selling"),
+                        Map.entry("sell-price", "Price"),
+                        Map.entry("sell-duration", "Duration"),
+                        Map.entry("sell-1h", "1 hour"),
+                        Map.entry("sell-12h", "12 hours"),
+                        Map.entry("sell-24h", "24 hours"),
+                        Map.entry("sell-note", "Note (optional)"),
+                        Map.entry("sell-anonymous", "Hide my name"),
+                        Map.entry("sell-yes", "<green>List it"),
+                        Map.entry("sell-yes-tip", "<gray>Puts the lot on sale"),
+                        Map.entry("sell-no", "<red>Cancel"),
+                        Map.entry("sell-error-price", "<red>The price must be between <min> and <max>, not <value>"),
+                        Map.entry("confirm-title", "<gold>Are you sure?"),
+                        Map.entry("confirm-text", "<gray>This is a plain yes/no question."),
+                        Map.entry("confirm-yes", "<green>Yes"),
+                        Map.entry("confirm-no", "<red>No"),
+                        Map.entry("menu-title", "<gold>Dialog menu"),
+                        Map.entry("menu-text", "<gray>Buttons can open dialogs and gui menus."),
+                        Map.entry("menu-sell", "<yellow>Sell form"),
+                        Map.entry("menu-confirm", "<yellow>Confirmation"),
+                        Map.entry("menu-gui", "<aqua>Open the demo menu"),
+                        Map.entry("menu-close", "<red>Close")));
     }
 }

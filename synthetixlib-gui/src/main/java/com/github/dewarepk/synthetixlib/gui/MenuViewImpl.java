@@ -486,6 +486,7 @@ final class MenuViewImpl<C> implements MenuView<C> {
                 render(false, null);
             }
             case ClickAction.Open open -> manager.openMenu(this, open.menu());
+            case ClickAction.Linked link -> manager.openLinked(this, link);
             case ClickAction.Command command -> player.performCommand(command.command());
             case ClickAction.Console console -> manager.runAsConsole(console.command());
             case ClickAction.Message message -> player.sendMessage(

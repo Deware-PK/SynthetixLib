@@ -198,3 +198,8 @@ or title swaps through `update-every`; text input → anvil is not in this modul
 - Not covered by self-tests (needs a real client or Folia, left for the go-mcbots E2E): vanilla carrying out an allowed click,
   the cursor surviving a real re-open, Folia thread hops, quit/death order.
 
+- Added in P2-32 (links to the dialog module, no compile dependency, dialog.md §8): `core.ScreenOpener` (`boolean open(Player, String id)`),
+  `GuiService#link(prefix, opener)` and `#opener()`. A click step `<prefix>:<id>` that is not a built-in name parses to
+  `ClickAction.Linked(prefix, id)` (so a typo with an argument is no longer a parse error; it is reported when the menu loads: item
+  inert, "no module is linked to it"). Link before building the menus (or `reload()` after). `dialogs.link("menu", gui.opener())` is the
+  other direction. Built-in names cannot be prefixes.

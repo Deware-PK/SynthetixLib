@@ -18,6 +18,8 @@ commands:
   help-line: <yellow>/<command> <usage> <gray>- <description>
 input-confirmed: <green>ได้รับ <count> ชิ้น คืนเข้ากระเป๋าแล้ว
 input-empty: <red>ใส่ไอเท็มในช่องก่อน
+dialog-sold: "<green>ลงขาย <item> ราคา <price> เหรียญ <duration> หมายเหตุ: <note> (<who>)"
+dialog-confirmed: <green>คุณตอบตกลง
 gui:
   demo-title: <dark_gray>เมนูตัวอย่าง
   demo-balance: "<gold>เลเวล XP:"
@@ -32,8 +34,35 @@ gui:
   demo-confirm: <green>ยืนยัน
   demo-close: <red>ปิด
   demo-back: <yellow>กลับ
+  demo-dialog: <yellow>ฟอร์มขาย (dialog)
   airdrop-title: <dark_gray>Airdrop <name>
   airdrop-interval: <gray>ทุก <interval>
   airdrop-players: <gray>ต้องมีผู้เล่นออนไลน์ <players> คน
   airdrop-rewards: "<gray>รางวัล: <rewards>"
   airdrop-open: <gray>คลิกเพื่อเปิด
+dialog:
+  sell-title: <gold>ขายไอเท็ม
+  sell-external: <gold>ขาย
+  sell-info: <gray>ตั้งราคาและระยะเวลาที่วางขาย
+  sell-item: <gray>ไอเท็มที่คุณจะขาย
+  sell-price: ราคา
+  sell-duration: ระยะเวลา
+  sell-1h: 1 ชั่วโมง
+  sell-12h: 12 ชั่วโมง
+  sell-24h: 24 ชั่วโมง
+  sell-note: หมายเหตุ (ไม่บังคับ)
+  sell-anonymous: ซ่อนชื่อฉัน
+  sell-yes: <green>ลงขาย
+  sell-yes-tip: <gray>วางไอเท็มขาย
+  sell-no: <red>ยกเลิก
+  sell-error-price: <red>ราคาต้องอยู่ระหว่าง <min> ถึง <max> ไม่ใช่ <value>
+  confirm-title: <gold>แน่ใจหรือไม่?
+  confirm-text: <gray>นี่คือคำถามใช่/ไม่ใช่ธรรมดา
+  confirm-yes: <green>ใช่
+  confirm-no: <red>ไม่
+  menu-title: <gold>เมนู dialog
+  menu-text: <gray>ปุ่มเปิด dialog และเมนู gui ได้
+  menu-sell: <yellow>ฟอร์มขาย
+  menu-confirm: <yellow>ยืนยัน
+  menu-gui: <aqua>เปิดเมนูตัวอย่าง
+  menu-close: <red>ปิด

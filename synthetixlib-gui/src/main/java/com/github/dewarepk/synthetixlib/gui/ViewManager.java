@@ -1,6 +1,8 @@
 package com.github.dewarepk.synthetixlib.gui;
 
+import com.github.dewarepk.synthetixlib.core.ScreenOpener;
 import com.github.dewarepk.synthetixlib.core.SynthetixLib;
+import com.github.dewarepk.synthetixlib.gui.file.ClickAction;
 import com.github.dewarepk.synthetixlib.core.scheduler.SynthetixTask;
 import java.util.HashMap;
 import java.util.List;
@@ -48,6 +50,7 @@ final class ViewManager implements ViewHost {
     private static final int MAX_WARNINGS = 256;
 
     private final SynthetixLib lib;
+    private final Map<String, ScreenOpener> links;
     private final BukkitStacks stacks = new BukkitStacks();
     private final ViewRegistry<MenuViewImpl<?>, BackEntry> registry = new ViewRegistry<>();
     private final Listener listener = new Listener() {
@@ -56,8 +59,9 @@ final class ViewManager implements ViewHost {
     private volatile boolean closed;
     private volatile @Nullable GuiMessages messages;
 
-    ViewManager(final SynthetixLib lib) {
+    ViewManager(final SynthetixLib lib, final Map<String, ScreenOpener> links) {
         this.lib = lib;
+        this.links = links;
         final var plugins = lib.plugin().getServer().getPluginManager();
         // No reflection: plain executors (the same way the command module hooks the quit event). Click safety runs last
         // (HIGHEST) so that it has the final word over plugins that looked at the event before.
@@ -153,6 +157,20 @@ final class ViewManager implements ViewHost {
             }
             old.dispose();
             giveBack(old); // normally done by its close event already; nothing is left then
+        }
+    }
+
+    /** {@code <prefix>:<id>}: asks the module linked to the prefix to open its screen; the menu closes by itself. */
+    void openLinked(final MenuViewImpl<?> from, final ClickAction.Linked link) {
+        final ScreenOpener opener = links.get(link.prefix());
+        if (opener == null) {
+            warnOnce("[menus/" + from.type().id() + ".yml] " + link.prefix() + ":" + link.id() + " but nothing is linked to '"
+                    + link.prefix() + "'");
+            return;
+        }
+        if (!opener.open(from.player(), link.id())) {
+            warnOnce("[menus/" + from.type().id() + ".yml] " + link.prefix() + ":" + link.id() + " but there is no screen '"
+                    + link.id() + "'");
         }
     }
 

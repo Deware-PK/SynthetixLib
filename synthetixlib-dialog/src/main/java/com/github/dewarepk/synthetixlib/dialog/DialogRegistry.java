@@ -11,7 +11,7 @@ import java.util.logging.Logger;
 import org.jspecify.annotations.Nullable;
 
 /** The dialogs built by one {@link DialogService}, and the one place that reads their files. */
-final class DialogRegistry {
+final class DialogRegistry implements DialogBuilder.Registrar {
 
     private final DialogLoader loader;
     private final Logger logger;
@@ -44,7 +44,8 @@ final class DialogRegistry {
      *
      * @throws IllegalStateException if closed, the id was built already, or there is no file and no bundled one
      */
-    <C> DialogType<C> register(final String id, final Registrations<C> registrations) {
+    @Override
+    public <C> DialogType<C> register(final String id, final Registrations<C> registrations) {
         synchronized (lock) {
             if (closed) {
                 throw new IllegalStateException("DialogService is closed");

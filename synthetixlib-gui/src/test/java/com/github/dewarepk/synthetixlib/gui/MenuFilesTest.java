@@ -72,7 +72,7 @@ class MenuFilesTest {
             public void close() {
             }
         });
-        registry = new MenuRegistry(new MenuLoader(store, new MenuParser(GuiFixtures.codecs()), TextService.create()), logger,
+        registry = new MenuRegistry(new MenuLoader(store, new MenuParser(GuiFixtures.codecs()), TextService.create(), prefix -> false), logger,
                 GuiFixtures.NO_HOST);
     }
 
@@ -148,13 +148,13 @@ class MenuFilesTest {
 
     @Test
     void buildLogsFileErrorsAtTheirPath() {
-        jar.put("menus/shop.yml", BUNDLED.replace("action:buy", "teleport:spawn"));
+        jar.put("menus/shop.yml", BUNDLED.replace("action:buy", "teleport"));
 
         final MenuType<Void> shop = menu("shop").build();
 
         assertTrue(logged.contains("[menus/shop.yml] items.B.click[0]: unknown action 'teleport' (use close, back, "
                 + "refresh, page-next, page-previous, open:<menu>, command:<cmd>, console:<cmd>, message:<text>, "
-                + "sound:<key> or action:<name>)"), logged.toString());
+                + "sound:<key>, action:<name> or <linked prefix>:<id>)"), logged.toString());
         assertTrue(shop.file().item('B').clicks().isEmpty());
     }
 

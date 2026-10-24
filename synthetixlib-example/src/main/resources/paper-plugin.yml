@@ -6,3 +6,4 @@ description: Test bed and examples for SynthetixLib
 author: Deware
 folia-supported: true
 loader: com.github.dewarepk.synthetixexample.ExampleLoader
+bootstrapper: com.github.dewarepk.synthetixexample.ExampleBootstrap

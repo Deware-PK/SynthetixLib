@@ -18,4 +18,4 @@ items:
     click: ['action:missing']
   'U':
     material: stone
-    click: ['teleport:spawn']
+    click: ['teleport']

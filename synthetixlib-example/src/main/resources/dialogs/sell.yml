@@ -1,0 +1,38 @@
+# The /example dialog sell form: number, option, text and bool inputs; the item in hand is the context.
+# Texts are <lang:key> from lang/<locale>.yml (section "dialog"). The behaviour (action:sell) is registered in DemoDialogs.java.
+config-version: 1
+title: '<lang:sell-title>'
+external-title: '<lang:sell-external>'
+type: confirmation
+body:
+  - message: '<lang:sell-info>'
+    width: 250
+  - item: { slot: hand }
+    description: '<lang:sell-item>'
+inputs:
+  price:
+    type: number
+    label: '<lang:sell-price>'
+    min: 1
+    max: 1000000
+    step: 1
+    initial: 100
+  duration:
+    type: option
+    label: '<lang:sell-duration>'
+    options:
+      h1: { display: '<lang:sell-1h>' }
+      h12: { display: '<lang:sell-12h>', initial: true }
+      h24: { display: '<lang:sell-24h>' }
+  note:
+    type: text
+    label: '<lang:sell-note>'
+    max-length: 64
+  anonymous:
+    type: bool
+    label: '<lang:sell-anonymous>'
+buttons:
+  yes: { label: '<lang:sell-yes>', tooltip: '<lang:sell-yes-tip>', click: ['action:sell', 'sound:ui.button.click'] }
+  no: { label: '<lang:sell-no>', click: [close] }
+errors:
+  price: '<lang:sell-error-price>'

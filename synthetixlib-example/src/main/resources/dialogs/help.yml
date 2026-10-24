@@ -1,0 +1,13 @@
+# Registered in the dialog registry by ExampleBootstrap (key synthetixexample:help), so it is also in the pause menu's
+# quick actions. A registry dialog is static: no placeholders, nothing from the player's hand.
+config-version: 1
+title: '<gold>SynthetixExample help'
+external-title: '<gold>Example help'
+type: multi-action
+body:
+  - message: '<gray>This dialog is in the dialog registry: open it from the pause menu or with <white>/dialog show synthetixexample:help</white>.'
+    width: 250
+buttons:
+  ping: { label: '<green>Ping', tooltip: '<gray>Runs the action registered in code', click: ['action:ping', 'sound:ui.button.click'] }
+  docs: { label: '<aqua>Source', click: ['url:https://github.com/Deware-PK/SynthetixLib'] }
+  exit: { label: '<red>Close', click: [close] }

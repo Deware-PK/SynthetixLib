@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -52,7 +53,13 @@ final class MenuChecker {
         return names;
     }
 
+    /** Like the full check for a menu service that has no links. */
     static Checked check(final MenuFile file, final Registrations<?> registered, final TextService tags) {
+        return check(file, registered, tags, prefix -> false);
+    }
+
+    static Checked check(final MenuFile file, final Registrations<?> registered, final TextService tags,
+                         final Predicate<String> linked) {
         final Set<Character> inert = new LinkedHashSet<>();
         final List<Problem> warnings = new ArrayList<>();
         final List<String> titleWarnings = new ArrayList<>();
@@ -62,7 +69,7 @@ final class MenuChecker {
         for (final Map.Entry<Character, MenuItem> entry : file.items().entrySet()) {
             final List<String> problems = new ArrayList<>();
             final List<String> itemWarnings = new ArrayList<>();
-            item(entry.getValue(), registered, tags, problems, itemWarnings);
+            item(entry.getValue(), registered, tags, linked, problems, itemWarnings);
             final String path = "items." + entry.getKey();
             if (!problems.isEmpty()) {
                 inert.add(entry.getKey());
@@ -85,7 +92,7 @@ final class MenuChecker {
     }
 
     private static void item(final MenuItem item, final Registrations<?> registered, final TextService tags,
-                             final List<String> problems, final List<String> warnings) {
+                             final Predicate<String> linked, final List<String> problems, final List<String> warnings) {
         item.list().ifPresent(id -> {
             if (!registered.lists().containsKey(id)) {
                 problems.add("list '" + id + "' is not registered in code");
@@ -103,15 +110,21 @@ final class MenuChecker {
                         problems.add("action '" + run.name() + "' is not registered in code");
                     }
                 }
+                case ClickAction.Linked link -> {
+                    if (!linked.test(link.prefix())) {
+                        problems.add("'" + link.prefix() + ":" + link.id() + "' uses the prefix '" + link.prefix()
+                                + "', which is not a built-in action and no module is linked to it");
+                    }
+                }
                 case ClickAction.Message message -> placeholders(message.text(), registered, tags, warnings);
                 default -> { }
             }
         }
         item.name().ifPresent(name -> placeholders(name, registered, tags, warnings));
         item.lore().forEach(line -> placeholders(line, registered, tags, warnings));
-        item.empty().ifPresent(inner -> item(inner, registered, tags, problems, warnings));
-        item.loading().ifPresent(inner -> item(inner, registered, tags, problems, warnings));
-        item.states().values().forEach(inner -> item(inner, registered, tags, problems, warnings));
+        item.empty().ifPresent(inner -> item(inner, registered, tags, linked, problems, warnings));
+        item.loading().ifPresent(inner -> item(inner, registered, tags, linked, problems, warnings));
+        item.states().values().forEach(inner -> item(inner, registered, tags, linked, problems, warnings));
     }
 
     private static void placeholders(final String text, final Registrations<?> registered, final TextService tags,

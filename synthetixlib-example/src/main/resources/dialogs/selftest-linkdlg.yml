@@ -1,0 +1,5 @@
+# dialog.link: a notice whose button opens a menu
+title: 'Link target'
+type: notice
+buttons:
+  ok: { label: 'To the menu', click: ['menu:selftest-link'] }

@@ -225,7 +225,7 @@ class MenuParserTest {
                 items:
                   '#':
                     material: stone
-                    click: [close, teleport:spawn]
+                    click: [close, teleport]
                 """);
 
         assertTrue(mentions(parsed.errors(), "items.#.click[1]", "unknown action 'teleport'"),

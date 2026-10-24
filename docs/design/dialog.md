@@ -1,6 +1,6 @@
 # synthetixlib-dialog — API design
 
-Status: **Approved** 2026-10-24 (all §12 defaults accepted; Geyser test on Bedrock for Windows, §10) · Task: P1-05 · Implementation: P2-29..P2-33 · Date: 2026-10-24
+Status: **Implemented (0.6.0)** — approved 2026-10-24 (all §12 defaults accepted; Geyser test on Bedrock for Windows, §10) · Task: P1-05 · Implementation: P2-29..P2-33 · Date: 2026-10-24
 Package root: `com.github.dewarepk.synthetixlib.dialog` · Depends on: core, config (codecs, locale), paper-api only
 
 Wrapper over the Paper Dialog API (`io.papermc.paper.dialog`, `io.papermc.paper.registry.data.dialog`, client 1.21.6+;
@@ -109,6 +109,10 @@ sell.open(player, player.getInventory().getItemInMainHand());     // any thread;
 - Each shown dialog gets fresh one-use callbacks (`ClickCallback.Options` uses = 1, lifetime from settings, default 5m):
   a button clicked twice / replayed packet / stale dialog after reload does nothing (no double-sell, no double-pay).
 - The clicking audience must be the view's player, else ignored + debug log.
+- **Registry dialogs (§7) are guarded per player** (implemented P2-33): a button of a registry dialog has no one-use
+  callback (the client can send its key any time), so `ClickGuard` lets one click per player through at a time: a click while
+  the previous registry handler still runs (including `submitAsync`) is ignored, and so is one sooner than
+  `DialogSettings.registryClickInterval` (default 250 ms) after the last that ran. State lives in the service, cleared on quit.
 - One handler at a time per view (same debounce as gui); `submit` handlers that touch money/items should re-check state
   (item still in hand etc.) — documented, the `context` is a snapshot.
 - Text input is plain text: never parsed as MiniMessage when shown again (no tag injection).
@@ -144,6 +148,7 @@ public final class AuctionBootstrap implements PluginBootstrap {               /
 }
 // onEnable: dialogs.registered("auction:help").action("open-auction", click -> auction.open(click.player()));
 ```
+Clicks on registry dialogs go through the per-player guard of §4 (one handler at a time, `registry-click-interval`).
 No static state: the bootstrap object is handed to `DialogService` through the plugin instance (ADR 0004).
 
 ## 8. Links to other modules
@@ -158,8 +163,19 @@ No static state: the bootstrap object is handed to `DialogService` through the p
 - Escape with `can-close-with-escape` closes **without telling the server** for notice/confirmation; `onClose` only
   fires on an exit button. Dialogs that must get an answer set `can-close-with-escape: false`.
 - Widths 1–1024, text `max-length`, number range float only, multi-action `columns`; values checked at load.
-- Bedrock (Geyser): to be verified (§10) — Java dialogs may map to Bedrock forms partly or not at all.
+- Bedrock (Geyser): see the table below (filled by the owner after the manual test, §10).
 - Clients below 1.21.6 (ViaVersion) cannot see dialogs → `fallback` hook (§12.6).
+
+**Bedrock / Geyser support** (owner fills in: works / partly / no, plus notes):
+
+| Dialog type | Inputs | Result | Notes |
+|---|---|---|---|
+| notice | - | _pending_ | |
+| confirmation | - | _pending_ | |
+| multi-action | - | _pending_ | |
+| list | - | _pending_ | |
+| links | - | _pending_ | |
+| any | text / number / option / bool | _pending_ | |
 
 ## 10. Testing
 
@@ -186,6 +202,19 @@ Anvil / sign input, chat prompts, resource-pack generation, Bedrock-native forms
 7. **Configuration-phase dialogs** (rules / language before join via `AsyncPlayerConnectionConfigureEvent`): **later**,
    not in 0.6.0 (chosen) vs include now.
 8. **Version:** module ships as 0.6.0; API marked experimental in Javadoc while Paper keeps it `@Experimental` (chosen).
+
+## 13. Deviations from this design (as implemented, 0.6.0)
+
+- `DialogBuilder#item(name, fn)` added (an `item: { placeholder: x }` needs code to supply the item).
+- gui link is `GuiService#link("dialog", dialogs.opener())` / `DialogService#link("menu", gui.opener())` using core's
+  `ScreenOpener`, not `dialogs.linkMenus(gui)`.
+- Registry dialogs: `SynthetixDialogs.bootstrap(ctx)` is kept by the plugin through `createPlugin` and handed to
+  `DialogService#bootstrapped`; registry dialogs are static (no placeholders, no `slot:`/`placeholder:` items).
+- Input keys go to the client with `-` as `_` (Paper refuses `-`); the files still use the kebab names.
+- Registry clicks are rate-limited per player (`DialogSettings.registryClickInterval`), not part of the original design.
+- The callback thread of Paper is not measured by the smoke tests (no client); the owner notes it from the debug log:
+  _pending_. Handlers always run on the player's entity scheduler anyway.
+- Configuration-phase dialogs are not supported (decision 7).
 
 ## Open questions (planner to check before tasks)
 - Thread Paper fires `ClickCallback` / `PlayerCustomClickEvent` on (main / region / netty) on 1.21.11 and 26.x.

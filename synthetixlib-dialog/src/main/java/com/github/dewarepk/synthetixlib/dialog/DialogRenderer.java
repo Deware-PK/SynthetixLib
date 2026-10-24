@@ -13,6 +13,7 @@ import com.github.dewarepk.synthetixlib.dialog.file.DialogKind;
 import com.github.dewarepk.synthetixlib.dialog.file.ItemSpec;
 import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.registry.RegistryKey;
+import io.papermc.paper.registry.TypedKey;
 import io.papermc.paper.registry.data.dialog.ActionButton;
 import io.papermc.paper.registry.data.dialog.DialogBase;
 import io.papermc.paper.registry.data.dialog.action.DialogAction;
@@ -28,6 +29,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickCallback;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -71,6 +73,7 @@ final class DialogRenderer<C> {
     private final Set<String> visited;
     private final DialogLoader.Resolved resolved;
     private final Registrations<C> registered;
+    private final @Nullable StaticKeys statics;
     private final Pass pass = new Pass();
     private boolean hasCallback;
     private boolean hasStatic;
@@ -81,6 +84,13 @@ final class DialogRenderer<C> {
      */
     DialogRenderer(final Env env, final DialogType<C> type, final DialogViewImpl<C> view, final int generation,
                    final Set<String> visited) {
+        this(env, type, view, generation, visited, null);
+    }
+
+    /** @param statics set for a registry dialog: buttons carry custom click keys instead of callbacks */
+    DialogRenderer(final Env env, final DialogType<C> type, final DialogViewImpl<C> view, final int generation,
+                   final Set<String> visited, final @Nullable StaticKeys statics) {
+        this.statics = statics;
         this.env = env;
         this.type = type;
         this.view = view;
@@ -95,8 +105,28 @@ final class DialogRenderer<C> {
         return pass.parse(markup);
     }
 
+    /**
+     * How a registry dialog is rendered: the keys it may use.
+     *
+     * @param namespace   namespace of the registry key of the dialog
+     * @param path        path of the registry key; a button is the custom click key {@code namespace:path/<button>}
+     * @param dialogKeys  registry key of a dialog of the same bootstrap by file id, {@code null} if none
+     */
+    record StaticKeys(String namespace, String path, Function<String, @Nullable TypedKey<Dialog>> dialogKeys) {
+    }
+
+    /** The two halves of a Paper dialog: what a registry entry takes. */
+    record Parts(DialogBase base, io.papermc.paper.registry.data.dialog.type.DialogType kind) {
+    }
+
     /** @return the dialog; throws if the Paper API refuses what the file describes */
     Dialog render() {
+        final Parts parts = parts();
+        return Dialog.create(factory -> factory.empty().base(parts.base()).type(parts.kind()));
+    }
+
+    /** @return base and type of the dialog; throws if the Paper API refuses what the file describes */
+    Parts parts() {
         final DialogFile file = resolved.file();
         view.clearCallbacks();
         final Set<String> inside = new LinkedHashSet<>(visited);
@@ -122,8 +152,7 @@ final class DialogRenderer<C> {
                 .body(body)
                 .inputs(inputs);
         file.externalTitle().ifPresent(title -> base.externalTitle(pass.parse(title)));
-        final DialogBase built = base.build();
-        return Dialog.create(factory -> factory.empty().base(built).type(kind));
+        return new Parts(base.build(), kind);
     }
 
     /**
@@ -179,6 +208,9 @@ final class DialogRenderer<C> {
                 return builder.build();
             }
             case LIST -> {
+                if (statics != null) {
+                    return staticList(buttons, columns, exit);
+                }
                 final List<Dialog> nested = new ArrayList<>();
                 for (final String id : buttons.dialogs()) {
                     final Dialog dialog = nested(id, inside);
@@ -204,6 +236,33 @@ final class DialogRenderer<C> {
             }
         }
         throw new IllegalStateException("unreachable: " + dialogKind);
+    }
+
+    /** A list in a registry dialog links to the dialogs of the same bootstrap, by their registry keys. */
+    private io.papermc.paper.registry.data.dialog.type.DialogType staticList(final DialogButtons buttons,
+                                                                             final int columns,
+                                                                             final @Nullable ActionButton exit) {
+        final List<TypedKey<Dialog>> keys = new ArrayList<>();
+        for (final String id : buttons.dialogs()) {
+            final TypedKey<Dialog> key = statics.dialogKeys().apply(id);
+            if (key == null) {
+                env.warn().accept("[dialogs/" + type.id() + ".yml] buttons.dialogs: the dialog '" + id
+                        + "' is not registered in the same bootstrap, left out");
+            } else {
+                keys.add(key);
+            }
+        }
+        if (keys.isEmpty()) {
+            return io.papermc.paper.registry.data.dialog.type.DialogType.notice();
+        }
+        final var builder = io.papermc.paper.registry.data.dialog.type.DialogType
+                .dialogList(RegistrySet.keySet(RegistryKey.DIALOG, keys))
+                .columns(columns)
+                .buttonWidth(buttons.buttonWidth().orElse(DEFAULT_BUTTON_WIDTH));
+        if (exit != null) {
+            builder.exitAction(exit);
+        }
+        return builder.build();
     }
 
     /** A dialog a list links to, rendered for the same viewer; it shares the one-use state of this screen. */
@@ -244,17 +303,25 @@ final class DialogRenderer<C> {
         } else if (single instanceof ClickAction.Copy copy) {
             hasStatic = true;
             builder.action(DialogAction.staticAction(ClickEvent.copyToClipboard(copy.text())));
+        } else if (statics != null) {
+            hasCallback = true;
+            builder.action(DialogAction.customClick(
+                    Key.key(statics.namespace(), statics.path() + "/" + path.substring("buttons.".length())), null));
         } else {
             hasCallback = true;
-            final boolean closesOnly = actions.stream().allMatch(action -> action instanceof ClickAction.Close);
-            final boolean exit = path.equals("buttons.exit")
-                    || resolved.file().kind() == DialogKind.CONFIRMATION && path.equals("buttons.no") && closesOnly;
+            final boolean exit = isExit(resolved.file().kind(), path, actions);
             final var callback = view.callbackOf(generation, actions, exit);
             view.registerCallback(path, callback);
             builder.action(DialogAction.customClick(callback, ClickCallback.Options.builder().uses(1)
                     .lifetime(env.settings().get().callbackLifetime()).build()));
         }
         return builder.build();
+    }
+
+    /** Whether a button ends the dialog without an answer: the exit button, or a confirmation's no that only closes. */
+    static boolean isExit(final DialogKind kind, final String path, final List<ClickAction> actions) {
+        final boolean closesOnly = actions.stream().allMatch(action -> action instanceof ClickAction.Close);
+        return path.equals("buttons.exit") || kind == DialogKind.CONFIRMATION && path.equals("buttons.no") && closesOnly;
     }
 
     // --- body ---------------------------------------------------------------------------------------------------

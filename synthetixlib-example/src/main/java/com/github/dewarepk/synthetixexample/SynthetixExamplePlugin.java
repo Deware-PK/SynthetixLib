@@ -4,6 +4,7 @@ import com.github.dewarepk.synthetixexample.demo.Airdrop;
 import com.github.dewarepk.synthetixexample.demo.ClaimStore;
 import com.github.dewarepk.synthetixlib.database.Database;
 import com.github.dewarepk.synthetixlib.database.DatabaseSettings;
+import com.github.dewarepk.synthetixexample.demo.DemoDialogs;
 import com.github.dewarepk.synthetixexample.demo.DemoMenus;
 import com.github.dewarepk.synthetixexample.demo.Messages;
 import com.github.dewarepk.synthetixexample.demo.Settings;
@@ -16,6 +17,8 @@ import com.github.dewarepk.synthetixlib.config.Configs;
 import com.github.dewarepk.synthetixlib.config.LocaleHandle;
 import com.github.dewarepk.synthetixlib.core.SynthetixLib;
 import com.github.dewarepk.synthetixlib.core.pdc.PdcKey;
+import com.github.dewarepk.synthetixlib.dialog.DialogService;
+import com.github.dewarepk.synthetixlib.dialog.SynthetixDialogs;
 import java.util.Locale;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -24,6 +27,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 
 /**
@@ -38,6 +42,17 @@ public final class SynthetixExamplePlugin extends JavaPlugin implements Listener
     private ConfigHandle<Settings> settings;
     private LocaleHandle<Messages> lang;
     private ConfigCollection<Airdrop> airdrops;
+    private final SynthetixDialogs dialogRegistry;
+
+    /** Made by {@link ExampleBootstrap}, which registers the dialogs of the dialog registry. */
+    public SynthetixExamplePlugin(final SynthetixDialogs dialogRegistry) {
+        this.dialogRegistry = dialogRegistry;
+    }
+
+    /** @return what the bootstrap registered; the self-tests read it */
+    public SynthetixDialogs dialogRegistry() {
+        return dialogRegistry;
+    }
 
     @Override
     public void onEnable() {
@@ -83,10 +98,21 @@ public final class SynthetixExamplePlugin extends JavaPlugin implements Listener
         final Database database = Database.create(lib, settings.get().database());
         final ClaimStore claims = ClaimStore.open(database);
 
+        final DialogService dialogs = DialogService.create(lib, configs)
+                .settings(settings.get().dialog())
+                .bootstrapped(dialogRegistry);
+        dialogs.registered(ExampleBootstrap.HELP)
+                .action("ping", click -> click.player().sendMessage(Component.text("Pong!")))
+                .build();
+
+        dialogs.messages(lang, Messages::dialog);
+        final DemoMenus menus = DemoMenus.create(lib, configs, airdrops, lang, claims, dialogs.opener());
+        dialogs.link("menu", menus.opener());
+        final DemoDialogs demoDialogs = DemoDialogs.create(dialogs, lang);
+
         CommandService.create(lib)
                 .messages(lang, Messages::commands)
-                .register(ExampleCommand.build(settings, airdrops, lang,
-                        DemoMenus.create(lib, configs, airdrops, lang, claims), database, claims));
+                .register(ExampleCommand.build(settings, airdrops, lang, menus, demoDialogs, database, claims));
     }
 
     @EventHandler

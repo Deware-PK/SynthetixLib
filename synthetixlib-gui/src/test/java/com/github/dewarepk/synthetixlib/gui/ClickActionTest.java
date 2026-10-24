@@ -30,6 +30,13 @@ class ClickActionTest {
     }
 
     @Test
+    void aNameWithAnArgumentThatIsNotBuiltInIsALink() {
+        assertEquals(new ClickAction.Linked("dialog", "sell"), ClickAction.parse("dialog:sell"));
+        assertEquals(new ClickAction.Linked("dialog", "sell"), ClickAction.parse(" Dialog : sell "));
+        assertEquals("dialog:sell", ClickAction.parse("dialog:sell").format());
+    }
+
+    @Test
     void theNameIsNotCaseSensitiveAndSpacesAreIgnored() {
         assertEquals(new ClickAction.Close(), ClickAction.parse("  CLOSE "));
         assertEquals(new ClickAction.Open("shop"), ClickAction.parse("Open : shop"));
@@ -51,17 +58,23 @@ class ClickActionTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"", "   ", "teleport", "teleport:spawn", ":x"})
+    @ValueSource(strings = {"", "   ", "teleport", ":x"})
     void unknownOrEmptyIsRejected(final String text) {
         final IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
                 () -> ClickAction.parse(text));
         assertTrue(e.getMessage().contains("action"), e.getMessage());
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"dialog:", "dialog:Bad Id"})
+    void aLinkNeedsAValidScreenId(final String text) {
+        assertThrows(IllegalArgumentException.class, () -> ClickAction.parse(text));
+    }
+
     @Test
     void theMessageNamesTheUnknownActionAndTheValidOnes() {
         final String message = assertThrows(IllegalArgumentException.class,
-                () -> ClickAction.parse("teleport:spawn")).getMessage();
+                () -> ClickAction.parse("teleport")).getMessage();
         assertTrue(message.contains("'teleport'") && message.contains("page-previous"), message);
     }
 

@@ -1,0 +1,13 @@
+# The /example dialog menu demo: buttons that open another dialog (open:) and a gui menu (menu:, needs the gui link).
+config-version: 1
+title: '<lang:menu-title>'
+type: multi-action
+body:
+  - message: '<lang:menu-text>'
+    width: 250
+buttons:
+  columns: 1
+  sell: { label: '<lang:menu-sell>', click: ['open:sell'] }
+  confirm: { label: '<lang:menu-confirm>', click: ['open:confirm'] }
+  gui: { label: '<lang:menu-gui>', click: ['menu:demo'] }
+  exit: { label: '<lang:menu-close>', click: [close] }

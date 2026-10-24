@@ -1,5 +1,5 @@
 # P2-31 Typed submit, server-side validation, re-show with errors
-Status: review · Approved: yes · Model: sonnet · Effort: high
+Status: done · Approved: yes · Model: sonnet · Effort: high
 Module: synthetixlib-dialog · Depends on: P2-30 · Design: dialog.md §3, §4
 
 ## Prompt (paste into Claude Code)
@@ -51,3 +51,10 @@ Ran `gradlew.bat check smokeTest`: green (unit tests incl. 19 new in `FormSubmit
 - **Refused:** the dialog is shown again with fresh buttons, typed values as initial, one line per bad input above the body: `errors.<key>` (`<min> <max> <value>`, value plain text), else lang key `invalid-input`, else "Invalid value: <key>". Handler not called.
 - **submitAsync:** handler on `scheduler().async()`; view stays consumed; when it ends the dialog closes unless the handler called `reopen/next/close`.
 - Not done / unchanged: refusals inside a list dialog's child view are not shown (list children have no forms in practice).
+
+## Review (planner, 2026-10-24)
+Approved (commit 35042e2). Smoke 82/82 on 1.21.11 + 26.3 (dialog.submit, submit-async, limits). Carry-overs done:
+Paper itself refuses `-` in input keys → `InputKeys.wire` + collision check; item body 256 ok / 257 refused (confirmed).
+Accepted: float slack + slider max always valid, error line fallback errors.<key> → lang `invalid-input` → English,
+list child refusal not shown above body. Follow-up: callback-thread log is FINE (invisible on a default console) → P2-32
+adds `DialogSettings.debug`.

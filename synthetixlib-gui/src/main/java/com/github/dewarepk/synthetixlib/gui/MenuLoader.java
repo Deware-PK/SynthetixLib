@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Predicate;
 import org.jspecify.annotations.Nullable;
 
 /** Reads, parses and checks one menu file against what code registered; stateless, shared by every menu. */
@@ -40,12 +41,17 @@ final class MenuLoader {
     private final MenuStore store;
     private final MenuParser parser;
     private final TextService tags;
+    private final Predicate<String> linked;
 
-    /** @param text tells the placeholders of a text from the MiniMessage tags it uses */
-    MenuLoader(final MenuStore store, final MenuParser parser, final TextService text) {
+    /**
+     * @param text   tells the placeholders of a text from the MiniMessage tags it uses
+     * @param linked tells whether a link prefix ('dialog') has a screen opener
+     */
+    MenuLoader(final MenuStore store, final MenuParser parser, final TextService text, final Predicate<String> linked) {
         this.store = store;
         this.parser = parser;
         this.tags = text;
+        this.linked = linked;
     }
 
     /**
@@ -65,7 +71,7 @@ final class MenuLoader {
         if (file == null) {
             return new Loaded(null, new ReloadResult(strings(parsed.errors()), strings(parsed.warnings()), false));
         }
-        final MenuChecker.Checked checked = MenuChecker.check(file, registered, tags);
+        final MenuChecker.Checked checked = MenuChecker.check(file, registered, tags, linked);
         final List<Problem> warnings = new ArrayList<>(parsed.warnings());
         warnings.addAll(checked.warnings());
         final Resolved resolved = new Resolved(file, checked.inert());

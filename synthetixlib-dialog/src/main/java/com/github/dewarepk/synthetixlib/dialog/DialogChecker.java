@@ -123,7 +123,7 @@ final class DialogChecker {
     }
 
     /** Every MiniMessage text of the file by its path. */
-    private static Map<String, String> texts(final DialogFile file) {
+    static Map<String, String> texts(final DialogFile file) {
         final Map<String, String> out = new LinkedHashMap<>();
         out.put("title", file.title());
         file.externalTitle().ifPresent(text -> out.put("external-title", text));

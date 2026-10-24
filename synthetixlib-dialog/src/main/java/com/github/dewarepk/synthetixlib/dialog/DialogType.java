@@ -25,8 +25,8 @@ public final class DialogType<C> {
 
     private final String id;
     private final Registrations<C> registrations;
-    private final DialogLoader loader;
-    private final ViewHost host;
+    private final @Nullable DialogLoader loader;
+    private final @Nullable ViewHost host;
     private volatile DialogLoader.Resolved resolved = DialogLoader.Resolved.empty();
 
     DialogType(final String id, final Registrations<C> registrations, final DialogLoader loader, final ViewHost host) {
@@ -34,6 +34,20 @@ public final class DialogType<C> {
         this.registrations = registrations;
         this.loader = loader;
         this.host = host;
+    }
+
+    /**
+     * A dialog of the registry (bootstrap): its file was read already and never changes, so it has no loader.
+     *
+     * @param host {@code null} for the throwaway dialog the bootstrap renders from, which is never opened
+     */
+    DialogType(final String id, final Registrations<C> registrations, final DialogLoader.Resolved resolved,
+               final @Nullable ViewHost host) {
+        this.id = id;
+        this.registrations = registrations;
+        this.loader = null;
+        this.host = host;
+        this.resolved = resolved;
     }
 
     /** @return the id, which is also the name of the file {@code dialogs/<id>.yml} */
@@ -86,7 +100,7 @@ public final class DialogType<C> {
      */
     public void open(final Player player, final @Nullable C context) {
         Objects.requireNonNull(player, "player");
-        host.open(this, player, context);
+        requireHost().open(this, player, context);
     }
 
     /**
@@ -100,7 +114,7 @@ public final class DialogType<C> {
      */
     @ApiStatus.Internal
     public Dialog preview(final String playerName, final @Nullable C context) {
-        return host.preview(this, Objects.requireNonNull(playerName, "playerName"), context);
+        return requireHost().preview(this, Objects.requireNonNull(playerName, "playerName"), context);
     }
 
     /**
@@ -114,7 +128,7 @@ public final class DialogType<C> {
      */
     @ApiStatus.Internal
     public DialogView<C> attach(final Player player, final @Nullable C context) {
-        return host.attach(this, Objects.requireNonNull(player, "player"), context);
+        return requireHost().attach(this, Objects.requireNonNull(player, "player"), context);
     }
 
     /**
@@ -137,6 +151,13 @@ public final class DialogType<C> {
         callback.accept(response, audience);
     }
 
+    private ViewHost requireHost() {
+        if (host == null) {
+            throw new IllegalStateException("Dialog '" + id + "' is not shown by a service");
+        }
+        return host;
+    }
+
     Registrations<C> registrations() {
         return registrations;
     }
@@ -147,6 +168,9 @@ public final class DialogType<C> {
 
     /** Reads the file again; a file that cannot be used leaves the dialog as it was. */
     ReloadResult reload() {
+        if (loader == null) {
+            return new ReloadResult(java.util.List.of(), java.util.List.of(), false); // registry dialogs are fixed until restart
+        }
         final DialogLoader.Loaded loaded = loader.load(id, registrations, resolved);
         if (loaded.resolved() != null) {
             resolved = Objects.requireNonNull(loaded.resolved());

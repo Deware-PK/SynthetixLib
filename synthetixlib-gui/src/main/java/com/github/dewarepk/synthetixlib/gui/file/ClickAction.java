@@ -16,7 +16,8 @@ import org.bukkit.NamespacedKey;
  * }</pre>
  *
  * <p>Built-in names: {@code close back refresh page-next page-previous open:<menu> command:<cmd> console:<cmd>
- * message:<text> sound:<key> action:<name>}.
+ * message:<text> sound:<key> action:<name>}. Any other {@code name:argument} is a link to a screen of another module
+ * ({@code dialog:sell}, see {@code GuiService#link}).
  */
 public sealed interface ClickAction {
 
@@ -86,6 +87,17 @@ public sealed interface ClickAction {
     }
 
     /**
+     * {@code <prefix>:<id>}: opens a screen of another module that was linked with {@code GuiService#link}, e.g.
+     * {@code dialog:sell}. A prefix nothing is linked to is reported when the menu is loaded and the item is inert.
+     */
+    record Linked(String prefix, String id) implements ClickAction {
+        public Linked {
+            Objects.requireNonNull(prefix, "prefix");
+            Objects.requireNonNull(id, "id");
+        }
+    }
+
+    /**
      * Reads the text form.
      *
      * @param raw e.g. {@code close} or {@code open:my-listings}; the name is not case sensitive, the argument is
@@ -115,9 +127,14 @@ public sealed interface ClickAction {
             case "message" -> new Message(required(name, "text", argument));
             case "sound" -> new PlaySound(soundKey(required(name, "a sound key", argument)));
             case "action" -> new Run(identifier(name, "action name", argument));
-            default -> throw new IllegalArgumentException("unknown action '" + (name.isEmpty() ? text : name)
-                    + "' (use close, back, refresh, page-next, page-previous, open:<menu>, command:<cmd>, "
-                    + "console:<cmd>, message:<text>, sound:<key> or action:<name>)");
+            default -> {
+                if (argument != null && Pattern.matches(NAME_PATTERN, name)) {
+                    yield new Linked(name, identifier(name, "screen id", argument));
+                }
+                throw new IllegalArgumentException("unknown action '" + (name.isEmpty() ? text : name)
+                        + "' (use close, back, refresh, page-next, page-previous, open:<menu>, command:<cmd>, "
+                        + "console:<cmd>, message:<text>, sound:<key>, action:<name> or <linked prefix>:<id>)");
+            }
         };
     }
 
@@ -135,6 +152,7 @@ public sealed interface ClickAction {
             case Message message -> "message:" + message.text();
             case PlaySound sound -> "sound:" + sound.sound();
             case Run run -> "action:" + run.name();
+            case Linked linked -> linked.prefix() + ":" + linked.id();
         };
     }
 

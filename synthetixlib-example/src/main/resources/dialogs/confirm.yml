@@ -1,0 +1,10 @@
+# The /example dialog confirm demo: a plain yes/no question.
+config-version: 1
+title: '<lang:confirm-title>'
+type: confirmation
+body:
+  - message: '<lang:confirm-text>'
+    width: 250
+buttons:
+  yes: { label: '<lang:confirm-yes>', click: ['action:confirmed'] }
+  no: { label: '<lang:confirm-no>', click: [close] }

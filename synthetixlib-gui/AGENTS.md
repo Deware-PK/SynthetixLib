@@ -87,3 +87,6 @@ Rules specific to gui
     have no `AsyncLoads`: their async source runs inline. Never call the source of an async list on the viewer's thread.
   - Resource-pack strings need no code: ItemsAdder `:x:` is text and unknown tags (`<glyph:x>`) stay literal in MiniMessage.
     `LangAndPassthroughTest` and the `gui.title-passthrough` self-test guard that; do not switch the parser to strict mode.
+- Links (P2-32): `ClickAction.Linked(prefix, id)` for any `name:argument` that is not built in; `GuiService#link(prefix, ScreenOpener)` /
+  `#opener()`; `MenuChecker` makes an item inert when its prefix is not linked (`MenuLoader` gets `links::containsKey`);
+  `ViewManager#openLinked` calls the opener (the client replaces the inventory screen, no explicit close).

@@ -5,7 +5,15 @@ import static com.github.dewarepk.synthetixexample.selftest.SelfTest.require;
 import com.github.dewarepk.synthetixlib.config.Configs;
 import com.github.dewarepk.synthetixlib.config.FilesReloadResult;
 import com.github.dewarepk.synthetixlib.core.SynthetixLib;
+import com.github.dewarepk.synthetixexample.ExampleBootstrap;
+import com.github.dewarepk.synthetixexample.SynthetixExamplePlugin;
 import com.github.dewarepk.synthetixlib.dialog.DialogService;
+import com.github.dewarepk.synthetixlib.gui.GuiService;
+import com.github.dewarepk.synthetixlib.gui.MenuType;
+import io.papermc.paper.registry.RegistryAccess;
+import io.papermc.paper.registry.RegistryKey;
+import io.papermc.paper.registry.TypedKey;
+import io.papermc.paper.registry.keys.tags.DialogTagKeys;
 import com.github.dewarepk.synthetixlib.dialog.DialogType;
 import com.github.dewarepk.synthetixlib.dialog.file.ClickAction;
 import com.github.dewarepk.synthetixlib.dialog.file.DialogBody;
@@ -117,7 +125,66 @@ final class DialogSelfTests {
                 SelfTest.sync("dialog.fallback", () -> fallback(plugin, dialogs)),
                 SelfTest.sync("dialog.submit", () -> submit(plugin, dialogs, submitBed)),
                 SelfTest.async("dialog.submit-async", () -> submitAsync(submitBed)),
-                SelfTest.sync("dialog.limits", () -> limits(plugin)));
+                SelfTest.sync("dialog.limits", () -> limits(plugin)),
+                SelfTest.sync("dialog.registry", () -> registry(plugin, dialogs)),
+                SelfTest.sync("dialog.link", () -> link(plugin, lib, configs, dialogs)));
+    }
+
+    /**
+     * The dialog ExampleBootstrap registered is in the server's dialog registry and in the quick-actions tag, and its
+     * buttons are routed (the way a custom click event is) to the handlers registered in code.
+     */
+    private static void registry(final JavaPlugin plugin, final DialogService dialogs) throws Exception {
+        final NamespacedKey key = new NamespacedKey("synthetixexample", "help");
+        final var registry = RegistryAccess.registryAccess().getRegistry(RegistryKey.DIALOG);
+        require(registry.get(key) != null, "synthetixexample:help is not in the dialog registry");
+        require(registry.getTag(DialogTagKeys.QUICK_ACTIONS).contains(TypedKey.create(RegistryKey.DIALOG, key)),
+                "synthetixexample:help is not in the quick actions tag");
+
+        final AtomicInteger pings = new AtomicInteger();
+        final DialogType<Void> help = dialogs.bootstrapped(((SynthetixExamplePlugin) plugin).dialogRegistry())
+                .registered(ExampleBootstrap.HELP)
+                .action("ping", click -> pings.incrementAndGet())
+                .build();
+        require(!help.isInert("buttons.ping"), "the ping button must work: it uses a registered action");
+        require(help.file().kind() == DialogKind.MULTI_ACTION, "kind " + help.file().kind());
+
+        final FakePlayer player = new FakePlayer("Pinger", Locale.US);
+        dialogs.click("synthetixexample:help/ping", player.player, new Fake(Map.of()));
+        require(pings.get() == 1 && player.sounds == 1, "ping: handler " + pings.get() + ", sounds " + player.sounds);
+        require(player.closed == 1, "a click ends with the dialog closed: " + player.closed);
+
+        dialogs.click("synthetixexample:help/nope", player.player, new Fake(Map.of()));
+        dialogs.click("synthetixexample:other/ping", player.player, new Fake(Map.of()));
+        dialogs.click("synthetixexample:help", player.player, new Fake(Map.of()));
+        require(pings.get() == 1 && player.closed == 1, "an unknown button or dialog must do nothing");
+
+    }
+
+    /** {@code gui.link} makes {@code dialog:<id>} work in menu files, {@code dialogs.link} {@code menu:<id>}. */
+    private static void link(final JavaPlugin plugin, final SynthetixLib lib, final Configs configs,
+                             final DialogService dialogs) throws Exception {
+        Files.deleteIfExists(plugin.getDataFolder().toPath().resolve("menus/selftest-link.yml"));
+        Files.deleteIfExists(plugin.getDataFolder().toPath().resolve("dialogs/selftest-linkdlg.yml"));
+        final GuiService gui = GuiService.create(lib, configs);
+        gui.link("dialog", dialogs.opener());
+        final MenuType<Void> menu = gui.menu("selftest-link").build();
+        require(!menu.isInert('A'), "the dialog: item must work once 'dialog' is linked");
+        require(menu.isInert('B'), "elsewhere:somewhere has nothing linked, the item is inert");
+
+        final DialogType<Void> target = dialogs.dialog("selftest-linkdlg").build();
+        final FakePlayer player = new FakePlayer("Linker", Locale.US);
+        require(dialogs.opener().open(player.player, "selftest-linkdlg") && player.shown == 1,
+                "the dialog opener must show the dialog: " + player.shown);
+        require(!dialogs.opener().open(player.player, "no-such-dialog"), "an unknown id must answer false");
+        require(!gui.opener().open(player.player, "no-such-menu"), "an unknown menu must answer false");
+
+        final List<String> opened = new ArrayList<>();
+        dialogs.link("menu", (viewer, id) -> opened.add(id));
+        final DialogView<Void> view = target.attach(player.player, null);
+        target.click(view, "buttons.ok", new Fake(Map.of()), player.player);
+        require(opened.equals(List.of("selftest-link")), "menu: must call the linked opener: " + opened);
+        require(player.closed == 0, "the menu replaced the dialog, it must not be closed after it: " + player.closed);
     }
 
     /** What dialog.submit-async needs from dialog.submit: the dialog and the places its handlers write to. */

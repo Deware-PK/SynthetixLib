@@ -1,14 +1,20 @@
 package com.github.dewarepk.synthetixlib.dialog;
 
 import com.github.dewarepk.synthetixlib.config.codec.Codecs;
+import com.github.dewarepk.synthetixlib.core.ScreenOpener;
 import com.github.dewarepk.synthetixlib.core.SynthetixLib;
+import com.github.dewarepk.synthetixlib.dialog.file.ClickAction;
 import com.github.dewarepk.synthetixlib.dialog.file.DialogInput;
 import io.papermc.paper.dialog.Dialog;
+import io.papermc.paper.connection.PlayerGameConnection;
 import io.papermc.paper.dialog.DialogResponseView;
+import io.papermc.paper.event.player.PlayerCustomClickEvent;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
@@ -58,6 +64,9 @@ final class ViewManager implements ViewHost {
     private volatile @Nullable Fallback fallback;
     private volatile Function<String, @Nullable DialogType<?>> siblings = id -> null;
     private volatile @Nullable BiConsumer<Player, Runnable> executor;
+    private volatile @Nullable ScreenOpener menuOpener;
+    private volatile Function<String, @Nullable DialogType<?>> registryDialogs = key -> null;
+    private final Map<UUID, ClickGuard> registryGuards = new ConcurrentHashMap<>();
     private final AtomicBoolean threadNoted = new AtomicBoolean();
     private final Codecs codecs;
 
@@ -69,6 +78,12 @@ final class ViewManager implements ViewHost {
                 EventPriority.MONITOR, (l, event) -> {
                     if (event instanceof PlayerQuitEvent quit) {
                         drop(quit.getPlayer());
+                    }
+                }, lib.plugin());
+        lib.plugin().getServer().getPluginManager().registerEvent(PlayerCustomClickEvent.class, listener,
+                EventPriority.NORMAL, (l, event) -> {
+                    if (event instanceof PlayerCustomClickEvent click) {
+                        onCustomClick(click);
                     }
                 }, lib.plugin());
     }
@@ -89,6 +104,14 @@ final class ViewManager implements ViewHost {
 
     void executor(final BiConsumer<Player, Runnable> value) {
         this.executor = value;
+    }
+
+    void menuOpener(final ScreenOpener value) {
+        this.menuOpener = value;
+    }
+
+    void registryDialogs(final Function<String, @Nullable DialogType<?>> lookup) {
+        this.registryDialogs = lookup;
     }
 
     void siblings(final Function<String, @Nullable DialogType<?>> lookup) {
@@ -236,7 +259,7 @@ final class ViewManager implements ViewHost {
     }
 
     /** Runs the steps of a button on the viewer's thread, then ends with close, reshow or the next dialog. */
-    <C> void click(final DialogViewImpl<C> view, final List<com.github.dewarepk.synthetixlib.dialog.file.ClickAction> actions,
+    <C> void click(final DialogViewImpl<C> view, final List<ClickAction> actions,
                    final boolean exit) {
         final DialogViewImpl<?> root = view.root();
         final Player player = view.playerOrNull();
@@ -312,8 +335,20 @@ final class ViewManager implements ViewHost {
 
             @Override
             public boolean menu(final String menu) {
-                warnOnce("[dialogs/" + view.type().id() + ".yml] menu:" + menu + ": menus are not linked to this service");
-                return false;
+                final ScreenOpener opener = menuOpener;
+                if (opener == null) {
+                    warnOnce("[dialogs/" + view.type().id() + ".yml] menu:" + menu
+                            + ": menus are not linked to this service (DialogService#link)");
+                    return false;
+                }
+                if (!opener.open(player, menu)) {
+                    warnOnce("[dialogs/" + view.type().id() + ".yml] menu:" + menu + ": there is no menu with this id");
+                    return false;
+                }
+                // the menu replaced the screen: this dialog is over (closing it now would close the menu)
+                view.root().state().end();
+                registry.remove(player.getUniqueId(), view.root());
+                return true;
             }
 
             @Override
@@ -379,6 +414,111 @@ final class ViewManager implements ViewHost {
         }
     }
 
+    // --- registry dialogs ---------------------------------------------------------------------------------------
+
+    /**
+     * A button of a registry dialog was clicked ({@code namespace:path/button}). Only keys of dialogs this service knows
+     * are handled; a key of the plugin's own namespace that nobody knows is logged. The client can send these keys at any
+     * time, whatever it has open, so handlers must check their own state.
+     */
+    private void onCustomClick(final PlayerCustomClickEvent event) {
+        final Player player = event.getCommonConnection() instanceof PlayerGameConnection game ? game.getPlayer() : null;
+        routeClick(event.getIdentifier().asString(), player, event.getDialogResponseView());
+    }
+
+    /**
+     * @param key      {@code namespace:path/button}
+     * @param player   who clicked, {@code null} for a connection that is not in the game (configuration phase)
+     * @param response the answers, {@code null} if none
+     */
+    void routeClick(final String key, final @Nullable Player player, final @Nullable DialogResponseView response) {
+        final int slash = key.lastIndexOf('/');
+        final DialogType<?> type = slash < 0 ? null : registryDialogs.apply(key.substring(0, slash));
+        if (type == null) {
+            if (key.startsWith(lib.plugin().getName().toLowerCase(Locale.ROOT) + ":")) {
+                debug("ignored a click with the unknown key " + key);
+            }
+            return;
+        }
+        if (player == null) {
+            debug("ignored a click of " + key + " during the configuration phase (not supported yet)");
+            return;
+        }
+        registryClick(type, player, key.substring(slash + 1), response);
+    }
+
+    private <C> void registryClick(final DialogType<C> type, final Player player, final String button,
+                                   final @Nullable DialogResponseView response) {
+        if (closed) {
+            return;
+        }
+        final ClickGuard guard = registryGuards.computeIfAbsent(player.getUniqueId(), id -> new ClickGuard());
+        if (!guard.enter(System.nanoTime(), settings.registryClickInterval().toNanos())) {
+            debug("[dialogs/" + type.id() + "] ignored a click on " + button + " of " + player.getName()
+                    + ": the last registry click is still running or too recent");
+            return;
+        }
+        boolean scheduled = false;
+        try {
+            scheduled = registryClickGuarded(type, player, button, response);
+        } finally {
+            if (!scheduled) {
+                guard.leave();
+            }
+        }
+    }
+
+    /** @return {@code true} if the click was handed to the player's thread, which releases the guard when it is over */
+    private <C> boolean registryClickGuarded(final DialogType<C> type, final Player player, final String button,
+                                             final @Nullable DialogResponseView response) {
+        final DialogViewImpl<C> view = new DialogViewImpl<>(this, type, player, player.getName(), null, null);
+        final String path = "buttons." + button;
+        final var file = view.resolved().file();
+        final var found = file.buttons().byPath().get(path);
+        if (found == null) {
+            debug("[dialogs/" + type.id() + "] ignored a click on the unknown button " + button);
+            return false;
+        }
+        final List<ClickAction> actions = view.resolved().inert().contains(path) ? List.of() : found.clicks().actions();
+        final Map<String, Object> answers = response == null ? Map.of() : readAnswers(view, response);
+        final boolean exit = DialogRenderer.isExit(file.kind(), path, actions);
+        onPlayerThread(player, () -> {
+            try {
+                if (closed) {
+                    return;
+                }
+                final DialogViewImpl<?> old = registry.get(player.getUniqueId());
+                if (old != null) {
+                    old.state().end();
+                }
+                registry.put(player.getUniqueId(), view);
+                view.state().begin();
+                view.answers(answers);
+                click(view, actions, exit);
+            } finally {
+                if (!view.isDeferred()) { // else the async handler releases the guard, see asyncDone
+                    releaseGuard(player);
+                }
+            }
+        });
+        return true;
+    }
+
+    private void releaseGuard(final Player player) {
+        final ClickGuard guard = registryGuards.get(player.getUniqueId());
+        if (guard != null) {
+            guard.leave();
+        }
+    }
+
+    /** A {@code submitAsync} handler is over: the next registry click of its player may run. */
+    void asyncDone(final DialogViewImpl<?> root) {
+        final Player player = root.playerOrNull();
+        if (player != null) {
+            releaseGuard(player);
+        }
+    }
+
     // --- previews and tests -------------------------------------------------------------------------------------
 
     /** Renders {@code type} for nobody (self-tests); the registered code is called with a view that has no player. */
@@ -419,8 +559,13 @@ final class ViewManager implements ViewHost {
         }
     }
 
+    /** Logs at INFO when {@link DialogSettings#debug()} is on, else at FINE. */
     void debug(final String message) {
-        lib.plugin().getLogger().fine(message);
+        if (settings.debug()) {
+            lib.plugin().getLogger().info(message);
+        } else {
+            lib.plugin().getLogger().fine(message);
+        }
     }
 
     void warnOnce(final String message) {
@@ -437,6 +582,7 @@ final class ViewManager implements ViewHost {
             view.state().end();
         }
         registry.clearBack(player.getUniqueId());
+        registryGuards.remove(player.getUniqueId());
     }
 
     /** Ends every view and closes the dialogs on their screens, then stops listening. Idempotent. */
@@ -445,6 +591,7 @@ final class ViewManager implements ViewHost {
             return;
         }
         closed = true;
+        registryGuards.clear();
         for (final DialogViewImpl<?> view : registry.clearAll()) {
             view.state().end();
             final Player player = view.playerOrNull();

@@ -3,6 +3,8 @@ package com.github.dewarepk.synthetixlib.gui;
 import com.github.dewarepk.synthetixlib.config.Configs;
 import com.github.dewarepk.synthetixlib.config.FilesReloadResult;
 import com.github.dewarepk.synthetixlib.config.LocaleHandle;
+import com.github.dewarepk.synthetixlib.core.ScreenOpener;
+import com.github.dewarepk.synthetixlib.core.ScreenOpener;
 import com.github.dewarepk.synthetixlib.core.SynthetixLib;
 import com.github.dewarepk.synthetixlib.gui.file.ClickAction;
 import com.github.dewarepk.synthetixlib.gui.file.ClickBindings;
@@ -10,6 +12,7 @@ import java.nio.file.Path;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import net.kyori.adventure.text.Component;
@@ -35,13 +38,14 @@ import net.kyori.adventure.text.Component;
  * {@link #reload()}; open views pick up a reloaded file on their next refresh.
  */
 public final class GuiService implements AutoCloseable {
-
     private static final Pattern ID = Pattern.compile(ClickAction.NAME_PATTERN);
+
 
     private final SynthetixLib lib;
     private final Configs configs;
     private final MenuRegistry registry;
     private final ViewManager views;
+    private final Map<String, ScreenOpener> links = new ConcurrentHashMap<>();
 
     private GuiService(final SynthetixLib lib, final Configs configs) {
         this.lib = lib;
@@ -49,8 +53,8 @@ public final class GuiService implements AutoCloseable {
         configs.codecs().register(ClickBindings.class, new ClickBindingsCodec());
         final Path folder = lib.plugin().getDataFolder().toPath().resolve("menus");
         final MenuLoader loader = new MenuLoader(new MenuStore(folder, lib.plugin()::getResource),
-                new MenuParser(configs.codecs()), lib.text());
-        this.views = new ViewManager(lib);
+                new MenuParser(configs.codecs()), lib.text(), links::containsKey);
+        this.views = new ViewManager(lib, links);
         this.registry = new MenuRegistry(loader, lib.plugin().getLogger(), views);
     }
 
@@ -141,6 +145,61 @@ public final class GuiService implements AutoCloseable {
                     + " at most 64)");
         }
         return new MenuBuilder<>(registry, id);
+    }
+
+    /**
+     * Lets menu files open screens of another module with {@code <prefix>:<id>} in a click list, e.g. {@code dialog:sell}.
+     * Link before the menus that use the prefix are built (or call {@link #reload()} after): a menu item that uses a prefix
+     * nothing is linked to is reported and inert.
+     *
+     * <pre>{@code
+     * gui.link("dialog", dialogs.opener());      // menus/shop.yml:  click: ['dialog:sell']
+     * }</pre>
+     *
+     * @param prefix lower case letters, digits, {@code -} and {@code _}; not a built-in action name
+     * @param opener opens the screen with the id after the colon for a player
+     * @return this
+     * @throws IllegalArgumentException if the prefix is not valid, is a built-in name or is linked already
+     * @throws IllegalStateException    if the service is closed
+     */
+    public GuiService link(final String prefix, final ScreenOpener opener) {
+        Objects.requireNonNull(prefix, "prefix");
+        Objects.requireNonNull(opener, "opener");
+        if (registry.isClosed()) {
+            throw new IllegalStateException("GuiService is closed");
+        }
+        if (!ID.matcher(prefix).matches() || isBuiltIn(prefix)) {
+            throw new IllegalArgumentException("'" + prefix + "' cannot be a link prefix (lower case letters, digits, - and _,"
+                    + " not a built-in action name such as close, open or action)");
+        }
+        if (links.putIfAbsent(prefix, opener) != null) {
+            throw new IllegalArgumentException("the prefix '" + prefix + "' is linked already");
+        }
+        return this;
+    }
+
+    /** Names the click action parser reads itself; a link cannot use them as a prefix. */
+    private static boolean isBuiltIn(final String name) {
+        return switch (name) {
+            case "close", "back", "refresh", "page-next", "page-previous", "open", "command", "console", "message",
+                    "sound", "action" -> true;
+            default -> false;
+        };
+    }
+
+    /**
+     * @return opens the menu with the given id (a menu built by this service) for a player; {@code false} if there is
+     *         none. Hand it to another module's {@code link}.
+     */
+    public ScreenOpener opener() {
+        return (player, id) -> {
+            final MenuType<?> menu = registry.find(id);
+            if (menu == null) {
+                return false;
+            }
+            menu.open(player);
+            return true;
+        };
     }
 
     /**

@@ -3,6 +3,7 @@ package com.github.dewarepk.synthetixexample.demo;
 import com.github.dewarepk.synthetixlib.config.ConfigCollection;
 import com.github.dewarepk.synthetixlib.config.Configs;
 import com.github.dewarepk.synthetixlib.config.LocaleHandle;
+import com.github.dewarepk.synthetixlib.core.ScreenOpener;
 import com.github.dewarepk.synthetixlib.core.SynthetixLib;
 import com.github.dewarepk.synthetixlib.core.pdc.PdcKey;
 import com.github.dewarepk.synthetixlib.gui.GuiService;
@@ -32,16 +33,20 @@ public final class DemoMenus {
     private static final DateTimeFormatter CLOCK = DateTimeFormatter.ofPattern("HH:mm:ss");
 
     private final MenuType<Void> demo;
+    private final ScreenOpener opener;
 
-    private DemoMenus(final MenuType<Void> demo) {
+    private DemoMenus(final MenuType<Void> demo, final ScreenOpener opener) {
         this.demo = demo;
+        this.opener = opener;
     }
 
     /** Builds both menus; their files are copied from the jar on the first start and never overwritten. */
     public static DemoMenus create(final SynthetixLib lib, final Configs configs,
                                    final ConfigCollection<Airdrop> airdrops, final LocaleHandle<Messages> lang,
-                                   final ClaimStore claims) {
-        final GuiService gui = GuiService.create(lib, configs).messages(lang, Messages::gui);
+                                   final ClaimStore claims,
+                                   final ScreenOpener dialogOpener) {
+        final GuiService gui = GuiService.create(lib, configs).messages(lang, Messages::gui)
+                .link("dialog", dialogOpener);
         final PdcKey<Boolean> notify = lib.keys().bool("demo_notify");
 
         final MenuType<Entry> airdropMenu = gui.menu("airdrop").<Entry>withContext()
@@ -63,7 +68,7 @@ public final class DemoMenus {
                 })
                 .action("confirm", click -> confirm(click.player(), click.view().takeInputs('S'), lang))
                 .build();
-        return new DemoMenus(demo);
+        return new DemoMenus(demo, gui.opener());
     }
 
     private static List<Entry> entries(final ConfigCollection<Airdrop> airdrops) {
@@ -99,6 +104,11 @@ public final class DemoMenus {
                     .forEach(left -> player.getWorld().dropItem(player.getLocation(), left));
         }
         lang.send(player, Messages::inputConfirmed, Placeholder.unparsed("count", String.valueOf(count)));
+    }
+
+    /** @return opens a menu of this service by id; hand it to the dialog service's {@code link("menu", ...)} */
+    public ScreenOpener opener() {
+        return opener;
     }
 
     /** Opens the demo menu for a player; any thread. */
