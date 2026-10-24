@@ -16,6 +16,7 @@ import com.github.dewarepk.synthetixlib.dialog.file.DialogInput;
 import com.github.dewarepk.synthetixlib.dialog.file.DialogKind;
 import com.github.dewarepk.synthetixlib.dialog.file.ItemSpec;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -218,12 +219,19 @@ final class DialogParser {
             errors.add(new Problem("inputs", "expected a section, got " + raw.getClass().getSimpleName()));
             return out;
         }
+        final Map<String, String> wireKeys = new HashMap<>();
         for (final Map.Entry<?, ?> entry : section.entrySet()) {
             final String key = String.valueOf(entry.getKey());
             final String path = "inputs." + key;
             if (!NAME.matcher(key).matches()) {
                 errors.add(new Problem(path, "an input key uses lower case letters, digits, - and _ (at most 64),"
                         + " the input is dropped"));
+                continue;
+            }
+            final String other = wireKeys.get(InputKeys.wire(key));
+            if (other != null) {
+                errors.add(new Problem(path, "the client gets '-' as '_' in input keys, so this key is the same as '"
+                        + other + "', the input is dropped"));
                 continue;
             }
             if (entry.getValue() == null) {
@@ -239,6 +247,7 @@ final class DialogParser {
             final DialogInput fixed = input(decoded, path, errors);
             if (fixed != null) {
                 out.put(key, fixed);
+                wireKeys.put(InputKeys.wire(key), key);
             }
         }
         return out;

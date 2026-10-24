@@ -1,5 +1,6 @@
 package com.github.dewarepk.synthetixlib.dialog;
 
+import com.github.dewarepk.synthetixlib.config.codec.Codecs;
 import com.github.dewarepk.synthetixlib.core.SynthetixLib;
 import com.github.dewarepk.synthetixlib.dialog.file.DialogInput;
 import io.papermc.paper.dialog.Dialog;
@@ -9,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -56,9 +58,12 @@ final class ViewManager implements ViewHost {
     private volatile @Nullable Fallback fallback;
     private volatile Function<String, @Nullable DialogType<?>> siblings = id -> null;
     private volatile @Nullable BiConsumer<Player, Runnable> executor;
+    private final AtomicBoolean threadNoted = new AtomicBoolean();
+    private final Codecs codecs;
 
-    ViewManager(final SynthetixLib lib) {
+    ViewManager(final SynthetixLib lib, final Codecs codecs) {
         this.lib = lib;
+        this.codecs = codecs;
         // No reflection: a plain executor, the way the gui and command modules hook the quit event.
         lib.plugin().getServer().getPluginManager().registerEvent(PlayerQuitEvent.class, listener,
                 EventPriority.MONITOR, (l, event) -> {
@@ -201,16 +206,24 @@ final class ViewManager implements ViewHost {
         return !closed && player != null && registry.get(player.getUniqueId()) == root;
     }
 
-    /** The answers of the inputs of the dialog the click came from. */
+    /** Logs (debug, once per service) which thread the first dialog callback arrived on. */
+    void noteCallbackThread() {
+        if (threadNoted.compareAndSet(false, true)) {
+            debug("the first dialog callback arrived on thread '" + Thread.currentThread().getName() + "'");
+        }
+    }
+
+    /** The answers of the inputs of the dialog the click came from, by file key; the client knows them by wire key. */
     Map<String, Object> readAnswers(final DialogViewImpl<?> view, final DialogResponseView response) {
         final Map<String, Object> out = new HashMap<>();
         view.resolved().file().inputs().forEach((key, input) -> {
+            final String wire = InputKeys.wire(key);
             try {
                 final Object value = switch (input) {
-                    case DialogInput.BoolInput ignored -> response.getBoolean(key);
-                    case DialogInput.NumberInput ignored -> response.getFloat(key);
-                    case DialogInput.TextInput ignored -> response.getText(key);
-                    case DialogInput.OptionInput ignored -> response.getText(key);
+                    case DialogInput.BoolInput ignored -> response.getBoolean(wire);
+                    case DialogInput.NumberInput ignored -> response.getFloat(wire);
+                    case DialogInput.TextInput ignored -> response.getText(wire);
+                    case DialogInput.OptionInput ignored -> response.getText(wire);
                 };
                 if (value != null) {
                     out.put(key, value);
@@ -253,7 +266,12 @@ final class ViewManager implements ViewHost {
         switch (pending) {
             case DialogViewImpl.Pending.Next next -> openUntyped(next.type(), player, next.context(), true);
             case DialogViewImpl.Pending.Reopen ignored -> reshow(root);
-            case null, default -> closeView(root);
+            case null -> {
+                if (!view.isDeferred()) { // else the async handler ends the view when it is over
+                    closeView(root);
+                }
+            }
+            default -> closeView(root);
         }
     }
 
@@ -315,8 +333,7 @@ final class ViewManager implements ViewHost {
                 if (handler != null) {
                     handler.accept(new ClickImpl<>(view));
                 } else if (registrations.submits().containsKey(action)) {
-                    warnOnce("[dialogs/" + view.type().id() + ".yml] action:" + action
-                            + " is a submit, which reads the answers in a later version of the library");
+                    submit(view, action, registrations.submits().get(action));
                 } else {
                     warnOnce("[dialogs/" + view.type().id() + ".yml] action:" + action + " is not registered");
                 }
@@ -324,8 +341,42 @@ final class ViewManager implements ViewHost {
         };
     }
 
+    /**
+     * Reads the answers into the record of a submit and calls the handler, or shows the dialog again with the errors
+     * (and what the player typed) without calling it.
+     */
+    private <C> void submit(final DialogViewImpl<C> view, final String name, final Registrations.Submit<C> submit) {
+        final var file = view.resolved().file();
+        final FormSubmit.Outcome outcome = FormSubmit.decode(codecs, file.inputs(), file.errors(), submit.form(),
+                view.answers());
+        final Object form = outcome.form();
+        if (form == null) {
+            debug("[dialogs/" + view.type().id() + ".yml] submit '" + name + "' refused: " + outcome.failures());
+            view.failures(outcome.failures());
+            view.reopen();
+            return;
+        }
+        final ClickImpl<C> click = new ClickImpl<>(view);
+        if (submit.async()) {
+            view.defer();
+        }
+        FormSubmit.run(submit.handler(), form, click, submit.async(), task -> {
+            try {
+                lib.scheduler().async().run(task);
+            } catch (final IllegalStateException e) {
+                view.finishAsync(); // the library closed: the handler never runs
+            }
+        }, e -> lib.plugin().getLogger().log(Level.SEVERE,
+                "[dialogs/" + view.type().id() + ".yml] submitAsync '" + name + "' threw", e), view::finishAsync);
+    }
+
     /** The click a handler is given. */
-    private record ClickImpl<C>(DialogView<C> view) implements DialogClick<C> {
+    private record ClickImpl<C>(DialogViewImpl<C> view) implements DialogClick<C> {
+
+        @Override
+        public DialogResponse response() {
+            return new ResponseImpl(view.resolved().file().inputs(), view.answers());
+        }
     }
 
     // --- previews and tests -------------------------------------------------------------------------------------

@@ -46,7 +46,12 @@ final class DialogViewImpl<C> implements DialogView<C> {
     private volatile Map<String, Object> answers = Map.of();
     /** Only touched on the viewer's thread; a view inside a list uses the fields of its root. */
     private @Nullable Pending pending;
-    private boolean inClick;
+    private volatile boolean inClick;
+    /** What the last submit refused; shown above the body of the next showing. */
+    private volatile List<FormSubmit.Failure> failures = List.of();
+    /** A handler on another thread decides how the view ends. */
+    private volatile boolean deferred;
+    private volatile boolean requested;
 
     /**
      * A view of a dialog shown to {@code player}; {@code player} is {@code null} for a preview.
@@ -81,6 +86,7 @@ final class DialogViewImpl<C> implements DialogView<C> {
 
     @Override
     public void reopen() {
+        root.requested = true;
         if (root.inClick) {
             root.pending = new Pending.Reopen();
         } else {
@@ -90,6 +96,7 @@ final class DialogViewImpl<C> implements DialogView<C> {
 
     @Override
     public void close() {
+        root.requested = true;
         if (root.inClick) {
             root.pending = new Pending.Close();
         } else {
@@ -99,6 +106,7 @@ final class DialogViewImpl<C> implements DialogView<C> {
 
     @Override
     public <N> void next(final DialogType<N> next, final @Nullable N nextContext) {
+        root.requested = true;
         if (root.inClick) {
             root.pending = new Pending.Next(next, nextContext);
         } else {
@@ -148,6 +156,34 @@ final class DialogViewImpl<C> implements DialogView<C> {
     void enterClick() {
         root.inClick = true;
         root.pending = null;
+        root.requested = false;
+        root.deferred = false;
+        failures = List.of();
+    }
+
+    /** The refused inputs of the last submit, shown above the body of the next showing. */
+    List<FormSubmit.Failure> failures() {
+        return failures;
+    }
+
+    void failures(final List<FormSubmit.Failure> value) {
+        failures = List.copyOf(value);
+    }
+
+    /** A {@code submitAsync} handler is running: the click does not end the view, {@link #finishAsync()} does. */
+    void defer() {
+        root.deferred = true;
+    }
+
+    boolean isDeferred() {
+        return root.deferred;
+    }
+
+    /** The async handler is over: close the dialog unless it asked for something else (reopen, next, close). */
+    void finishAsync() {
+        if (!root.requested) {
+            manager.closeView(root);
+        }
     }
 
     /** @return what the handlers asked for, {@code null} if nothing */
@@ -177,6 +213,7 @@ final class DialogViewImpl<C> implements DialogView<C> {
 
     private void onCallback(final int generation, final List<ClickAction> actions, final boolean exit,
                             final DialogResponseView response, final Audience audience) {
+        manager.noteCallbackThread();
         if (player == null || !isViewer(audience)) {
             manager.debug("[dialogs/" + type.id() + ".yml] ignored a click from somebody who is not the viewer");
             return;

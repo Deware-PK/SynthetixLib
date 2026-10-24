@@ -55,7 +55,7 @@ public final class DialogService implements AutoCloseable {
         final Path folder = lib.plugin().getDataFolder().toPath().resolve("dialogs");
         final DialogLoader loader = new DialogLoader(new DialogStore(folder, lib.plugin()::getResource),
                 new DialogParser(configs.codecs()), lib.text(), configs.codecs());
-        this.views = new ViewManager(lib);
+        this.views = new ViewManager(lib, configs.codecs());
         this.registry = new DialogRegistry(loader, lib.plugin().getLogger(), views);
         views.siblings(registry::find);
     }

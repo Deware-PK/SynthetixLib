@@ -31,9 +31,11 @@ import java.util.function.Supplier;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickCallback;
 import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.minimessage.Context;
 import net.kyori.adventure.text.minimessage.tag.Tag;
 import net.kyori.adventure.text.minimessage.tag.resolver.ArgumentQueue;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -101,6 +103,9 @@ final class DialogRenderer<C> {
         inside.add(type.id());
 
         final List<io.papermc.paper.registry.data.dialog.body.DialogBody> body = new ArrayList<>();
+        for (final FormSubmit.Failure failure : view.failures()) {
+            body.add(io.papermc.paper.registry.data.dialog.body.DialogBody.plainMessage(errorLine(failure)));
+        }
         for (final DialogBody entry : file.body()) {
             body.add(body(entry));
         }
@@ -119,6 +124,26 @@ final class DialogRenderer<C> {
         file.externalTitle().ifPresent(title -> base.externalTitle(pass.parse(title)));
         final DialogBase built = base.build();
         return Dialog.create(factory -> factory.empty().base(built).type(kind));
+    }
+
+    /**
+     * The line above the body for a refused input: the {@code errors.<key>} line of the file, else the language message
+     * {@code invalid-input}, else English. {@code <min> <max> <value>} are plain text, never parsed.
+     */
+    private Component errorLine(final FormSubmit.Failure failure) {
+        final TagResolver values = TagResolver.resolver(Placeholder.unparsed("min", failure.min()),
+                Placeholder.unparsed("max", failure.max()), Placeholder.unparsed("value", failure.value()));
+        if (failure.markup() != null) {
+            return env.text().parse(failure.markup(), values, pass.resolver());
+        }
+        final DialogMessages source = env.messages().get();
+        final Component message = source == null ? null
+                : source.get(view.playerOrNull(), "invalid-input", TagResolver.resolver(values, pass.placeholders()));
+        if (message != null) {
+            return message;
+        }
+        return Component.text(failure.key().isEmpty() ? "Invalid value" : "Invalid value: " + failure.key(),
+                NamedTextColor.RED);
     }
 
     // --- type and buttons ---------------------------------------------------------------------------------------
@@ -304,12 +329,13 @@ final class DialogRenderer<C> {
     // --- inputs -------------------------------------------------------------------------------------------------
 
     private io.papermc.paper.registry.data.dialog.input.DialogInput input(final String key, final DialogInput input) {
+        final String wire = InputKeys.wire(key);
         final Object initial = initialOf(key);
         final Component label = pass.parse(input.label());
         return switch (input) {
             case DialogInput.TextInput text -> {
                 final int limit = text.maxLength().orElse(DialogParser.DEFAULT_TEXT_LENGTH);
-                final var builder = io.papermc.paper.registry.data.dialog.input.DialogInput.text(key, label)
+                final var builder = io.papermc.paper.registry.data.dialog.input.DialogInput.text(wire, label)
                         .maxLength(limit);
                 text.width().ifPresent(builder::width);
                 text.multiline().ifPresent(multiline -> builder.multiline(
@@ -322,7 +348,7 @@ final class DialogRenderer<C> {
                 }
                 yield builder.build();
             }
-            case DialogInput.BoolInput bool -> io.papermc.paper.registry.data.dialog.input.DialogInput.bool(key, label)
+            case DialogInput.BoolInput bool -> io.papermc.paper.registry.data.dialog.input.DialogInput.bool(wire, label)
                     .initial(initial instanceof Boolean b ? b : bool.initial().orElse(false))
                     .build();
             case DialogInput.OptionInput option -> {
@@ -330,13 +356,13 @@ final class DialogRenderer<C> {
                 final List<SingleOptionDialogInput.OptionEntry> entries = new ArrayList<>();
                 option.options().forEach((id, entry) -> entries.add(SingleOptionDialogInput.OptionEntry.create(id,
                         pass.parse(entry.display().orElse(id)), chosen != null ? id.equals(chosen) : entry.isInitial())));
-                final var builder = io.papermc.paper.registry.data.dialog.input.DialogInput.singleOption(key, label,
+                final var builder = io.papermc.paper.registry.data.dialog.input.DialogInput.singleOption(wire, label,
                         entries);
                 option.width().ifPresent(builder::width);
                 yield builder.build();
             }
             case DialogInput.NumberInput number -> {
-                final var builder = io.papermc.paper.registry.data.dialog.input.DialogInput.numberRange(key, label,
+                final var builder = io.papermc.paper.registry.data.dialog.input.DialogInput.numberRange(wire, label,
                         (float) number.min(), (float) number.max());
                 number.width().ifPresent(builder::width);
                 number.step().ifPresent(step -> builder.step(step.floatValue()));
@@ -430,6 +456,10 @@ final class DialogRenderer<C> {
                 return name.equals("lang") && env.messages().get() != null;
             }
         });
+
+        TagResolver placeholders() {
+            return placeholders;
+        }
 
         TagResolver resolver() {
             return resolver;

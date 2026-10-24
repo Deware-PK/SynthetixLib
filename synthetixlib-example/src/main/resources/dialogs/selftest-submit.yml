@@ -1,0 +1,19 @@
+# Bundled with the example plugin: the dialog.submit self-tests copy it and answer it with fake clients.
+config-version: 1
+title: '<gold>Submit self-test'
+type: confirmation
+inputs:
+  price: { type: number, label: 'Price', min: 1, max: 100, step: 1, initial: 10 }
+  my-key: { type: text, label: 'Key with a dash', max-length: 8 }
+  duration:
+    type: option
+    label: 'Duration'
+    options:
+      h1: { display: '1 hour' }
+      h12: { display: '12 hours', initial: true }
+  anonymous: { type: bool, label: 'Hide my name' }
+buttons:
+  yes: { label: '<green>Send', click: ['action:send'] }
+  no: { label: '<red>Send later', click: ['action:send-async'] }
+errors:
+  price: '<red>Between <min> and <max>, not <value>'

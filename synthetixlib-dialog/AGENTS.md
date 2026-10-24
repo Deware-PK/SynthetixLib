@@ -4,7 +4,7 @@ Package: `com.github.dewarepk.synthetixlib.dialog` (only this module may use it)
 Depends on core + config (dialog files are read with the config codecs; no dependency on gui, see design §12.4).
 
 Status: **in progress** (P2-29 module + files + `DialogService.dialog()`, P2-30 rendering + views + one-use callbacks done;
-typed submit P2-31, registry dialogs + links P2-32, wrap-up P2-33). `submit` buttons do nothing yet (P2-31).
+P2-31 typed submit done; registry dialogs + links P2-32, wrap-up P2-33).
 
 Types
 - `DialogService` - one per `SynthetixLib`; `dialog(id)` -> `DialogBuilder<Void>`; `reload()` re-reads every dialog file.
@@ -13,8 +13,8 @@ Types
   to) and `build()`s a `DialogType<C>`. `withContext()` must come first (it changes `C`).
 - `DialogType<C>` - immutable apart from the swapped file contents; `file()` (parsed `DialogFile`), `isInert(buttonPath)`,
   `open(player[, ctx])` (any thread). `preview` / `attach` / `click` are `@ApiStatus.Internal` hooks for self-tests.
-- `DialogView<C>` - `player() context() reopen() close() next(type, ctx)`; `DialogClick<C>` - `view() player()` (P2-31 adds
-  `response()`). Also on the service: `messages(lang, keys)` (`<lang:key>`), `settings(DialogSettings)` (callback lifetime,
+- `DialogView<C>` - `player() context() reopen() close() next(type, ctx)`; `DialogClick<C>` - `view() player() response()` (`DialogResponse`,
+  limit-checked answers). Also on the service: `messages(lang, keys)` (`<lang:key>`), `settings(DialogSettings)` (callback lifetime,
   default 5m), `fallback(cannotShow, handler)`, `@Internal executor(...)` (self-tests with fake players).
 - `DialogBuilder` also has `item(name, fn)`: the item behind `item: { placeholder: name }` (the design lacked a way to register it).
 - `dialog.file` (INTERNAL, public only so the config codecs can map them): `DialogFile`, `DialogKind`, `DialogBody`
@@ -63,3 +63,7 @@ Rules specific to dialog
 - No static state; the model records must stay `public` (the config module maps them by reflection, this module has none).
 - Unit tests need no server: `DialogFixtures.codecs()` uses `Material.matchMaterial`. Anything with real Bukkit codecs is
   covered by the `dialog.*` self-tests in `synthetixlib-example`.
+- Submit (P2-31): `FormValidator` (file limits, pure) then `FormSubmit` (config codecs -> record; failures -> `errors.<key>` lines
+  shown above the body of the next showing, `DialogViewImpl.failures`). Input keys go to the client with `-` as `_`
+  (`InputKeys.wire`; Paper refuses `-`), answers are stored by file key. `submitAsync`: view `defer()`s, `finishAsync()` closes it
+  unless the handler asked for something. `ResponseImpl` = `click.response()`.

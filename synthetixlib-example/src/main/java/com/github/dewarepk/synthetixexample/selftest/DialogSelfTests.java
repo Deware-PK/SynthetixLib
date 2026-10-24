@@ -27,6 +27,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
@@ -49,6 +52,10 @@ final class DialogSelfTests {
     public record GoForm(double price, String duration, String note, boolean anonymous) {
     }
 
+    /** The form of selftest-submit.yml; public so the config codecs can fill it. */
+    public record SubmitForm(double price, String myKey, String duration, boolean anonymous) {
+    }
+
     private DialogSelfTests() {
     }
 
@@ -56,6 +63,7 @@ final class DialogSelfTests {
         final Configs configs = Configs.create(lib);
         final DialogService dialogs = DialogService.create(lib, configs);
         final AtomicReference<DialogType<Void>> files = new AtomicReference<>();
+        final SubmitBed submitBed = new SubmitBed();
         // the fake players of dialog.callback are not entities: their tasks run right away, on this (server) thread
         dialogs.executor((player, task) -> task.run());
         return List.of(
@@ -106,7 +114,131 @@ final class DialogSelfTests {
                 }),
                 SelfTest.sync("dialog.render", () -> render(plugin, dialogs, files.get())),
                 SelfTest.sync("dialog.callback", () -> callback(plugin, lib, configs, dialogs)),
-                SelfTest.sync("dialog.fallback", () -> fallback(plugin, dialogs)));
+                SelfTest.sync("dialog.fallback", () -> fallback(plugin, dialogs)),
+                SelfTest.sync("dialog.submit", () -> submit(plugin, dialogs, submitBed)),
+                SelfTest.async("dialog.submit-async", () -> submitAsync(submitBed)),
+                SelfTest.sync("dialog.limits", () -> limits(plugin)));
+    }
+
+    /** What dialog.submit-async needs from dialog.submit: the dialog and the places its handlers write to. */
+    private record SubmitBed(AtomicReference<DialogType<Void>> type, List<SubmitForm> forms,
+                             List<SubmitForm> asyncForms, AtomicReference<Boolean> asyncOnServerThread) {
+        SubmitBed() {
+            this(new AtomicReference<>(), new CopyOnWriteArrayList<>(), new CopyOnWriteArrayList<>(),
+                    new AtomicReference<>());
+        }
+    }
+
+    /**
+     * Typed answers through the real callback: a valid form reaches the handler, a refused one shows the dialog again
+     * (fresh buttons, typed values) without calling it. The key {@code my-key} of the file is {@code my_key} on the wire.
+     */
+    private static void submit(final JavaPlugin plugin, final DialogService dialogs, final SubmitBed bed)
+            throws Exception {
+        Files.deleteIfExists(plugin.getDataFolder().toPath().resolve("dialogs/selftest-submit.yml"));
+        final DialogType<Void> type = dialogs.dialog("selftest-submit")
+                .submit("send", SubmitForm.class, (form, click) -> bed.forms().add(form))
+                .submitAsync("send-async", SubmitForm.class, (form, click) -> {
+                    bed.asyncOnServerThread().set(Bukkit.isPrimaryThread());
+                    bed.asyncForms().add(form);
+                })
+                .build();
+        bed.type().set(type);
+        require(!type.isInert("buttons.yes") && !type.isInert("buttons.no"),
+                "the form fits the inputs: yes " + type.isInert("buttons.yes") + ", no " + type.isInert("buttons.no"));
+
+        final FakePlayer valid = new FakePlayer("Valid", Locale.US);
+        final DialogView<Void> view = type.attach(valid.player, null);
+        type.click(view, "buttons.yes", new Fake(Map.of("price", 12f, "my_key", "abc", "duration", "h1",
+                "anonymous", true)), valid.player);
+        require(bed.forms().equals(List.of(new SubmitForm(12, "abc", "h1", true))), "the form: " + bed.forms());
+        require(valid.closed == 1 && valid.shown == 0, "a valid form ends with the dialog closed");
+
+        // the file key is sent without the dash: an answer under 'my-key' is no answer
+        final FakePlayer dash = new FakePlayer("Dash", Locale.US);
+        final DialogView<Void> dashView = type.attach(dash.player, null);
+        type.click(dashView, "buttons.yes", new Fake(Map.of("price", 12f, "my-key", "abc", "duration", "h1",
+                "anonymous", true)), dash.player);
+        require(bed.forms().size() == 1 && dash.shown == 1 && dash.closed == 0,
+                "an answer under the file key must be refused: forms " + bed.forms() + ", shown " + dash.shown);
+
+        final Map<String, Object> good = Map.of("price", 12f, "my_key", "abc", "duration", "h1", "anonymous", false);
+        for (final Map.Entry<String, Object> bad : Map.<String, Object>of("price", 500f, "my_key", "123456789",
+                "duration", "h99").entrySet()) {
+            final FakePlayer refused = new FakePlayer("Refused-" + bad.getKey(), Locale.US);
+            final DialogView<Void> refusedView = type.attach(refused.player, null);
+            final Map<String, Object> answers = new java.util.HashMap<>(good);
+            answers.put(bad.getKey(), bad.getValue());
+            type.click(refusedView, "buttons.yes", new Fake(answers), refused.player);
+            require(bed.forms().size() == 1, "'" + bad.getKey() + "' = " + bad.getValue() + " reached the handler");
+            require(refused.shown == 1 && refused.closed == 0, "the dialog is shown again: shown " + refused.shown);
+            // the new showing has fresh buttons: the same view submits a corrected form
+            type.click(refusedView, "buttons.yes", new Fake(good), refused.player);
+            require(bed.forms().size() == 2 && refused.closed == 1, "after the error the corrected form works: "
+                    + bed.forms());
+            bed.forms().remove(1);
+        }
+        final FakePlayer offStep = new FakePlayer("OffStep", Locale.US);
+        type.click(type.attach(offStep.player, null), "buttons.yes", new Fake(Map.of("price", 12.5f, "my_key", "a",
+                "duration", "h1", "anonymous", true)), offStep.player);
+        require(bed.forms().size() == 1 && offStep.shown == 1, "a value off the step reached the handler");
+    }
+
+    /** {@code submitAsync}: the handler is not on the server thread and the dialog closes when it is over. */
+    private static CompletableFuture<?> submitAsync(final SubmitBed bed) {
+        final DialogType<Void> type = bed.type().get();
+        require(type != null, "dialog.submit did not run");
+        final FakePlayer player = new FakePlayer("Async", Locale.US);
+        final DialogView<Void> view = type.attach(player.player, null);
+        type.click(view, "buttons.no", new Fake(Map.of("price", 7f, "my_key", "z", "duration", "h12",
+                "anonymous", false)), player.player);
+        return CompletableFuture.runAsync(() -> {
+            final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (player.closed == 0 && System.nanoTime() < deadline) {
+                Thread.onSpinWait();
+            }
+            require(bed.asyncForms().equals(List.of(new SubmitForm(7, "z", "h12", false))),
+                    "the async form: " + bed.asyncForms());
+            require(Boolean.FALSE.equals(bed.asyncOnServerThread().get()),
+                    "the async handler ran on the server thread: " + bed.asyncOnServerThread().get());
+            require(player.closed == 1, "the dialog is closed when the async handler is over: " + player.closed);
+        });
+    }
+
+    /**
+     * What Paper accepts, written to the log for the task result: the size of an item body, a {@code -} in an input
+     * key. Fails if the module's own limits (256, keys with {@code _}) disagree with Paper.
+     */
+    private static void limits(final JavaPlugin plugin) {
+        final ItemStack stack = new ItemStack(Material.DIAMOND);
+        require(accepts(() -> io.papermc.paper.registry.data.dialog.body.DialogBody.item(stack).width(256).height(256)
+                .build()), "Paper refuses an item body of 256 x 256, the module allows it");
+        final boolean width257 = accepts(() -> io.papermc.paper.registry.data.dialog.body.DialogBody.item(stack)
+                .width(257).build());
+        final boolean height257 = accepts(() -> io.papermc.paper.registry.data.dialog.body.DialogBody.item(stack)
+                .height(257).build());
+        final boolean dash = accepts(() -> dialogWithKey("my-key"));
+        final boolean underscore = accepts(() -> dialogWithKey("my_key"));
+        plugin.getLogger().info("dialog.limits: Paper accepts item body width 257: " + width257 + ", height 257: "
+                + height257 + "; input key 'my-key': " + dash + ", 'my_key': " + underscore);
+        require(!width257 && !height257, "Paper accepts an item body above 256, the module clamps it to 256");
+        require(underscore, "Paper refuses an input key with an underscore");
+    }
+
+    private static void dialogWithKey(final String key) {
+        final var input = io.papermc.paper.registry.data.dialog.input.DialogInput.bool(key, Component.text("x")).build();
+        Dialog.create(factory -> factory.empty().base(io.papermc.paper.registry.data.dialog.DialogBase
+                .builder(Component.text("t")).inputs(List.of(input)).build())
+                .type(io.papermc.paper.registry.data.dialog.type.DialogType.notice()));
+    }
+
+    private static boolean accepts(final Runnable build) {
+        try {
+            build.run();
+            return true;
+        } catch (final RuntimeException e) {
+            return false;
+        }
     }
 
     /** Every kind of dialog, body entry and input is accepted by the server's dialog API, with placeholders resolved. */
@@ -256,7 +388,7 @@ final class DialogSelfTests {
         final List<String> messages = new ArrayList<>();
         final List<String> commands = new ArrayList<>();
         int shown;
-        int closed;
+        volatile int closed;
         int sounds;
 
         FakePlayer(final String name, final Locale locale) {
