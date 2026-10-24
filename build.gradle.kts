@@ -3,3 +3,7 @@
 //   synthetix.library       - published library module (java-library + maven-publish)
 //   synthetix.paper-plugin  - runnable Paper plugin (shadow + relocate, run-paper, smoke tests)
 // Versions live in gradle/libs.versions.toml.
+
+plugins {
+    id("synthetix.snippets")
+}

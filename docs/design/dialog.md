@@ -166,7 +166,7 @@ No static state: the bootstrap object is handed to `DialogService` through the p
 - Bedrock (Geyser): see the table below (filled by the owner after the manual test, §10).
 - Clients below 1.21.6 (ViaVersion) cannot see dialogs → `fallback` hook (§12.6).
 
-**Bedrock / Geyser support** (owner fills in: works / partly / no, plus notes):
+**Bedrock / Geyser support** (owner fills in: works / partly / no, plus notes). Tested on `runServer26` (Paper 26.3): current Geyser builds only support the latest Java version, not 1.21.11.
 
 | Dialog type | Inputs | Result | Notes |
 |---|---|---|---|

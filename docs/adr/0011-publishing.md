@@ -1,6 +1,6 @@
 # 0011. Publishing: mavenLocal until 1.0.0, then JitPack
 
-- Status: Accepted
+- Status: Accepted, amended by 0015 (JitPack from 0.x)
 - Date: 2026-10-14
 
 ## Decision

@@ -21,15 +21,14 @@
 | command | ✅ 0.3.0, tag v0.3.0 (P2-15..18) |
 | gui | ✅ 0.4.0, tag v0.4.0 (P2-19..23a) |
 | database | ✅ 0.5.0, tag v0.5.0 (P2-24..28); owner เทสในเกมผ่าน 24 ต.ค. |
-| dialog | ✅ design approved 24 ต.ค. (ทุกข้อ default) · tasks P2-29..P2-33 todo; Geyser เทสด้วย Bedrock บน Windows ตอน P2-33 |
+| dialog | ✅ 0.6.0 shipped, tag v0.6.0 (P2-29..33); รอ owner เทสในเกม + Geyser (P2-33 step 1-2) |
 | npc | ☐ |
 
-Smoke ล่าสุด: 75/75 PASS บน 1.21.11 และ 26.3
+Smoke ล่าสุด: 84/84 PASS บน 1.21.11 และ 26.3
 
 ## ค้าง
-- **push**: `main` นำ `origin/main` 1 commit (database 0.5.0) — Phakin ต้อง `git push origin main --tags`
-- commit docs: P2-28 done, dialog.md, P1-05, P2-29..33, HANDOFF v3, ROADMAP
-- dialog: ส่ง P2-29 → 30 → 31 → 32 → 33 (ทำตามลำดับ)
+- dialog: owner เทสในเกม + Geyser (26.3) → กรอก dialog.md §9 + thread → P2-33 done
+- Phase 3 docs (skill แบบ vercel-labs/agent-skills, ติดตั้ง `npx skills add Deware-PK/SynthetixLib`) + JitPack (ADR 0015): ส่ง P3-01 → 06; ship 0.7.0 = JitPack ครั้งแรก · npc เลื่อนไปก่อน
 
 ## Stack
 Gradle 9.8.1 · build-logic `synthetix.java-base|library|paper-plugin` · versions ใน `gradle/libs.versions.toml`

@@ -1,6 +1,7 @@
 # The /example menu: a paginated list of airdrops, a toggle, a placeholder, a ticking clock, an input slot and buttons.
 # Everything you see is in this file; the behaviour it refers to by name (list, state, action) is registered in DemoMenus.java.
 # Texts are <lang:key> from lang/<locale>.yml (section "gui"); write plain MiniMessage here if you do not need languages.
+# @snippet:demo-menu-yml
 title: '<lang:demo-title>'
 type: chest
 rows: 6
@@ -69,3 +70,4 @@ items:
     material: barrier
     name: '<lang:demo-close>'
     click: [close]
+# @end

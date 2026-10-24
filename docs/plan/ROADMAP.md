@@ -21,7 +21,7 @@ reviewed by the owner before implementation. Start with core. → `tasks/P1-01-c
 | 6 ✅ | dialog | Paper Dialog API wrapper: YAML dialogs, typed submit + server validation, registry dialogs at bootstrap, Geyser test → tasks P2-29..P2-33 | dupe-safe one-use buttons |
 | 7 | npc | PacketEvents player NPC (starts with Farm Workers prototype) | — |
 
-## Phase 3 — Docs ☐
+## Phase 3 — Docs ◐ AI-first skill (docs/design/docs-skill.md, ADR 0015 JitPack) → tasks P3-01..P3-06
 `docs/` site-style guides + `llms.txt` + runnable examples from `synthetixlib-example`, written after the API is stable.
 
 ## Products using the lib

@@ -56,7 +56,9 @@ public final class SynthetixExamplePlugin extends JavaPlugin implements Listener
 
     @Override
     public void onEnable() {
+        // @snippet:hello-init
         lib = SynthetixLib.init(this);
+        // @end
 
         if (Boolean.getBoolean("synthetix.selftest")) {
             getServer().getPluginManager().registerEvents(new SelfTestTrigger(this, lib), this);
@@ -135,8 +137,10 @@ public final class SynthetixExamplePlugin extends JavaPlugin implements Listener
 
     @Override
     public void onDisable() {
+        // @snippet:hello-close
         if (lib != null) {
             lib.close();
         }
+        // @end
     }
 }

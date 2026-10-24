@@ -84,3 +84,10 @@ Planned modules (in order): config → command → gui → database → dialog �
 - Public API: Javadoc with a usage snippet; nullness explicit; no checked exceptions leaking from fluent APIs.
 - Small, focused classes; package-private by default; only intended API is `public`.
 - Logging through the plugin logger; never `System.out`.
+
+## Docs snippets
+Code in `skills/` is copied from real sources, never hand-written. Mark a region in `synthetixlib-example/src/**` or
+`skills/synthetixlib/templates/**`: `// @snippet:<name>` … `// @end` (Java/Kotlin) or `# @snippet:<name>` … `# @end` (YAML,
+properties). Names `[a-z0-9-]+`, unique repo-wide, no nesting; markers are comments, the block is the lines between,
+de-indented. In markdown under `skills/` use a fence ` ```java snippet=<name> ` (or `yaml`). `gradlew syncSnippets`
+rewrites the blocks; `checkSnippets` (part of `check`) fails on a stale, unknown, duplicate or unclosed one.
