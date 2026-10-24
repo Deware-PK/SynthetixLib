@@ -1,0 +1,9 @@
+# dialog.render: a multi-action dialog with columns and an exit button
+title: 'Multi'
+type: multi-action
+buttons:
+  first: { label: 'One', click: ['action:count'] }
+  second: { label: 'Two', width: 100, click: ['command:say two'] }
+  third: { label: 'Open', click: ['url:https://example.com/help'] }
+  columns: 2
+  exit: { label: 'Leave', click: [close] }

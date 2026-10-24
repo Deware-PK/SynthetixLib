@@ -1,0 +1,8 @@
+# dialog.render: a list that shows two other dialogs
+title: 'List'
+type: list
+buttons:
+  dialogs: [selftest-notice, selftest-multi, selftest-list, missing]
+  columns: 1
+  button-width: 200
+  exit: { label: 'Back', click: [back] }

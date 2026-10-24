@@ -1,0 +1,3 @@
+# dialog.fallback: a notice that is never shown to the viewer whose client cannot see dialogs
+title: 'Fallback'
+type: notice

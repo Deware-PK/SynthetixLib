@@ -1,5 +1,5 @@
 # P2-28 Database wrap-up: demo, MySQL suite, docs, publish 0.5.0
-Status: review · Approved: yes · Model: sonnet · Effort: medium · Ship: yes (database 0.5.0)
+Status: done · Approved: yes · Model: sonnet · Effort: medium · Ship: yes (database 0.5.0)
 Module: synthetixlib-database, synthetixlib-example · Depends on: P2-27 · Design: database.md
 
 ## Prompt (paste into Claude Code)
@@ -18,7 +18,7 @@ If the in-game check cannot be done by you, mark them [~] and still ship only if
   deviations; ROADMAP row 5 done; module AGENTS.md final. Version → `0.5.0-SNAPSHOT`.
 
 ## Acceptance criteria
-- [~] `runServer`: claim/stats work in game; restart keeps the data (agent: headless boot only, see Result)
+- [x] `runServer`: claim/stats work in game; restart keeps the data (verified in game by owner 2026-10-24)
 - [x] MySQL suite green against the Docker MySQL (run by the agent with the owner's properties)
 - [x] `gradlew.bat check smokeTest publishToMavenLocal` green
 
@@ -36,3 +36,4 @@ Done 2026-10-20.
 - **[~] Not done by the agent:** `claim` needs a player and the restart check needs a client. Owner: `/example airdrop claim example`
   twice, `/example airdrop stats example`, restart, stats again (count must stay); fill in the `database.mysql` section for copy-to-mysql.
 - Docs: database.md Status + §12, ROADMAP row 5, module AGENTS.md (Docker setup + properties), version 0.5.0-SNAPSHOT.
+- Owner check 2026-10-24: in-game claim x2, stats, restart, stats again — all passed. Status → done.

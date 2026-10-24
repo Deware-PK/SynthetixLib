@@ -1,0 +1,7 @@
+# dialog.render: the server links
+title: 'Links'
+type: links
+buttons:
+  columns: 3
+  button-width: 180
+  exit: { label: 'Close' }

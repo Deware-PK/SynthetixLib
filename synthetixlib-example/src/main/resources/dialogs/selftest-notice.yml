@@ -1,0 +1,13 @@
+# dialog.render: a notice with every body kind
+title: '<gold>Notice for <player>'
+type: notice
+can-close-with-escape: true
+body:
+  - message: '<gray>Plain message <item-name>'
+  - item: { placeholder: lot-item }
+    description: '<gray>From code'
+    width: 32
+    height: 32
+  - item: { slot: offhand }
+buttons:
+  ok: { label: '<green>Fine', tooltip: '<gray>Closes it', width: 120 }

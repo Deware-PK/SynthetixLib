@@ -18,6 +18,7 @@ include("synthetixlib-config")
 include("synthetixlib-command")
 include("synthetixlib-gui")
 include("synthetixlib-database")
+include("synthetixlib-dialog")
 
 // Internal modules (not published)
 include("synthetixlib-example")

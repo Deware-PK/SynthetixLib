@@ -1,0 +1,10 @@
+# dialog.callback: buttons that run steps and code
+title: 'Click'
+type: confirmation
+inputs:
+  note: { type: text, label: 'Note', max-length: 16 }
+  price: { type: number, label: 'Price', min: 1, max: 100, step: 1 }
+  anon: { type: bool, label: 'Anonymous' }
+buttons:
+  yes: { label: 'Go', click: ['action:count', 'message:<lang:hello>', 'command:say hi', 'sound:ui.button.click'] }
+  no: { label: 'No', click: [close] }

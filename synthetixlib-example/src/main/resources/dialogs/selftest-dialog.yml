@@ -1,0 +1,27 @@
+# Bundled with the example plugin: the dialog.files self-test copies it, parses it with the real codecs and checks it.
+config-version: 1
+title: '<gold>Self-test <item-name>'
+external-title: '<gold>Self-test'
+type: confirmation
+can-close-with-escape: false
+body:
+  - message: '<gray>Hello <player>'
+    width: 250
+  - item: { slot: hand }
+    description: '<gray>In your hand'
+  - item: { material: diamond, amount: 2, name: '<aqua>Prize', item-model: 'minecraft:diamond' }
+inputs:
+  price: { type: number, label: 'Price', min: 1, max: 1000, step: 1, initial: 10 }
+  duration:
+    type: option
+    label: 'Duration'
+    options:
+      h1: { display: '1 hour' }
+      h12: { display: '12 hours', initial: true }
+  note: { type: text, label: 'Note', max-length: 16 }
+  anonymous: { type: bool, label: 'Hide my name' }
+buttons:
+  yes: { label: '<green>Go', tooltip: '<gray>Runs the form', click: ['action:go', 'sound:ui.button.click'] }
+  no: { label: '<red>Cancel', click: [close, 'action:nope'] }
+errors:
+  price: '<red>Between <min> and <max>'

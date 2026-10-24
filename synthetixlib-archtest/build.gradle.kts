@@ -11,6 +11,7 @@ dependencies {
     testImplementation(project(":synthetixlib-command"))
     testImplementation(project(":synthetixlib-gui"))
     testImplementation(project(":synthetixlib-database"))
+    testImplementation(project(":synthetixlib-dialog"))
 
     testImplementation(libs.archunit)
     // Only so the fixture that breaks the HikariCP rule compiles; the rule itself works on names.
