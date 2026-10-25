@@ -1,5 +1,5 @@
 # P3-03 References + rules: core, config, command
-Status: todo · Approved: yes · Model: sonnet · Effort: medium
+Status: done · Approved: yes · Model: sonnet · Effort: medium
 Module: synthetixlib-skill (docs, not a Gradle module) · Depends on: P3-02 · Design: docs-skill.md §3, §1 (rules/)
 
 ## Prompt (paste into Claude Code)
@@ -20,12 +20,27 @@ Run `gradlew.bat syncSnippets check smokeTest`, tick the boxes, fill in "Result"
 
 
 ## Acceptance criteria
-- [ ] every public type of the modules appears in a reference (list any left out on purpose in Result)
-- [ ] no API name in the references that does not exist in the code
-- [ ] `gradlew.bat syncSnippets check smokeTest` green
+- [x] every public type of the modules appears in a reference (list any left out on purpose in Result)
+- [x] no API name in the references that does not exist in the code
+- [x] `gradlew.bat syncSnippets check smokeTest` green
 
 ## Verify
 gradlew.bat syncSnippets check smokeTest
 
 ## Result
-(agent fills in)
+Written: `references/core.md`, `config.md`, `command.md` (shape of docs-skill.md §3, `since` marks), 22 files in `rules/`
+(core-, config-, command-, state-, threads-, text-) and "Rules by impact" in SKILL.md.
+Snippets: markers added to the example plugin (settings/airdrop/reward records, wiring, give/group/root/fail/callback/reload
+commands, th_TH `commands:` YAML) plus new `synthetixlib-example/.../docs/DocExamples.java` (scheduler, text, items, PDC,
+collection, migration, codec, locale, reload, async command). `DocExamples` only compiles (not run); every API in it is
+already covered by the core/config/command self-tests.
+Left out of the references on purpose: internals `codec.BukkitCodecs`, `config.mapping.*`, `config.yaml.*`.
+Design doc drift found: `CommandService.refresh(player)` and the `Validated` interface are in the designs but not in the
+code; the references say so and do not use them.
+Ran: `gradlew.bat syncSnippets check smokeTest` green (84/84 self-tests on 1.21.11 and 26.x). Not committed.
+
+## Review (planner, 2026-10-25)
+Approved. Smoke 84/84, snippets synced. core/config/command references (161/287/306 lines), 22 rules with CRITICAL/HIGH
+frontmatter, "Rules by impact" in SKILL.md. `DocExamples.java` (compiled, not run) accepted: compile-time check of API names,
+behaviour covered by existing self-tests. Design drift: `Validated` was already in config.md deviations;
+`CommandService.refresh(player)` added to command.md §10 (not built, use `player.updateCommands()`).

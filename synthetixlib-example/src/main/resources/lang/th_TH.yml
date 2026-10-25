@@ -7,6 +7,7 @@ airdrop-claims: <gray>ถูกรับ <count> ครั้ง
 db-failed: <red>ฐานข้อมูลมีปัญหา ดูที่คอนโซล
 db-copied: <green>คัดลอก <rows> รายการไป MySQL แล้ว
 db-copy-failed: "<red>คัดลอกไม่สำเร็จ: <reason>"
+# @snippet:lang-th-commands
 commands:
   player-only: <red>ใช้ได้เฉพาะผู้เล่น
   cooldown: <red>รอ <time> ก่อนใช้ /<label> อีกครั้ง
@@ -16,6 +17,7 @@ commands:
   error: <red>เกิดข้อผิดพลาด ดูที่คอนโซล
   help-header: "<yellow>คำสั่งของ /<command>:"
   help-line: <yellow>/<command> <usage> <gray>- <description>
+# @end
 input-confirmed: <green>ได้รับ <count> ชิ้น คืนเข้ากระเป๋าแล้ว
 input-empty: <red>ใส่ไอเท็มในช่องก่อน
 dialog-sold: "<green>ลงขาย <item> ราคา <price> เหรียญ <duration> หมายเหตุ: <note> (<who>)"

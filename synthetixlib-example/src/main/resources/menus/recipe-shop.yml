@@ -1,0 +1,31 @@
+# Recipe "shop": a paginated list of products; a click opens the buy dialog. Texts are <lang:key> from the lang files.
+# @snippet:recipe-shop-yml
+title: '<lang:shop-title>'
+type: chest
+rows: 3
+layout:
+  - "#########"
+  - "#LLLLLLL#"
+  - "<###X###>"
+items:
+  '#':
+    material: gray_stained_glass_pane
+    hide-tooltip: true
+  'L':
+    list: products
+    empty: { material: air }
+  '<':
+    material: arrow
+    name: '<lang:shop-previous>'
+    hide-when: first-page
+    click: [page-previous]
+  '>':
+    material: arrow
+    name: '<lang:shop-next>'
+    hide-when: last-page
+    click: [page-next]
+  'X':
+    material: barrier
+    name: '<lang:shop-close>'
+    click: [close]
+# @end

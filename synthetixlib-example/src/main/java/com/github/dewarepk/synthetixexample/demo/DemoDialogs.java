@@ -14,9 +14,11 @@ import org.bukkit.inventory.ItemStack;
  */
 public final class DemoDialogs {
 
+    // @snippet:dialog-form-record
     /** The answers of {@code sell.yml}; public so the config codecs can fill it. The price is checked against the file. */
     public record SellForm(double price, String duration, String note, boolean anonymous) {
     }
+    // @end
 
     private final DialogType<ItemStack> sell;
     private final DialogType<Void> confirm;
@@ -30,6 +32,7 @@ public final class DemoDialogs {
 
     /** Builds the three dialogs; their files are copied from the jar on the first start and never overwritten. */
     public static DemoDialogs create(final DialogService dialogs, final LocaleHandle<Messages> lang) {
+        // @snippet:dialog-submit
         final DialogType<ItemStack> sell = dialogs.dialog("sell").<ItemStack>withContext()
                 .placeholder("item-name", view -> itemName(view.context()))
                 .submit("sell", SellForm.class, (form, click) -> {
@@ -42,6 +45,7 @@ public final class DemoDialogs {
                             Placeholder.unparsed("who", form.anonymous() ? "anonymous" : player.getName()));
                 })
                 .build();
+        // @end
         final DialogType<Void> confirm = dialogs.dialog("confirm")
                 .action("confirmed", click -> lang.send(click.player(), Messages::dialogConfirmed))
                 .build();

@@ -2,8 +2,8 @@ import java.io.File
 
 /**
  * Docs snippets (AGENTS.md "Docs snippets"): code regions in real sources are marked
- * `// @snippet:<name>` ... `// @end` (or `# ...` in YAML) and copied into fenced markdown blocks tagged
- * `java snippet=<name>` / `yaml snippet=<name>`.
+ * `// @snippet:<name>` ... `// @end` (or `# ...` in YAML, `-- ...` in SQL) and copied into fenced markdown blocks tagged
+ * `java snippet=<name>` / `kotlin snippet=<name>` / `yaml snippet=<name>` / `sql snippet=<name>`.
  */
 object Snippets {
 
@@ -15,12 +15,15 @@ object Snippets {
     }
 
     private val NAME = Regex("[a-z0-9-]+")
-    private val START = Regex("""^\s*(?://|#)\s*@snippet:(\S*)\s*$""")
-    private val END = Regex("""^\s*(?://|#)\s*@end\s*$""")
-    private val FENCE_OPEN = Regex("""^```(java|yaml)\s+snippet=(\S+)\s*$""")
+    private val START = Regex("""^\s*(?://|#|--)\s*@snippet:(\S*)\s*$""")
+    private val END = Regex("""^\s*(?://|#|--)\s*@end\s*$""")
+    private val FENCE_OPEN = Regex("""^```(java|kotlin|yaml|sql)\s+snippet=(\S+)\s*$""")
     private const val FENCE = "```"
 
-    val sourceExtensions = setOf("java", "kt", "kts", "yml", "yaml", "properties")
+    val sourceExtensions = setOf("java", "kt", "kts", "yml", "yaml", "properties", "sql")
+
+    /** Build output of a template (it holds copies of the marked files) is never a source. */
+    private val buildDirs = setOf("build", ".gradle", ".kotlin")
 
     /** Reads the markers of one source file. */
     fun extract(file: File, lines: List<String>, into: MutableMap<String, Snippet>, problems: MutableList<Problem>) {
@@ -121,7 +124,7 @@ object Snippets {
         val stale = ArrayList<Problem>()
         val snippets = HashMap<String, Snippet>()
         sourceRoots.filter { it.exists() }.flatMap { root ->
-            root.walkTopDown().filter { it.isFile && it.extension in sourceExtensions }.sortedBy { it.path }.toList()
+            root.walkTopDown().onEnter { it.name !in buildDirs }.filter { it.isFile && it.extension in sourceExtensions }.sortedBy { it.path }.toList()
         }.forEach { extract(it, it.readLines(Charsets.UTF_8), snippets, problems) }
 
         markdownRoots.filter { it.exists() }.flatMap { root ->

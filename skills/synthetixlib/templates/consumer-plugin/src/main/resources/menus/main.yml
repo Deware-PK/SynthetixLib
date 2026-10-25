@@ -1,0 +1,20 @@
+# Opened by /myplugin menu. Texts are <lang:key> from lang/<locale>.yml (section "gui").
+title: '<lang:main-title>'
+type: chest
+rows: 3
+layout:
+  - "#########"
+  - "#   G   #"
+  - "####X####"
+items:
+  '#':
+    material: gray_stained_glass_pane
+    hide-tooltip: true
+  'G':
+    material: writable_book
+    name: '<lang:main-greet>'
+    click: ['dialog:greet']
+  'X':
+    material: barrier
+    name: '<lang:main-close>'
+    click: [close]

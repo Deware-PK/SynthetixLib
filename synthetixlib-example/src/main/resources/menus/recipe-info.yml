@@ -1,0 +1,16 @@
+# Recipe "reloadable": the text comes from a placeholder that reads the config snapshot every time the menu is drawn.
+title: '<lang:info-title>'
+type: hopper
+layout:
+  - "#I#N#"
+items:
+  '#':
+    material: gray_stained_glass_pane
+    hide-tooltip: true
+  'I':
+    material: bread
+    name: '<lang:info-daily> <white><daily></white>'
+  'N':
+    material: writable_book
+    name: '<lang:info-notice>'
+    click: ['dialog:recipe-notice']

@@ -76,6 +76,7 @@ public final class SynthetixExamplePlugin extends JavaPlugin implements Listener
 
     /** settings.yml, airdrops/*.yml and lang/*.yml, and the {@code /example} command on top of them. */
     private void enableConfigDemo() {
+        // @snippet:config-wiring
         final Configs configs = Configs.create(lib);
         DatabaseSettings.register(configs.codecs());
         settings = configs.file("settings.yml", Settings.class, Settings::defaults).load();
@@ -86,6 +87,7 @@ public final class SynthetixExamplePlugin extends JavaPlugin implements Listener
                 .load();
         airdrops = configs.collection("airdrops", Airdrop.class, id -> settings.get().defaultAirdrop().withName(id))
                 .load();
+        // @end
 
         if (airdrops.ids().isEmpty()) {
             airdrops.create("example");
@@ -97,15 +99,21 @@ public final class SynthetixExamplePlugin extends JavaPlugin implements Listener
                 Placeholder.unparsed("ids", String.join(", ", airdrops.ids())));
 
         // Closed together with lib; onEnable may block on the first migration.
+        // @snippet:db-create
         final Database database = Database.create(lib, settings.get().database());
         final ClaimStore claims = ClaimStore.open(database);
+        // @end
 
+        // @snippet:dialog-service
         final DialogService dialogs = DialogService.create(lib, configs)
                 .settings(settings.get().dialog())
                 .bootstrapped(dialogRegistry);
+        // @end
+        // @snippet:dialog-registered
         dialogs.registered(ExampleBootstrap.HELP)
                 .action("ping", click -> click.player().sendMessage(Component.text("Pong!")))
                 .build();
+        // @end
 
         dialogs.messages(lang, Messages::dialog);
         final DemoMenus menus = DemoMenus.create(lib, configs, airdrops, lang, claims, dialogs.opener());

@@ -1,0 +1,13 @@
+# Opened by /myplugin greet. Texts are <lang:key> from lang/<locale>.yml (section "dialog").
+# The behaviour (action:greet) is registered in GreetDialog.java.
+config-version: 1
+title: '<lang:greet-title>'
+type: confirmation
+inputs:
+  name:
+    type: text
+    label: '<lang:greet-name>'
+    max-length: 32
+buttons:
+  yes: { label: '<lang:greet-yes>', click: ['action:greet'] }
+  no: { label: '<lang:greet-no>', click: [close] }

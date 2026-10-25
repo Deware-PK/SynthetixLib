@@ -26,6 +26,7 @@ public final class ClaimStore {
         this.db = db;
     }
 
+    // @snippet:db-open-migrate
     /** Creates the table if needed and loads the counts; blocks, so call it from {@code onEnable}. */
     public static ClaimStore open(final Database db) {
         db.migrate(Migrations.fromResources("db/demo")).join();
@@ -36,14 +37,18 @@ public final class ClaimStore {
                 .forEach(entry -> store.counts.put(entry.getKey(), entry.getValue()));
         return store;
     }
+    // @end
 
+    // @snippet:db-update
     /** Writes one claim; the future completes with the new count. */
     public CompletableFuture<Long> claim(final String airdrop, final UUID player) {
         return db.update("INSERT INTO {prefix}claims (airdrop, player, claimed_at) VALUES (?, ?, ?)",
                         airdrop, player, Instant.now())
                 .thenApply(rows -> counts.merge(airdrop, 1L, Long::sum));
     }
+    // @end
 
+    // @snippet:db-query-chain
     /** Reads the count and the last {@code limit} claimers, newest first. */
     public CompletableFuture<Stats> stats(final String airdrop, final int limit) {
         return db.queryOne("SELECT COUNT(*) AS n FROM {prefix}claims WHERE airdrop = ?",
@@ -53,6 +58,7 @@ public final class ClaimStore {
                                 row -> row.uuid("player"), airdrop)
                         .thenApply(players -> new Stats(count.orElse(0L), players)));
     }
+    // @end
 
     /** @return the number of claims of an airdrop, from memory; any thread */
     public long count(final String airdrop) {

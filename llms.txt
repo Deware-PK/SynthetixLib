@@ -1,3 +1,66 @@
 # SynthetixLib
 
-TODO P3-0x
+> Library for Paper (1.21.11 to 26.x, Java 21, Folia-safe) plugins: typed YAML config and locale, Brigadier commands, YAML menus, native dialogs, async SQL. Shaded and relocated into the consumer plugin. This index is for AI coding agents; the same files are an installable agent skill.
+
+## Skill
+
+- [SKILL.md](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/SKILL.md): what the library is, setup, the rules, which reference to read when
+- [CHANGELOG.md](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/CHANGELOG.md): per-version changes, API breaks marked **Breaking**
+- [Consumer plugin template](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/templates/consumer-plugin/README.md): a project that already builds
+
+## References
+
+- [setup](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/references/setup.md): Consumer build: shade + relocate, paper-plugin.yml, PluginLoader, init/close
+- [core](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/references/core.md): Lifecycle, scheduler, text, ItemBuilder, PDC
+- [config](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/references/config.md): Typed YAML config, collections, locale, migrations
+- [command](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/references/command.md): Brigadier command API
+- [gui](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/references/gui.md): YAML inventory menus
+- [dialog](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/references/dialog.md): Native Paper dialogs
+- [database](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/references/database.md): Async SQL (SQLite/MySQL)
+- [recipes](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/references/recipes.md): End-to-end recipes
+- [troubleshooting](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/references/troubleshooting.md): Symptom -> cause -> fix
+
+## Rules (one file each: why, incorrect, correct)
+
+- [command-messages-through-locale](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/command-messages-through-locale.md): Command messages come from the language file
+- [command-no-shared-state](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/command-no-shared-state.md): Commands keep no shared mutable state
+- [command-register-in-onenable](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/command-register-in-onenable.md): Register commands in onEnable, before the first COMMANDS event
+- [command-report-alias-used](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/command-report-alias-used.md): Report the alias the player actually typed
+- [command-use-brigadier](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/command-use-brigadier.md): Commands use the command module (native Brigadier)
+- [config-all-text-through-locale](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/config-all-text-through-locale.md): Every player-visible text comes from the language files
+- [config-keep-comments](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/config-keep-comments.md): Keep comments on the default copy
+- [config-no-resave-on-reload](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/config-no-resave-on-reload.md): Never re-save the config on reload
+- [config-public-records](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/config-public-records.md): Mapped config records must be public
+- [config-typed-not-string-paths](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/config-typed-not-string-paths.md): Config is a typed record, never string paths
+- [core-close-in-ondisable](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/core-close-in-ondisable.md): Init in onEnable, close in onDisable, no base class
+- [core-items-data-components](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/core-items-data-components.md): Items: data components and item_model, PDC for data
+- [core-no-nms-reflection](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/core-no-nms-reflection.md): No NMS, CraftBukkit, reflection or Class.forName
+- [core-no-static-state](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/core-no-static-state.md): No static or global state, no singletons
+- [core-package-not-lib-prefix](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/core-package-not-lib-prefix.md): Do not name your package after the library
+- [core-paper-only-java21](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/core-paper-only-java21.md): Target Paper only, Java 21, paper-api 1.21.11
+- [db-close-waits-for-writes](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/db-close-waits-for-writes.md): Shutdown waits for pending writes before the pool closes
+- [db-hikari-via-loader](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/db-hikari-via-loader.md): HikariCP comes from a PluginLoader, never shaded
+- [db-migrations-are-append-only](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/db-migrations-are-append-only.md): Shipped migration files are never edited
+- [db-never-block-server-thread](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/db-never-block-server-thread.md): Database results are futures; never join on a server thread
+- [db-parameters-not-concatenation](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/db-parameters-not-concatenation.md): Bind values with ?, never concatenate SQL
+- [dialog-instead-of-anvil](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/dialog-instead-of-anvil.md): Text and number input uses a dialog, not an anvil GUI
+- [dialog-one-use-callbacks](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/dialog-one-use-callbacks.md): Buttons are one-use; do not cache dialogs
+- [dialog-validate-on-server](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/dialog-validate-on-server.md): Never trust the dialog client
+- [gui-deny-by-default](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/gui-deny-by-default.md): Every slot is locked unless it is an input slot
+- [gui-getholder-false](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/gui-getholder-false.md): Inventories: getHolder(false) only
+- [gui-item-model-not-custom-model-data](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/gui-item-model-not-custom-model-data.md): Item art: item-model, never int custom model data
+- [gui-no-double-click-collect](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/gui-no-double-click-collect.md): Block COLLECT_TO_CURSOR from locked slots
+- [gui-one-view-per-viewer](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/gui-one-view-per-viewer.md): One menu definition, one view per viewer
+- [gui-shift-click-input-only](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/gui-shift-click-input-only.md): Shift-click must target only editable slots
+- [gui-take-inputs-atomically](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/gui-take-inputs-atomically.md): Read input slots with takeInputs, not getItem
+- [state-no-static-maps](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/state-no-static-maps.md): Per-player state is an instance field, cleaned on quit, thread-safe
+- [text-escape-player-input](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/text-escape-player-input.md): Player input is a placeholder or escaped, never concatenated
+- [text-minimessage-only](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/text-minimessage-only.md): Text is MiniMessage / Adventure only
+- [threads-async-then-back](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/threads-async-then-back.md): Do IO async, then return to the owning thread
+- [threads-no-blocking-server-thread](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/threads-no-blocking-server-thread.md): Never block the server thread
+- [threads-no-bukkit-scheduler](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/threads-no-bukkit-scheduler.md): Schedule only through lib.scheduler()
+
+## Optional
+
+- [README](https://github.com/Deware-PK/SynthetixLib/blob/main/README.md)
+- [AGENTS.md](https://github.com/Deware-PK/SynthetixLib/blob/main/AGENTS.md): locked decisions of the library itself

@@ -22,6 +22,7 @@ public final class ExampleCommand {
     public static CommandSpec build(final ConfigHandle<Settings> settings, final ConfigCollection<Airdrop> airdrops,
                                     final LocaleHandle<Messages> lang, final DemoMenus menus, final DemoDialogs dialogs,
                                     final Database database, final ClaimStore claims) {
+        // @snippet:command-root
         return CommandSpec.literal("example")
                 .aliases("ex")
                 .description("SynthetixLib example plugin")
@@ -33,5 +34,6 @@ public final class ExampleCommand {
                 .sub(new ReloadCommand(settings, airdrops, lang))
                 .helpSub()
                 .build();
+        // @end
     }
 }

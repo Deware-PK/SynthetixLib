@@ -7,6 +7,7 @@ import com.github.dewarepk.synthetixlib.dialog.DialogSettings;
 import java.time.Duration;
 
 /** The plugin-wide settings, {@code settings.yml}. */
+// @snippet:config-settings-record
 @Comment("SynthetixExample settings")
 public record Settings(@Comment("Give every joining player a demo ticket") boolean welcomeTicket,
                        @Key("default-airdrop")
@@ -23,3 +24,4 @@ public record Settings(@Comment("Give every joining player a demo ticket") boole
                 new DialogSettings(Duration.ofMinutes(5), true));
     }
 }
+// @end

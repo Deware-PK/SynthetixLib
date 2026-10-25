@@ -20,12 +20,14 @@ public final class ExampleBootstrap implements PluginBootstrap {
 
     private SynthetixDialogs registry;
 
+    // @snippet:dialog-bootstrap
     @Override
     public void bootstrap(final BootstrapContext context) {
         registry = SynthetixDialogs.bootstrap(context)
                 .register("help", HELP)
                 .quickActions("help");
     }
+    // @end
 
     @Override
     public JavaPlugin createPlugin(final PluginProviderContext context) {

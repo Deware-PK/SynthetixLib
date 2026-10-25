@@ -49,13 +49,16 @@ public final class DemoMenus {
                 .link("dialog", dialogOpener);
         final PdcKey<Boolean> notify = lib.keys().bool("demo_notify");
 
+        // @snippet:gui-context-menu
         final MenuType<Entry> airdropMenu = gui.menu("airdrop").<Entry>withContext()
                 .placeholder("name", view -> Component.text(view.context().airdrop().name()))
                 .placeholder("interval", view -> Component.text(view.context().airdrop().interval().toString()))
                 .placeholder("players", view -> Component.text(view.context().airdrop().minPlayers()))
                 .placeholder("rewards", view -> Component.text(view.context().airdrop().rewards().size()))
                 .build();
+        // @end
 
+        // @snippet:gui-menu-builder
         final MenuType<Void> demo = gui.menu("demo")
                 .placeholder("balance", view -> Component.text(view.player().getLevel()))
                 .placeholder("time", view -> Component.text(LocalTime.now().format(CLOCK)))
@@ -68,6 +71,7 @@ public final class DemoMenus {
                 })
                 .action("confirm", click -> confirm(click.player(), click.view().takeInputs('S'), lang))
                 .build();
+        // @end
         return new DemoMenus(demo, gui.opener());
     }
 
@@ -91,6 +95,7 @@ public final class DemoMenus {
                 .build();
     }
 
+    // @snippet:gui-take-inputs
     /** The items leave the slot at once (so a double click cannot pay twice), then go back to the player. */
     private static void confirm(final Player player, final List<ItemStack> taken, final LocaleHandle<Messages> lang) {
         if (taken.isEmpty()) {
@@ -105,6 +110,7 @@ public final class DemoMenus {
         }
         lang.send(player, Messages::inputConfirmed, Placeholder.unparsed("count", String.valueOf(count)));
     }
+    // @end
 
     /** @return opens a menu of this service by id; hand it to the dialog service's {@code link("menu", ...)} */
     public ScreenOpener opener() {

@@ -8,6 +8,7 @@ import java.util.List;
 import org.bukkit.Material;
 
 /** One airdrop; stored as {@code airdrops/<id>.yml}. */
+// @snippet:config-airdrop-record
 @Comment("An airdrop. Edit this file and reload, or let a command change it.")
 public record Airdrop(@Comment("Name shown to players") String name,
                       @Comment("Time between two drops, e.g. 30m or 1h30m") Duration interval,
@@ -28,3 +29,4 @@ public record Airdrop(@Comment("Name shown to players") String name,
         return new Airdrop(name, interval, minPlayers, rewards);
     }
 }
+// @end

@@ -90,6 +90,42 @@ class SnippetsTest {
     }
 
     @Test
+    fun kotlinFenceIsRewritten() {
+        val problems = ArrayList<Snippets.Problem>()
+        val stale = ArrayList<Snippets.Problem>()
+        val out = Snippets.rewrite(md, "```kotlin snippet=a\nold\n```", snippets(), problems, stale)
+        assertEquals("```kotlin snippet=a\nint a;\nint b;\n```", out)
+        assertEquals(1, stale.size)
+        assertTrue(problems.isEmpty())
+    }
+
+    @Test
+    fun buildOutputIsNotScanned() {
+        val root = kotlin.io.path.createTempDirectory("snippets").toFile()
+        try {
+            File(root, "src").mkdirs()
+            File(root, "build/resources").mkdirs()
+            File(root, "src/a.yml").writeText("# @snippet:a\nx: 1\n# @end\n")
+            File(root, "build/resources/a.yml").writeText("# @snippet:a\nx: 1\n# @end\n")
+            assertTrue(Snippets.run(listOf(root), emptyList(), write = false).isEmpty())
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun sqlMarkersAndFence() {
+        val (map, problems) = extract("-- @snippet:m-1", "CREATE TABLE t (id INTEGER);", "-- @end")
+        assertTrue(problems.isEmpty())
+        assertEquals("CREATE TABLE t (id INTEGER);", map.getValue("m-1").text)
+        val text = "```sql snippet=m-1\nold\n```"
+        val stale = ArrayList<Snippets.Problem>()
+        val out = Snippets.rewrite(md, text, map, ArrayList(), stale)
+        assertEquals("```sql snippet=m-1\nCREATE TABLE t (id INTEGER);\n```", out)
+        assertEquals(1, stale.size)
+    }
+
+    @Test
     fun untaggedFencesUntouched() {
         val problems = ArrayList<Snippets.Problem>()
         val text = "```java\nplain\n```"

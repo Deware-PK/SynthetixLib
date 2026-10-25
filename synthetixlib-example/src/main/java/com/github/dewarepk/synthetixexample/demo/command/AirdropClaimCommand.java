@@ -35,6 +35,7 @@ final class AirdropClaimCommand implements SubCommand {
                 .executes(this::run);
     }
 
+    // @snippet:command-callback
     private void run(final CommandCall ctx) {
         final String value = ctx.get(id);
         if (!airdrops.ids().contains(value)) {
@@ -51,4 +52,5 @@ final class AirdropClaimCommand implements SubCommand {
             }
         }));
     }
+    // @end
 }

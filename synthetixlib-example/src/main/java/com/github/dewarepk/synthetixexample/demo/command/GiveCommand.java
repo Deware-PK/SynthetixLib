@@ -14,6 +14,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
 /** {@code /example give <player> <material> [amount]}, with a cooldown. */
+// @snippet:command-give
 final class GiveCommand implements SubCommand {
 
     private final LocaleHandle<Messages> lang;
@@ -47,3 +48,4 @@ final class GiveCommand implements SubCommand {
                 Placeholder.unparsed("player", player.getName()));
     }
 }
+// @end

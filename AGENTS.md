@@ -17,6 +17,8 @@ BuiltByBit, SpigotMC and Hangar (first products: InteractiveAuction 2.0, Farm Wo
    Approved design docs in `docs/design/` are the source of truth for public API.
 4. A decision that changes a locked rule below → write an ADR in `docs/adr/` and get approval first.
 5. Done = verification below passes + task acceptance criteria ticked. Report what you ran.
+6. **Module wrap-up (`Ship: yes`) also updates the docs skill:** the module's reference in `skills/synthetixlib/references/`, the
+  rules in `skills/synthetixlib/rules/`, and `skills/synthetixlib/CHANGELOG.md` (API breaks marked **Breaking**); `checkSnippets` stays green.
 
 ## Verify (run before saying "done")
 | Command | What | When |
@@ -89,5 +91,5 @@ Planned modules (in order): config → command → gui → database → dialog �
 Code in `skills/` is copied from real sources, never hand-written. Mark a region in `synthetixlib-example/src/**` or
 `skills/synthetixlib/templates/**`: `// @snippet:<name>` … `// @end` (Java/Kotlin) or `# @snippet:<name>` … `# @end` (YAML,
 properties). Names `[a-z0-9-]+`, unique repo-wide, no nesting; markers are comments, the block is the lines between,
-de-indented. In markdown under `skills/` use a fence ` ```java snippet=<name> ` (or `yaml`). `gradlew syncSnippets`
+de-indented. In markdown under `skills/` use a fence ` ```java snippet=<name> ` (or `kotlin`, `yaml`). `gradlew syncSnippets`
 rewrites the blocks; `checkSnippets` (part of `check`) fails on a stale, unknown, duplicate or unclosed one.

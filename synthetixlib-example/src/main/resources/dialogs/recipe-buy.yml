@@ -1,0 +1,22 @@
+# Recipe "shop": how many of the product to buy. The behaviour (action:buy) is registered in ShopRecipe.java.
+# @snippet:recipe-buy-yml
+config-version: 1
+title: '<lang:buy-title>'
+type: confirmation
+body:
+  - message: '<lang:buy-info>'
+    width: 250
+inputs:
+  amount:
+    type: number
+    label: '<lang:buy-amount>'
+    min: 1
+    max: 64
+    step: 1
+    initial: 1
+buttons:
+  yes: { label: '<lang:buy-yes>', click: ['action:buy'] }
+  no: { label: '<lang:buy-no>', click: [close] }
+errors:
+  amount: '<lang:buy-error-amount>'
+# @end

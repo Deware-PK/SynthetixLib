@@ -1,0 +1,8 @@
+# JitPack builds a git tag (v<x.y.z>) of the whole repo; every library module becomes
+# com.github.Deware-PK.SynthetixLib:synthetixlib-<module>:<tag>  (docs/adr/0015). Tests ran in the ship script already
+# (and need MySQL / Paper servers, which JitPack does not have).
+jdk:
+  - openjdk21
+install:
+  - chmod +x ./gradlew
+  - ./gradlew publishToMavenLocal -x test

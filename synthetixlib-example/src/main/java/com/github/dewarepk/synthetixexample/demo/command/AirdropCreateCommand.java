@@ -29,6 +29,7 @@ final class AirdropCreateCommand implements SubCommand {
                 .executes(this::run);
     }
 
+    // @snippet:command-fail
     private void run(final CommandCall ctx) {
         final String value = ctx.get(id);
         try {
@@ -40,4 +41,5 @@ final class AirdropCreateCommand implements SubCommand {
         }
         ctx.reply(lang, Messages::airdropCreated, Placeholder.unparsed("id", value));
     }
+    // @end
 }

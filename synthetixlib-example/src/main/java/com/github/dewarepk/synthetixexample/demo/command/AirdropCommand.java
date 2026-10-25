@@ -22,6 +22,7 @@ final class AirdropCommand implements SubCommand {
         this.lang = lang;
     }
 
+    // @snippet:command-group
     @Override
     public SubSpec spec() {
         return SubSpec.literal("airdrop")
@@ -34,4 +35,5 @@ final class AirdropCommand implements SubCommand {
                 .sub(new AirdropClaimCommand(airdrops, claims, lang))
                 .sub(new AirdropStatsCommand(airdrops, claims, lang));
     }
+    // @end
 }

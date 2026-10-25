@@ -1,5 +1,6 @@
 # The /example dialog sell form: number, option, text and bool inputs; the item in hand is the context.
 # Texts are <lang:key> from lang/<locale>.yml (section "dialog"). The behaviour (action:sell) is registered in DemoDialogs.java.
+# @snippet:dialog-sell-yml
 config-version: 1
 title: '<lang:sell-title>'
 external-title: '<lang:sell-external>'
@@ -36,3 +37,4 @@ buttons:
   no: { label: '<lang:sell-no>', click: [close] }
 errors:
   price: '<lang:sell-error-price>'
+# @end

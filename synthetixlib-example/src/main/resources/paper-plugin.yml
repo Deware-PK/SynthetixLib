@@ -5,5 +5,7 @@ api-version: '1.21'
 description: Test bed and examples for SynthetixLib
 author: Deware
 folia-supported: true
+# @snippet:bootstrapper-yml
 loader: com.github.dewarepk.synthetixexample.ExampleLoader
 bootstrapper: com.github.dewarepk.synthetixexample.ExampleBootstrap
+# @end

@@ -36,6 +36,25 @@ foreach ($v in Get-ChildItem synthetixlib-example/run -Directory -Filter 'smoke-
   Write-Host "smoke $($v.Name): $($r.total)/$($r.total) PASS"
 }
 
+# 3b. Skill: point it at this release, then build the consumer template once against the freshly published snapshot
+$skill = 'skills/synthetixlib/SKILL.md'
+if (Test-Path $skill) {
+  $utf8 = New-Object System.Text.UTF8Encoding($false)
+  $text = [System.IO.File]::ReadAllText((Resolve-Path $skill).Path, $utf8)
+  $text = [regex]::Replace($text, '(?m)^(Written for SynthetixLib )\S+(\.)[ \t]*(?=\r?$)', "`${1}$Version`${2}")
+  [System.IO.File]::WriteAllText((Resolve-Path $skill).Path, $text, $utf8)
+  $props = (Resolve-Path 'skills/synthetixlib/templates/consumer-plugin/gradle.properties').Path
+  $text = [System.IO.File]::ReadAllText($props, $utf8)
+  $text = [regex]::Replace($text, '(?m)^synthetixVersion=.*$', "synthetixVersion=v$Version")
+  [System.IO.File]::WriteAllText($props, $text, $utf8)
+  $snapshot = ((Get-Content gradle.properties | Where-Object { $_ -match '^version=' }) -replace '^version=', '').Trim()
+  Push-Location skills/synthetixlib/templates/consumer-plugin
+  & ./gradlew.bat build -PsynthetixLocal=true "-PsynthetixLocalVersion=$snapshot"
+  $templateExit = $LASTEXITCODE
+  Pop-Location
+  if ($templateExit -ne 0) { Fail 'consumer template does not build against the published snapshot' }
+}
+
 # 4. Commit, tag, push
 git add -A
 if (-not (git diff --cached --name-only)) { Fail 'nothing to commit' }

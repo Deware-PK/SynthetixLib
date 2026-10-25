@@ -13,6 +13,7 @@ Tasks are written by the planner (owner + Claude in Cowork) and executed by Clau
 - `Depends on`: tasks that must be done first
 - `Ship: yes (<module> <version>)`: only on a module's wrap-up task — the agent runs `scripts/ship-module.ps1`
   after Verify is green (commit + tag + push to `main`). All other tasks: never commit.
+  A wrap-up task must also update the module's skill reference, rules and `skills/synthetixlib/CHANGELOG.md`, with `checkSnippets` green.
 
 ## Agent loop
 1. Read AGENTS.md + the task (+ linked design doc). 2. Implement. 3. Run the Verify commands.

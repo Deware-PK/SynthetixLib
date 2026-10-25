@@ -1,0 +1,9 @@
+# Recipe "reloadable": a notice whose text uses a placeholder from the config snapshot.
+config-version: 1
+title: '<lang:notice-title>'
+type: notice
+body:
+  - message: '<lang:notice-text>'
+    width: 250
+buttons:
+  ok: { label: '<lang:notice-ok>', click: [close] }

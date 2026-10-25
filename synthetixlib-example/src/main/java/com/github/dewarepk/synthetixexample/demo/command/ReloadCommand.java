@@ -33,6 +33,7 @@ final class ReloadCommand implements SubCommand {
                 .description("Reload settings, airdrops and messages").executes(this::run);
     }
 
+    // @snippet:config-reload
     private void run(final CommandCall ctx) {
         final List<String> errors = new ArrayList<>(settings.reload().errors());
         airdrops.reload().files().forEach((file, result) -> errors.addAll(result.errors()));
@@ -43,4 +44,5 @@ final class ReloadCommand implements SubCommand {
             ctx.reply(lang, Messages::reloadFailed, Placeholder.unparsed("errors", String.join("; ", errors)));
         }
     }
+    // @end
 }

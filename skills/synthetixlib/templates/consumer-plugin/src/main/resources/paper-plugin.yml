@@ -1,0 +1,12 @@
+name: MyPlugin
+version: '${version}'
+main: com.example.myplugin.MyPlugin
+api-version: '1.21'
+description: A plugin built on SynthetixLib
+author: You
+folia-supported: true
+# @snippet:template-plugin-yml-loader
+# Loads runtime libraries that are not shaded (HikariCP for the database module). Keep it even when empty.
+loader: com.example.myplugin.MyPluginLoader
+# Only needed to register dialogs in the pause menu: bootstrapper: com.example.myplugin.MyPluginBootstrap
+# @end

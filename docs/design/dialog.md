@@ -153,7 +153,7 @@ No static state: the bootstrap object is handed to `DialogService` through the p
 
 ## 8. Links to other modules
 
-- gui: `dialogs.linkMenus(gui)` enables `menu:<id>`; gui gets `dialog:<id>` the same way. No compile dependency between
+- gui: `dialogs.link("menu", gui.opener())` enables `menu:<id>`; `gui.link("dialog", dialogs.opener())` enables `dialog:<id>` (as built, P2-32). No compile dependency between
   the two modules (a small `Opener` interface in core, or dialog depends on gui — §12.4).
 - command: nothing special; `dialog.open(sender)` from a command handler.
 

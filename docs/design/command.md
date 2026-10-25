@@ -344,3 +344,4 @@ public record Messages(CommandMessages commands, String bidPlaced, String notEno
   `<command>` is the path with the alias actually typed, e.g. `ex airdrop`.
 - Cooldown/in-flight order and quit behaviour changed as described in §5 (P2-18 review fixes).
 - `invalidValue` has no `<label>` (the alias is not known while Brigadier parses), see `CommandMessages`.
+- **No `CommandService.refresh(player)`** (found in P3-03 review): not built; call `player.updateCommands()` after changing permissions at runtime.

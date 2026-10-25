@@ -1,0 +1,10 @@
+{
+  "name": "synthetixlib",
+  "description": "Build Paper (Minecraft) plugins with SynthetixLib: typed config, Brigadier commands, YAML menus, dialogs, async SQL.",
+  "author": {
+    "name": "Deware-PK",
+    "url": "https://github.com/Deware-PK"
+  },
+  "repository": "https://github.com/Deware-PK/SynthetixLib",
+  "skills": "./skills/synthetixlib"
+}
