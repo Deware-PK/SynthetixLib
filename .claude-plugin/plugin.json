@@ -6,5 +6,6 @@
     "url": "https://github.com/Deware-PK"
   },
   "repository": "https://github.com/Deware-PK/SynthetixLib",
-  "skills": "./skills/synthetixlib"
+  "skills": "./skills/synthetixlib",
+  "license": "MIT"
 }
