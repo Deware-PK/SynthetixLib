@@ -4,12 +4,14 @@ import static com.github.dewarepk.synthetixexample.selftest.SelfTest.require;
 
 import com.github.dewarepk.synthetixlib.command.Arg;
 import com.github.dewarepk.synthetixlib.command.Args;
+import com.github.dewarepk.synthetixlib.command.CommandCooldowns;
 import com.github.dewarepk.synthetixlib.command.CommandMessages;
 import com.github.dewarepk.synthetixlib.command.CommandService;
 import com.github.dewarepk.synthetixlib.command.CommandSpec;
 import com.github.dewarepk.synthetixlib.command.SubSpec;
 import com.github.dewarepk.synthetixlib.config.Configs;
 import com.github.dewarepk.synthetixlib.config.LocaleHandle;
+import com.github.dewarepk.synthetixlib.config.TimeFormat;
 import com.github.dewarepk.synthetixlib.core.SynthetixLib;
 import io.papermc.paper.registry.RegistryKey;
 import java.io.IOException;
@@ -51,6 +53,7 @@ final class CommandSelfTests {
 
     private final JavaPlugin plugin;
     private final SynthetixLib lib;
+    private CommandCooldowns cooldowns;
     /** What the handlers did, in order. Only appended to on the global region thread. */
     private final List<String> log = Collections.synchronizedList(new ArrayList<>());
     /** Completed by the follow-up of the async test command, on the thread {@code runOnSender} chose. */
@@ -90,9 +93,9 @@ final class CommandSelfTests {
         final Arg<String> fruit = Arg.of("fruit", Args.oneOf(() -> List.of("apple", "pear")));
         final Arg<ItemStack> item = Arg.of("item", Args.itemStack());
 
-        CommandService.create(lib)
-                .messages(lang, Messages::commands)
-                .register(CommandSpec.literal("sxtest")
+        final CommandService service = CommandService.create(lib).messages(lang, Messages::commands);
+        this.cooldowns = service.cooldowns();
+        service.register(CommandSpec.literal("sxtest")
                         .aliases("sxt")
                         .description("SynthetixLib command self-test")
                         .executes(ctx -> log.add("root " + ctx.label()))
@@ -128,6 +131,8 @@ final class CommandSelfTests {
                                 log.add("item " + ctx.get(item).getType())))
                         .sub(SubSpec.literal("cool").cooldown(Duration.ofHours(1)).executes(ctx ->
                                 log.add("cool")))
+                        .sub(SubSpec.literal("coolfn").cooldown(sender -> Duration.ofHours(1)).executes(ctx ->
+                                log.add("coolfn")))
                         .sub(SubSpec.literal("async").executesAsync(ctx -> {
                             final boolean offGlobal = ctx.isAsync() && !lib.scheduler().isGlobalThread();
                             ctx.runOnSender(() -> asyncResult.complete("offGlobal=" + offGlobal
@@ -259,6 +264,19 @@ final class CommandSelfTests {
                     dispatch(console, "sxtest cool");
                     dispatch(console, "sxtest cool");
                     require(log.equals(List.of("cool", "cool")), "the console has no cooldown: " + log);
+                }),
+                SelfTest.sync("command.cooldown-reset", () -> {
+                    final CommandSender console = plugin.getServer().getConsoleSender();
+                    log.clear();
+                    dispatch(console, "sxtest coolfn");
+                    dispatch(console, "sxtest coolfn");
+                    require(log.equals(List.of("coolfn", "coolfn")), "a function cooldown runs; console has none: " + log);
+                    final java.util.UUID nobody = java.util.UUID.randomUUID();
+                    require(cooldowns.remaining(nobody, "sxtest coolfn").isZero(), "nobody is on cooldown");
+                    cooldowns.reset(nobody, "sxtest coolfn");
+                    cooldowns.reset(nobody);
+                    require(TimeFormat.english().format(Duration.ofSeconds(72)).equals("1m 12s"), "readable time");
+                    require(TimeFormat.english().format(Duration.ofHours(1)).equals("1h 0m"), "readable hours");
                 }),
                 SelfTest.async("command.async", () -> {
                     asyncResult = new CompletableFuture<>();

@@ -22,12 +22,14 @@ getCommand("auction").setExecutor((sender, cmd, label, args) -> {
 ```java snippet=command-give
 final class GiveCommand implements SubCommand {
 
+    private final ConfigHandle<Settings> settings;
     private final LocaleHandle<Messages> lang;
     private final Arg<Player> target = Arg.of("player", Args.player());
     private final Arg<Material> material = Arg.of("material", Args.material());
     private final Arg<Integer> amount = Arg.of("amount", Args.integer(1, 64));
 
-    GiveCommand(final LocaleHandle<Messages> lang) {
+    GiveCommand(final ConfigHandle<Settings> settings, final LocaleHandle<Messages> lang) {
+        this.settings = settings;
         this.lang = lang;
     }
 
@@ -37,7 +39,7 @@ final class GiveCommand implements SubCommand {
                 .permission("example.give")
                 .allowConsole()
                 .argument(target).argument(material).optional(amount, 1)
-                .cooldown(Duration.ofSeconds(10), "example.admin")
+                .cooldown(sender -> settings.get().giveWait(), "example.admin")   // read per run: a reload applies
                 .usage("<player> <material> [amount]").description("Give items to a player")
                 .executes(this::run);
     }

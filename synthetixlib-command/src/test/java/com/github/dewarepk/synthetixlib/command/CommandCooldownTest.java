@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.github.dewarepk.synthetixlib.command.CommandFixtures.Inbox;
 import com.github.dewarepk.synthetixlib.command.CommandFixtures.TestHost;
+import com.github.dewarepk.synthetixlib.config.TimeFormat;
+import com.github.dewarepk.synthetixlib.config.TimeUnits;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
@@ -91,9 +93,126 @@ class CommandCooldownTest {
         assertEquals(List.of("Wait 4s before using /shop again.", "Wait 1s before using /shop again."),
                 inbox.copy());
 
-        assertEquals("1m31s", Executor.formatWait(Duration.ofMillis(90_100)));
-        assertEquals("1s", Executor.formatWait(Duration.ofNanos(1)));
-        assertEquals("1h", Executor.formatWait(Duration.ofHours(1)));
+    }
+
+    @Test
+    void timeFormatWritesTheTwoLargestUnits() {
+        final TimeFormat time = TimeFormat.english();
+        assertEquals("0s", time.format(Duration.ZERO));
+        assertEquals("59s", time.format(Duration.ofSeconds(59)));
+        assertEquals("1s", time.format(Duration.ofNanos(1)));
+        assertEquals("1m 12s", time.format(Duration.ofSeconds(72)));
+        assertEquals("1m 31s", time.format(Duration.ofMillis(90_100)));
+        assertEquals("1h 0m", time.format(Duration.ofHours(1)));
+        assertEquals("2d 3h", time.format(Duration.ofDays(2).plusHours(3).plusMinutes(4)));
+        assertEquals("1 Tag 2 Std", TimeFormat.of(new TimeUnits(" Tag", " Std", " Min", " Sek"))
+                .format(Duration.ofHours(26)));
+    }
+
+    @Test
+    void theDurationIsAskedAtEverySuccessfulRun() {
+        final AtomicReference<Duration> wait = new AtomicReference<>(FIVE);
+        final var dispatcher = CommandFixtures.dispatcher(host, CommandSpec.literal("kit")
+                .cooldown(sender -> wait.get()).executes(ctx -> ran.add("kit")).build());
+
+        assertEquals(1, run(dispatcher, steve, "kit"));
+        assertEquals(5, host.cooldowns.left(id(steve), "kit").toSeconds());
+
+        wait.set(Duration.ofSeconds(60));   // a config reload
+        host.cooldowns.reset(id(steve), "kit");
+        assertEquals(1, run(dispatcher, steve, "kit"));
+        assertEquals(60, host.cooldowns.left(id(steve), "kit").toSeconds());
+    }
+
+    @Test
+    void zeroFromTheFunctionMeansNoCooldownThisTime() {
+        final AtomicReference<Duration> wait = new AtomicReference<>(Duration.ZERO);
+        final var dispatcher = CommandFixtures.dispatcher(host, CommandSpec.literal("kit")
+                .cooldown(sender -> wait.get()).executes(ctx -> ran.add("kit")).build());
+
+        assertEquals(1, run(dispatcher, steve, "kit"));
+        assertEquals(1, run(dispatcher, steve, "kit"));
+        assertEquals(Duration.ZERO, host.cooldowns.left(id(steve), "kit"));
+
+        wait.set(FIVE);
+        assertEquals(1, run(dispatcher, steve, "kit"));
+        assertEquals(0, run(dispatcher, steve, "kit"));
+    }
+
+    @Test
+    void theFunctionVersionHonoursTheBypassPermission() {
+        final Player admin = CommandFixtures.player("Admin", Set.of("kit.bypass"), inbox);
+        final var dispatcher = CommandFixtures.dispatcher(host, CommandSpec.literal("kit")
+                .cooldown(sender -> FIVE, "kit.bypass").executes(ctx -> ran.add("kit")).build());
+
+        assertEquals(1, run(dispatcher, admin, "kit"));
+        assertEquals(1, run(dispatcher, admin, "kit"));
+        assertEquals(1, run(dispatcher, steve, "kit"));
+        assertEquals(0, run(dispatcher, steve, "kit"));
+    }
+
+    @Test
+    void aThrowingFunctionStartsNoCooldownAndIsLogged() {
+        final var dispatcher = CommandFixtures.dispatcher(host, CommandSpec.literal("kit")
+                .cooldown(sender -> {
+                    throw new IllegalStateException("boom");
+                }).executes(ctx -> ran.add("kit")).build());
+
+        assertEquals(1, run(dispatcher, steve, "kit"));
+        assertEquals(1, run(dispatcher, steve, "kit"));
+        assertEquals(2, host.logs.size());
+    }
+
+    @Test
+    void zeroDurationStillRemovesAnInheritedCooldownAndAFunctionRestoresIt() {
+        final CommandSpec spec = CommandSpec.literal("cmd").cooldown(FIVE)
+                .sub(SubSpec.literal("none").cooldown(Duration.ZERO).executes(ctx -> ran.add("none")))
+                .sub(SubSpec.literal("own").cooldown(Duration.ZERO).cooldown(sender -> FIVE)
+                        .executes(ctx -> ran.add("own")))
+                .build();
+        final var dispatcher = CommandFixtures.dispatcher(host, spec);
+
+        assertEquals(1, run(dispatcher, steve, "cmd none"));
+        assertEquals(1, run(dispatcher, steve, "cmd none"));
+        assertEquals(1, run(dispatcher, steve, "cmd own"));
+        assertEquals(0, run(dispatcher, steve, "cmd own"));
+    }
+
+    @Test
+    void cooldownsApiReadsAndResetsOnePlayerOrAll() {
+        final CommandCooldowns api = new CommandCooldowns(host.cooldowns);
+        final Player alex = CommandFixtures.player("Alex", Set.of(), inbox);
+        final var dispatcher = shop();
+        run(dispatcher, steve, "shop bid");
+        run(dispatcher, steve, "shop sell");
+        run(dispatcher, alex, "shop bid");
+
+        assertEquals(FIVE, api.remaining(steve, "shop bid"));
+        assertEquals(FIVE, api.remaining(id(steve), "shop sell"));
+        assertEquals(Duration.ZERO, api.remaining(steve, "shop free"));
+        advance(Duration.ofSeconds(2));
+        assertEquals(Duration.ofSeconds(3), api.remaining(steve, "shop bid"));
+
+        api.reset(id(steve), "shop bid");
+        assertEquals(Duration.ZERO, api.remaining(steve, "shop bid"));
+        assertEquals(1, run(dispatcher, steve, "shop bid"));
+        assertEquals(Duration.ofSeconds(3), api.remaining(steve, "shop sell"), "sell is untouched");
+
+        api.reset(id(steve));
+        assertEquals(Duration.ZERO, api.remaining(steve, "shop bid"));
+        assertEquals(Duration.ZERO, api.remaining(steve, "shop sell"));
+        assertEquals(FIVE.minusSeconds(2), api.remaining(alex, "shop bid"), "another player is untouched");
+    }
+
+    @Test
+    void aFailureStartsNoCooldown() {
+        final var dispatcher = CommandFixtures.dispatcher(host, CommandSpec.literal("kit").cooldown(FIVE)
+                .executes(ctx -> {
+                    throw ctx.fail("<red>nope");
+                }).build());
+
+        assertEquals(0, run(dispatcher, steve, "kit"));
+        assertEquals(Duration.ZERO, host.cooldowns.left(id(steve), "kit"));
     }
 
     @Test

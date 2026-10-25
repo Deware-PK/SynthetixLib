@@ -6,6 +6,7 @@ import com.github.dewarepk.synthetixexample.demo.DemoDialogs;
 import com.github.dewarepk.synthetixexample.demo.DemoMenus;
 import com.github.dewarepk.synthetixexample.demo.Messages;
 import com.github.dewarepk.synthetixexample.demo.Settings;
+import com.github.dewarepk.synthetixlib.command.CommandCooldowns;
 import com.github.dewarepk.synthetixlib.command.CommandSpec;
 import com.github.dewarepk.synthetixlib.config.ConfigCollection;
 import com.github.dewarepk.synthetixlib.config.ConfigHandle;
@@ -21,7 +22,8 @@ public final class ExampleCommand {
     /** @return the spec to hand to {@code CommandService.register} */
     public static CommandSpec build(final ConfigHandle<Settings> settings, final ConfigCollection<Airdrop> airdrops,
                                     final LocaleHandle<Messages> lang, final DemoMenus menus, final DemoDialogs dialogs,
-                                    final Database database, final ClaimStore claims) {
+                                    final Database database, final ClaimStore claims,
+                                    final CommandCooldowns cooldowns) {
         // @snippet:command-root
         return CommandSpec.literal("example")
                 .aliases("ex")
@@ -29,7 +31,8 @@ public final class ExampleCommand {
                 .sub(new AirdropCommand(airdrops, claims, lang))
                 .sub(new DialogCommand(dialogs))
                 .sub(new DbCommand(database, settings, lang))
-                .sub(new GiveCommand(lang))
+                .sub(new GiveCommand(settings, lang))
+                .sub(new GiveResetCommand(cooldowns, lang))
                 .sub(new MenuCommand(menus))
                 .sub(new ReloadCommand(settings, airdrops, lang))
                 .helpSub()

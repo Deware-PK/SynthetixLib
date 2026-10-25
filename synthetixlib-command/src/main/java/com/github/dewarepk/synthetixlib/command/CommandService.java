@@ -53,6 +53,7 @@ public final class CommandService implements AutoCloseable {
     private final SynthetixLib lib;
     private final CommandRegistry registry = new CommandRegistry();
     private final Cooldowns cooldowns = new Cooldowns(System::nanoTime);
+    private final CommandCooldowns cooldownView = new CommandCooldowns(cooldowns);
     private final SenderThreads threads;
     private final Listener quitListener = new Listener() {
     };
@@ -144,6 +145,15 @@ public final class CommandService implements AutoCloseable {
                         + ":" + spec.name());
             }
         }
+    }
+
+    /**
+     * Reads and clears the cooldowns of this service, e.g. for an admin command that lets one player try again.
+     *
+     * @return the cooldowns; the same object every time
+     */
+    public CommandCooldowns cooldowns() {
+        return cooldownView;
     }
 
     /** @return {@code true} after {@link #close()} */

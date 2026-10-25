@@ -1,5 +1,6 @@
 welcome: <green>ยินดีต้อนรับ <name>!
 airdrops-loaded: "<gray>โหลด airdrop แล้ว <count> รายการ: <ids>"
+give-reset: <green><player> ใช้ /example give ได้อีกแล้ว
 airdrop-created: <green>สร้าง airdrop <id> แล้ว
 airdrop-claimed: <green>รับ <id> แล้ว ตอนนี้มีคนรับ <count> ครั้ง
 airdrop-stats: "<gray><id>: รับแล้ว <count> ครั้ง ล่าสุด: <players>"

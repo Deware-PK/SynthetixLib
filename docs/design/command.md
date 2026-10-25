@@ -258,8 +258,13 @@ Every type maps to a **native** Brigadier/Paper argument type, so the client val
   (`ConcurrentHashMap<UUID, …>`), never static. Consumed only when the handler returns normally (`ctx.fail` and
   exceptions do not consume it). Removed on `PlayerQuitEvent` (bug #4) and when the service closes. In memory only:
   a restart clears cooldowns (persistent cooldowns are the product's job, e.g. via the database module).
-  Console and command blocks have no cooldown. Reply: `CommandMessages.cooldown` with `<time>` (formatted like config
-  durations, rounded up to seconds).
+  Console and command blocks have no cooldown. Reply: `CommandMessages.cooldown` with `<time>` (`TimeFormat`: the two
+  largest units, seconds rounded up, words from `CommandMessages.timeUnits`: `1m 12s`, `1h 0m`, `2d 3h`).
+- `cooldown(Function<CommandSender, Duration>[, bypassPermission])` asks the length at every successful run (a reload
+  applies); `Duration.ZERO` / negative = none this time; a throwing function is logged and starts nothing. A
+  `cooldown(Duration.ZERO)` still removes the inherited cooldown at build time.
+- `CommandService#cooldowns()` → `CommandCooldowns` (thread-safe): `remaining(Player|UUID, path)`, `reset(UUID, path)`,
+  `reset(UUID)`. `path` = the node path as written in code (`"kit"`, `"kit reset"`), never the alias typed.
 - **One async run at a time:** every `executesAsync` node, with or without a cooldown, runs at most once per player
   at a time (a double `/auction bid` must not hit the database twice). The `(player, node)` pair is reserved atomically
   after the cooldown check and before the arguments are read; a second run meanwhile gets `CommandMessages.busy`
@@ -344,4 +349,6 @@ public record Messages(CommandMessages commands, String bidPlaced, String notEno
   `<command>` is the path with the alias actually typed, e.g. `ex airdrop`.
 - Cooldown/in-flight order and quit behaviour changed as described in §5 (P2-18 review fixes).
 - `invalidValue` has no `<label>` (the alias is not known while Brigadier parses), see `CommandMessages`.
+- **0.8.0 (P2-35):** cooldown length as a function, `CommandService#cooldowns()` (`CommandCooldowns`), `<time>` via
+  `TimeFormat` (lives in **config** next to `LocaleHandle`; `CommandMessages.timeUnits` is the new last component).
 - **No `CommandService.refresh(player)`** (found in P3-03 review): not built; call `player.updateCommands()` after changing permissions at runtime.

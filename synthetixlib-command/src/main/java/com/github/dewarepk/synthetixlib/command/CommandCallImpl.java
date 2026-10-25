@@ -16,6 +16,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
 import java.util.function.Function;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
@@ -307,8 +308,19 @@ final class CommandCallImpl implements CommandCall {
             return;
         }
         synchronized (cooldownLock) {
-            if (!cooldownSkipped) {
-                host.cooldowns().start(cooldownPlayer, node.path(), cooldown.duration());
+            if (cooldownSkipped) {
+                return;
+            }
+            final Duration length;
+            try {
+                length = cooldown.duration().apply(sender);
+            } catch (final RuntimeException e) {
+                host.logger().log(Level.WARNING, "The cooldown function of /" + node.path() + " threw; "
+                        + sender.getName() + " gets no cooldown", e);
+                return;
+            }
+            if (length != null && !length.isZero() && !length.isNegative()) {
+                host.cooldowns().start(cooldownPlayer, node.path(), length);
             }
         }
     }

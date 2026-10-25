@@ -19,10 +19,6 @@ import com.github.dewarepk.synthetixlib.config.codec.Codecs;
 import com.github.dewarepk.synthetixlib.config.codec.DecodeException;
 import com.github.dewarepk.synthetixlib.core.SynthetixLib;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerQuitEvent;
 import java.util.ArrayList;
 import java.util.UUID;
 import java.util.List;
@@ -351,31 +347,15 @@ final class DocExamples {
         void buy(Player player, Lot lot, int amount);
     }
 
-    // @snippet:command-own-cooldown
-    /** A cooldown the command module cannot express: a reloadable length and a reset for one player. */
-    final class KitCooldowns implements Listener {
+    /** The wait of a kit, read from a reloadable config. */
+    record KitSettings(Duration kitWait) {
+    }
 
-        private final Map<UUID, Long> readyAt = new ConcurrentHashMap<>();   // instance field, never static
-
-        /** @return the seconds left, 0 if the player may use the kit now (and starts the wait if so) */
-        long tryUse(final UUID player, final Duration length) {
-            final long now = System.currentTimeMillis();
-            final Long ready = readyAt.get(player);
-            if (ready != null && ready > now) {
-                return (ready - now + 999) / 1000;
-            }
-            readyAt.put(player, now + length.toMillis());                    // length read per use: reload works
-            return 0;
-        }
-
-        void reset(final UUID player) {
-            readyAt.remove(player);                                          // e.g. /kit reset <player>
-        }
-
-        @EventHandler
-        void onQuit(final PlayerQuitEvent event) {
-            readyAt.remove(event.getPlayer().getUniqueId());                 // clean up on quit
-        }
+    // @snippet:command-cooldown-reload
+    SubSpec kit(final ConfigHandle<KitSettings> settings) {
+        return SubSpec.literal("kit")
+                .cooldown(sender -> settings.get().kitWait(), "kit.bypass")   // asked at every successful run
+                .executes(ctx -> ctx.reply("<green>Here is your kit"));
     }
     // @end
 

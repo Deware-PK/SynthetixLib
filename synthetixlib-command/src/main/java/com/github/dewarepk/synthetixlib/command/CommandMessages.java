@@ -1,5 +1,6 @@
 package com.github.dewarepk.synthetixlib.command;
 
+import com.github.dewarepk.synthetixlib.config.TimeUnits;
 import com.github.dewarepk.synthetixlib.config.annotation.Comment;
 
 /**
@@ -29,6 +30,7 @@ import com.github.dewarepk.synthetixlib.config.annotation.Comment;
  * @param helpLine       one line per subcommand the sender may use; also {@code <command>}, {@code <usage>} and
  *                       {@code <description>} (empty when the node has none)
  * @param disabled       reserved for a disabled command; empty means silent
+ * @param timeUnits      the unit words of {@code <time>} in {@code cooldown} (for example {@code 1m 12s})
  */
 public record CommandMessages(
         @Comment("Placeholders: <label> <sender>") String playerOnly,
@@ -40,7 +42,8 @@ public record CommandMessages(
         @Comment("First line of /<command> help. Placeholders: <label> <sender> <command>") String helpHeader,
         @Comment("One line per subcommand. Placeholders: <label> <sender> <command> <usage> <description>")
         String helpLine,
-        @Comment("Empty = send nothing") String disabled) {
+        @Comment("Empty = send nothing") String disabled,
+        @Comment("Unit words of <time> in the cooldown message, e.g. 1m 12s") TimeUnits timeUnits) {
 
     /** @return the English defaults */
     public static CommandMessages defaults() {
@@ -53,6 +56,7 @@ public record CommandMessages(
                 "<red>Something went wrong, see the console.",
                 "<yellow>Commands of /<command>:",
                 "<yellow>/<command> <usage> <gray>- <description>",
-                "");
+                "",
+                TimeUnits.defaults());
     }
 }

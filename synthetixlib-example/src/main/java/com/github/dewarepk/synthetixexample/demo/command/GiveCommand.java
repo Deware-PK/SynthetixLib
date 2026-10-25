@@ -1,13 +1,14 @@
 package com.github.dewarepk.synthetixexample.demo.command;
 
 import com.github.dewarepk.synthetixexample.demo.Messages;
+import com.github.dewarepk.synthetixexample.demo.Settings;
 import com.github.dewarepk.synthetixlib.command.Arg;
 import com.github.dewarepk.synthetixlib.command.Args;
 import com.github.dewarepk.synthetixlib.command.CommandCall;
 import com.github.dewarepk.synthetixlib.command.SubCommand;
 import com.github.dewarepk.synthetixlib.command.SubSpec;
+import com.github.dewarepk.synthetixlib.config.ConfigHandle;
 import com.github.dewarepk.synthetixlib.config.LocaleHandle;
-import java.time.Duration;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -17,12 +18,14 @@ import org.bukkit.inventory.ItemStack;
 // @snippet:command-give
 final class GiveCommand implements SubCommand {
 
+    private final ConfigHandle<Settings> settings;
     private final LocaleHandle<Messages> lang;
     private final Arg<Player> target = Arg.of("player", Args.player());
     private final Arg<Material> material = Arg.of("material", Args.material());
     private final Arg<Integer> amount = Arg.of("amount", Args.integer(1, 64));
 
-    GiveCommand(final LocaleHandle<Messages> lang) {
+    GiveCommand(final ConfigHandle<Settings> settings, final LocaleHandle<Messages> lang) {
+        this.settings = settings;
         this.lang = lang;
     }
 
@@ -32,7 +35,7 @@ final class GiveCommand implements SubCommand {
                 .permission("example.give")
                 .allowConsole()
                 .argument(target).argument(material).optional(amount, 1)
-                .cooldown(Duration.ofSeconds(10), "example.admin")
+                .cooldown(sender -> settings.get().giveWait(), "example.admin")   // read per run: a reload applies
                 .usage("<player> <material> [amount]").description("Give items to a player")
                 .executes(this::run);
     }

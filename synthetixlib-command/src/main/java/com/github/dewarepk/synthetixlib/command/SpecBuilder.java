@@ -7,7 +7,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.function.Supplier;
+import org.bukkit.command.CommandSender;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -32,6 +34,8 @@ public abstract sealed class SpecBuilder<B extends SpecBuilder<B>> permits SubSp
     private @Nullable CommandHandler handler;
     private boolean async;
     private Node.@Nullable Cooldown cooldown;
+    /** {@code cooldown(Duration.ZERO)}: removes the cooldown of the parent. */
+    private boolean cooldownRemoved;
     private @Nullable String permission;
     private @Nullable Boolean playerOnly;
     private @Nullable String usage;
@@ -157,11 +161,47 @@ public abstract sealed class SpecBuilder<B extends SpecBuilder<B>> permits SubSp
         if (duration.isNegative()) {
             throw new IllegalArgumentException("/" + name + ": cooldown must not be negative");
         }
+        checkBypass(bypassPermission);
+        this.cooldown = new Node.Cooldown(sender -> duration, bypassPermission);
+        this.cooldownRemoved = duration.isZero();
+        return self();
+    }
+
+    /**
+     * Like {@link #cooldown(Duration)}, but the length is asked at every successful run, so a value read from a
+     * reloadable config follows the reload. {@link Duration#ZERO} (or a negative value) means no cooldown this time.
+     *
+     * <pre>{@code
+     * SubSpec.literal("kit").cooldown(sender -> settings.get().kitWait()).executes(...)
+     * }</pre>
+     *
+     * @param duration the length for this sender; must not return {@code null} or throw (then no cooldown starts
+     *                 and the error is logged)
+     * @return this builder
+     */
+    public B cooldown(final Function<CommandSender, Duration> duration) {
+        return cooldown(duration, null);
+    }
+
+    /**
+     * Like {@link #cooldown(Function)}; senders with {@code bypassPermission} are never put on cooldown.
+     *
+     * @param duration         the length for this sender, asked at every successful run
+     * @param bypassPermission the permission that skips the cooldown, {@code null} for none
+     * @return this builder
+     */
+    public B cooldown(final Function<CommandSender, Duration> duration, final @Nullable String bypassPermission) {
+        Objects.requireNonNull(duration, "duration");
+        checkBypass(bypassPermission);
+        this.cooldown = new Node.Cooldown(duration, bypassPermission);
+        this.cooldownRemoved = false;
+        return self();
+    }
+
+    private void checkBypass(final @Nullable String bypassPermission) {
         if (bypassPermission != null && bypassPermission.isBlank()) {
             throw new IllegalArgumentException("/" + name + ": bypass permission must not be blank");
         }
-        this.cooldown = new Node.Cooldown(duration, bypassPermission);
-        return self();
     }
 
     /**
@@ -261,10 +301,10 @@ public abstract sealed class SpecBuilder<B extends SpecBuilder<B>> permits SubSp
         }
         final boolean effectivePlayerOnly = playerOnly != null ? playerOnly : parentPlayerOnly;
         final Node.Cooldown effectiveCooldown;
-        if (cooldown == null) {
-            effectiveCooldown = parentCooldown;
+        if (cooldownRemoved) {
+            effectiveCooldown = null;
         } else {
-            effectiveCooldown = cooldown.duration().isZero() ? null : cooldown;
+            effectiveCooldown = cooldown == null ? parentCooldown : cooldown;
         }
 
         if (handler == null && !steps.isEmpty()) {

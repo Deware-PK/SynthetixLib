@@ -1,5 +1,5 @@
 # P2-35 Command cooldowns: reloadable duration, per-player reset, readable time
-Status: todo · Approved: yes (owner 2026-10-25) · Model: sonnet · Effort: medium
+Status: done · Approved: yes (owner 2026-10-25) · Model: sonnet · Effort: medium
 Module: synthetixlib-command · Depends on: P2-34 · Design: command.md §5 · Found by: eval cooldown-command run 1
 
 ## Prompt (paste into Claude Code)
@@ -31,11 +31,30 @@ Unit: duration function read per run (changes after "reload"), ZERO, bypass, res
 cooldown, TimeFormat table (0s, 59s, 1m 12s, 1h 0m, 2d 3h). Self-test `command.cooldown-reset` on both versions.
 
 ## Acceptance criteria
-- [ ] API + docs (design, skill reference, rule, CHANGELOG)
-- [ ] `gradlew.bat syncSnippets check smokeTest` green
+- [x] API + docs (design, skill reference, rule, CHANGELOG)
+- [x] `gradlew.bat syncSnippets check smokeTest` green
 
 ## Verify
 gradlew.bat syncSnippets check smokeTest
 
 ## Result
-(agent fills in)
+Ran `gradlew.bat syncSnippets check smokeTest`: green (smoke 1.21.11 and 26.x, 87/87 self-tests incl. `command.cooldown-reset`).
+- `cooldown(Function<CommandSender, Duration>[, bypass])` on `SpecBuilder`; `Node.Cooldown` holds the function, asked in
+  `CommandCallImpl.finished()`. ZERO/negative = none; a throwing function is logged, no cooldown. `cooldown(Duration.ZERO)`
+  still removes an inherited cooldown (flag in the builder).
+- `CommandService#cooldowns()` -> public `CommandCooldowns` (`remaining`, `reset(uuid, path)`, `reset(uuid)`); path = `Node.path()`.
+- `TimeFormat` + `TimeUnits` live in **config** (next to `LocaleHandle`; command already depends on config).
+  `CommandMessages` got a last component `timeUnits` (**Breaking** for code that calls its constructor; `defaults()` fills it).
+  `<time>` is now `1m 12s` (was `1m31s`); the two largest units. `Executor.formatWait` removed.
+- Docs: design §5 + deviations, skill `references/command.md` (own-map workaround replaced by snippets, bold `ctx.fail` note),
+  rule `command-cooldown-not-on-failure` (MEDIUM, listed in SKILL.md), CHANGELOG 0.8.0.
+- Example: `give` reads `give-wait` from settings; new `/example give-reset <player>`. Snippet `command-own-cooldown` replaced by
+  `command-cooldown-reload` (`settings.get().wait()` in the spec is illegal for a record, so the component is `kitWait`).
+- Tests: new cases in `CommandCooldownTest` (per-run function, ZERO, bypass, throwing function, reset one/all, remaining, fail,
+  TimeFormat table). The self-test cannot hold a player cooldown (no fake player on the server), so it covers the console path,
+  the API on an unknown UUID and `TimeFormat`; per-player behaviour is covered by the unit tests.
+
+## Review (planner, 2026-10-25)
+Approved. Smoke 87/87 (new `command.cooldown-reset`). TimeFormat in config (instance, words from lang) ok; `kitWait` naming ok.
+Planner fixed CHANGELOG 0.8.0: the closing line said "Breaking: none" while `CommandMessages.timeUnits` is breaking.
+Per-player cooldown path covered by unit tests only (no fake player can own a cooldown on the server).

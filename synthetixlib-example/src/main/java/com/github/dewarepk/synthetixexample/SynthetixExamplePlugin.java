@@ -120,9 +120,9 @@ public final class SynthetixExamplePlugin extends JavaPlugin implements Listener
         dialogs.link("menu", menus.opener());
         final DemoDialogs demoDialogs = DemoDialogs.create(dialogs, lang, settings);
 
-        CommandService.create(lib)
-                .messages(lang, Messages::commands)
-                .register(ExampleCommand.build(settings, airdrops, lang, menus, demoDialogs, database, claims));
+        final CommandService commands = CommandService.create(lib).messages(lang, Messages::commands);
+        commands.register(ExampleCommand.build(settings, airdrops, lang, menus, demoDialogs, database, claims,
+                commands.cooldowns()));
     }
 
     @EventHandler

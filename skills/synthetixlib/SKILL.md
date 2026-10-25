@@ -107,7 +107,7 @@ Each file in `rules/` has the why and a wrong -> right pair.
 
 **MEDIUM**
 - `config-keep-comments`, `config-public-records`
-- `command-report-alias-used`
+- `command-report-alias-used`, `command-cooldown-not-on-failure`
 
 ## Module map: problem → module → reference
 

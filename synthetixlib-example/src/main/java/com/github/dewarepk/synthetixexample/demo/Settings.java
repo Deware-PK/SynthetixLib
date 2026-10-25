@@ -22,12 +22,15 @@ public record Settings(@Comment("Give every joining player a demo ticket") boole
                        long sellMinPrice,
                        @Key("sell-max-price")
                        @Comment("The sell dialog: the highest price a player may type")
-                       long sellMaxPrice) {
+                       long sellMaxPrice,
+                       @Key("give-wait")
+                       @Comment("/example give: how long a player waits between uses; a reload applies a change")
+                       Duration giveWait) {
 
     public static Settings defaults() {
         return new Settings(true, Airdrop.standard(),
                 DatabaseSettings.sqlite("example.db").withTablePrefix("ex_"),
-                new DialogSettings(Duration.ofMinutes(5), true), 1, 1_000_000);
+                new DialogSettings(Duration.ofMinutes(5), true), 1, 1_000_000, Duration.ofSeconds(10));
     }
 }
 // @end

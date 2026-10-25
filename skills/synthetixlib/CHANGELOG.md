@@ -5,6 +5,14 @@ Releases are git tags `v<x.y.z>` (0.1.0 and 0.2.0 were never tagged). JitPack wo
 (`com.github.Deware-PK.SynthetixLib:synthetixlib-<module>:v<x.y.z>`); older tags have no `jitpack.yml` and do not build there.
 
 ## 0.8.0
+- command: `cooldown(Function<CommandSender, Duration>)` and `cooldown(fn, bypassPermission)`: the length is asked at every
+  successful run, so a config reload applies; `Duration.ZERO` = no cooldown this time. The `Duration` overloads stay.
+- command: `CommandService#cooldowns()` returns the new `CommandCooldowns`: `remaining(Player | UUID, commandPath)`,
+  `reset(UUID, commandPath)`, `reset(UUID)`. `commandPath` is the path as written in code (`"kit reset"`), never an alias.
+- command: `<time>` of the cooldown message reads `1m 12s` / `1h 0m` / `2d 3h` (was `1m12s`). New `CommandMessages.timeUnits`
+  (**Breaking:** the record has a new last component, `CommandMessages.defaults()` fills it; lang files gain `time-units:`).
+- config: new `TimeFormat` (an instance: `TimeFormat.of(TimeUnits)`) and `TimeUnits` (`d h m s` words for the lang file).
+- docs: `ctx.fail(...)` never starts the cooldown; rule `command-cooldown-not-on-failure`.
 - dialog: `type: number-field` input, a typed number for money and wide ranges (`format: integer | decimal`, `min`, `max`,
   `initial`, `max-length`); the record gets `long` / `int` or `double` / `BigDecimal`; `1,000` and `1_000` are accepted.
   `click.response().number(key)` / `integer(key)` read it too.
@@ -14,7 +22,8 @@ Releases are git tags `v<x.y.z>` (0.1.0 and 0.2.0 were never tagged). JitPack wo
 - dialog: `DialogBuilder#validate(name, Record.class, (form, click) -> Optional<FieldError>)` and `#validateAll(... List<FieldError>)`
   run before the handler of a `submit` / `submitAsync`; an error re-shows the dialog like a file limit. New `FieldError`.
 - dialog: the config codecs gained a `BigDecimal` codec (registered by `DialogService`).
-- **Breaking:** none.
+- **Breaking:** `CommandMessages` has a new last component `timeUnits` (code that calls its constructor directly must
+  add it; `CommandMessages.defaults()` and lang files are filled automatically). Nothing else.
 
 ## 0.7.0
 - First JitPack release. Agent skill (`skills/synthetixlib`), `llms.txt`, Claude Code marketplace, consumer template and

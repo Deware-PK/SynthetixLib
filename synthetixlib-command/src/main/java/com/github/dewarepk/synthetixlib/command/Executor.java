@@ -1,6 +1,6 @@
 package com.github.dewarepk.synthetixlib.command;
 
-import com.github.dewarepk.synthetixlib.config.codec.Durations;
+import com.github.dewarepk.synthetixlib.config.TimeFormat;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.context.CommandContext;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
@@ -52,7 +52,8 @@ final class Executor implements Command<CommandSourceStack> {
         final Duration left = call.cooldownLeft();
         if (!left.isZero()) {
             send(sender, host.render(sender, CommandMessages::cooldown, TagResolver.resolver(
-                    Inputs.builtins(label, sender), Placeholder.unparsed("time", formatWait(left)))));
+                    Inputs.builtins(label, sender), Placeholder.component("time", host.render(sender, messages -> TimeFormat.of(messages.timeUnits())
+                            .format(left), TagResolver.empty())))));
             return 0;
         }
 
@@ -139,12 +140,6 @@ final class Executor implements Command<CommandSourceStack> {
     private void fail(final CommandSender sender, final String input, final String label, final Exception e) {
         host.logger().log(Level.SEVERE, "Command \"/" + input + "\" failed for " + sender.getName(), e);
         send(sender, host.render(sender, CommandMessages::error, Inputs.builtins(label, sender)));
-    }
-
-    /** The wait in the config duration format, rounded up to whole seconds. */
-    static String formatWait(final Duration left) {
-        final long seconds = left.getSeconds() + (left.getNano() > 0 ? 1 : 0);
-        return Durations.format(Duration.ofSeconds(seconds));
     }
 
     private static void send(final CommandSender sender, final Component message) {

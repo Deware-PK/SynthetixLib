@@ -21,7 +21,8 @@ return CommandSpec.literal("example")
         .sub(new AirdropCommand(airdrops, claims, lang))
         .sub(new DialogCommand(dialogs))
         .sub(new DbCommand(database, settings, lang))
-        .sub(new GiveCommand(lang))
+        .sub(new GiveCommand(settings, lang))
+        .sub(new GiveResetCommand(cooldowns, lang))
         .sub(new MenuCommand(menus))
         .sub(new ReloadCommand(settings, airdrops, lang))
         .helpSub()
@@ -58,12 +59,14 @@ and `/minecraft:reload`). After `lib.close()` the command replies nothing.
 ```java snippet=command-give
 final class GiveCommand implements SubCommand {
 
+    private final ConfigHandle<Settings> settings;
     private final LocaleHandle<Messages> lang;
     private final Arg<Player> target = Arg.of("player", Args.player());
     private final Arg<Material> material = Arg.of("material", Args.material());
     private final Arg<Integer> amount = Arg.of("amount", Args.integer(1, 64));
 
-    GiveCommand(final LocaleHandle<Messages> lang) {
+    GiveCommand(final ConfigHandle<Settings> settings, final LocaleHandle<Messages> lang) {
+        this.settings = settings;
         this.lang = lang;
     }
 
@@ -73,7 +76,7 @@ final class GiveCommand implements SubCommand {
                 .permission("example.give")
                 .allowConsole()
                 .argument(target).argument(material).optional(amount, 1)
-                .cooldown(Duration.ofSeconds(10), "example.admin")
+                .cooldown(sender -> settings.get().giveWait(), "example.admin")   // read per run: a reload applies
                 .usage("<player> <material> [amount]").description("Give items to a player")
                 .executes(this::run);
     }
@@ -233,42 +236,60 @@ private void run(final CommandCall ctx) {
 - `permission(p)` hides the node from tab-complete for players without it (the tree is sent on join / `updateCommands()`).
 - `playerOnly()` keeps the node visible to the console but answers `CommandMessages.playerOnly`; `allowConsole()` overrides
   an inherited `playerOnly`.
-- `cooldown(Duration)` or `cooldown(Duration, bypassPermission)`: per player **per executable node**, in memory,
-  consumed only when the handler returns normally (`fail` and exceptions do not use it), cleared on quit and on close. The
-  console and command blocks have no cooldown. A restart clears cooldowns; persist them yourself if needed.
+- `cooldown(Duration)` / `cooldown(Duration, bypassPermission)`: a fixed length. `cooldown(sender -> Duration)` /
+  `cooldown(fn, bypassPermission)`: the length is **asked at every successful run**, so a value read from a reloadable
+  config follows the reload; `Duration.ZERO` means no cooldown this time. Per player **per executable node**, in memory,
+  cleared on quit and on close. The console and command blocks have no cooldown. A restart clears cooldowns; persist them
+  yourself if needed.
+- **`throw ctx.fail(...)` never starts the cooldown** (nor does any exception): a refused run costs the player nothing.
+  Use `skipCooldown()` for a run that succeeds but should not cost, `resetCooldown()` to refund the sender.
 
-The cooldown is a **fixed length given at registration**: a config reload does not change it, another player's cooldown
-cannot be reset (`resetCooldown()` only affects the sender of the running command), and it starts whenever the handler
-returns normally (`skipCooldown()` avoids that). When you need a length from `config.yml`, an admin reset or a wait that
-depends on the result, keep your own map, per instance, cleaned on quit:
+```java snippet=command-cooldown-reload
+SubSpec kit(final ConfigHandle<KitSettings> settings) {
+    return SubSpec.literal("kit")
+            .cooldown(sender -> settings.get().kitWait(), "kit.bypass")   // asked at every successful run
+            .executes(ctx -> ctx.reply("<green>Here is your kit"));
+}
+```
 
-```java snippet=command-own-cooldown
-/** A cooldown the command module cannot express: a reloadable length and a reset for one player. */
-final class KitCooldowns implements Listener {
+Reading or clearing another player's cooldown (an admin command): `commandService.cooldowns()` returns
+`CommandCooldowns` with `remaining(Player | UUID, commandPath)`, `reset(UUID, commandPath)` and `reset(UUID)` (every
+command). `commandPath` is the command **as written in code**, space separated from the root name (`"kit"`,
+`"kit reset"`); an alias typed by the player is never part of it. Thread-safe.
 
-    private final Map<UUID, Long> readyAt = new ConcurrentHashMap<>();   // instance field, never static
+```java snippet=command-reset-cooldown
+final class GiveResetCommand implements SubCommand {
 
-    /** @return the seconds left, 0 if the player may use the kit now (and starts the wait if so) */
-    long tryUse(final UUID player, final Duration length) {
-        final long now = System.currentTimeMillis();
-        final Long ready = readyAt.get(player);
-        if (ready != null && ready > now) {
-            return (ready - now + 999) / 1000;
-        }
-        readyAt.put(player, now + length.toMillis());                    // length read per use: reload works
-        return 0;
+    private final CommandCooldowns cooldowns;
+    private final LocaleHandle<Messages> lang;
+    private final Arg<Player> target = Arg.of("player", Args.player());
+
+    GiveResetCommand(final CommandCooldowns cooldowns, final LocaleHandle<Messages> lang) {
+        this.cooldowns = cooldowns;
+        this.lang = lang;
     }
 
-    void reset(final UUID player) {
-        readyAt.remove(player);                                          // e.g. /kit reset <player>
+    @Override
+    public SubSpec spec() {
+        return SubSpec.literal("give-reset")
+                .permission("example.admin")
+                .allowConsole()
+                .argument(target)
+                .usage("<player>").description("Let a player use /example give again")
+                .executes(this::run);
     }
 
-    @EventHandler
-    void onQuit(final PlayerQuitEvent event) {
-        readyAt.remove(event.getPlayer().getUniqueId());                 // clean up on quit
+    private void run(final CommandCall ctx) {
+        final Player player = ctx.get(target);
+        cooldowns.reset(player.getUniqueId(), "example give");        // the path as written in code, not an alias
+        ctx.reply(lang, Messages::giveReset, Placeholder.unparsed("player", player.getName()));
     }
 }
 ```
+
+`<time>` in the cooldown message is written by `TimeFormat` (config module) with the unit words of
+`CommandMessages.timeUnits` (`timeUnits: {d: d, h: h, m: m, s: s}` in the lang file): `59s`, `1m 12s`, `1h 0m`, `2d 3h`.
+Use `TimeFormat.of(units).format(duration)` for your own messages (an instance, not static).
 
 Register it as a listener, call `tryUse` in the handler and `throw ctx.fail(...)` with the seconds left. Planned (task
 P2-35): reloadable length, per-player reset and a time formatter in the module.

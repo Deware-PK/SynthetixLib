@@ -2,6 +2,8 @@ package com.github.dewarepk.synthetixlib.command;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.function.Function;
+import org.bukkit.command.CommandSender;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -36,10 +38,11 @@ record Node(String name, String path, @Nullable String description, @Nullable St
     }
 
     /**
-     * @param duration         how long the node is unavailable after a successful run; never zero
+     * @param duration         how long the node is unavailable after a successful run, asked at every successful
+     *                         run; {@link Duration#ZERO} means none this time
      * @param bypassPermission senders with it have no cooldown, {@code null} if none
      */
-    record Cooldown(Duration duration, @Nullable String bypassPermission) {
+    record Cooldown(Function<CommandSender, Duration> duration, @Nullable String bypassPermission) {
     }
 
     Node {
