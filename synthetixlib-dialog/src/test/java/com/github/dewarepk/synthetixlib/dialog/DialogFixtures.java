@@ -41,6 +41,7 @@ final class DialogFixtures {
             return material;
         }, material -> material.name().toLowerCase()));
         codecs.register(ClickActions.class, new ClickActionsCodec());
+        codecs.register(java.math.BigDecimal.class, new BigDecimalCodec());
         return codecs;
     }
 }

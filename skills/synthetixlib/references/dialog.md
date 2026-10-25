@@ -28,11 +28,11 @@ body:
     description: '<lang:sell-item>'
 inputs:
   price:
-    type: number
+    type: number-field          # typed, for money; min / max here are the fallback of DemoDialogs.inputRange
     label: '<lang:sell-price>'
+    format: integer
     min: 1
     max: 1000000
-    step: 1
     initial: 100
   duration:
     type: option
@@ -59,22 +59,32 @@ The code: a record for the answers (public; components are the input keys in cam
 registration per name the file uses.
 
 ```java snippet=dialog-form-record
-/** The answers of {@code sell.yml}; public so the config codecs can fill it. The price is checked against the file. */
-public record SellForm(double price, String duration, String note, boolean anonymous) {
+/** The answers of {@code sell.yml}; public so the config codecs can fill it. The price is a typed whole number. */
+public record SellForm(long price, String duration, String note, boolean anonymous) {
 }
 ```
 
 ```java snippet=dialog-submit
 final DialogType<ItemStack> sell = dialogs.dialog("sell").<ItemStack>withContext()
         .placeholder("item-name", view -> itemName(view.context()))
+        // limits from settings.yml, read for every showing and again when the answer is checked
+        .inputRange("price", view -> Range.of(settings.get().sellMinPrice(), settings.get().sellMaxPrice()))
         .submit("sell", SellForm.class, (form, click) -> {
             final Player player = click.player();
             lang.send(player, Messages::dialogSold,
                     Placeholder.component("item", itemName(click.view().context())),
-                    Placeholder.unparsed("price", String.valueOf((long) form.price())),
+                    Placeholder.unparsed("price", String.valueOf(form.price())),
                     Placeholder.unparsed("duration", form.duration()),
                     Placeholder.unparsed("note", form.note().isBlank() ? "-" : form.note()),
                     Placeholder.unparsed("who", form.anonymous() ? "anonymous" : player.getName()));
+        })
+        // a check that needs code: not more than 10 x the base value of the stack (a demo rule)
+        .validate("sell", SellForm.class, (form, click) -> {
+            final long limit = maxPrice(click.view().context());
+            return form.price() > limit
+                    ? Optional.of(FieldError.of("price", "<lang:sell-error-too-high>",
+                            Placeholder.unparsed("limit", String.valueOf(limit))))
+                    : Optional.empty();
         })
         .build();
 ```
@@ -111,7 +121,7 @@ getServer().getPluginManager().registerEvents(this, this);
 | `type` | `notice` (button `ok`), `confirmation` (`yes` + `no`), `multi-action` (named buttons + `exit` + `columns`), `list` (`dialogs: [ids]`), `links` |
 | `can-close-with-escape` | `false` for dialogs that must be answered |
 | `body` | list of `message:` (+ `width`) or `item:` (`slot: hand`, a config item, or `placeholder: name` registered with `item(...)`) with `description` |
-| `inputs.<key>` | `type: text` (`max-length`, `multiline`), `bool`, `option` (`options:` with `display`, `initial`), `number` (`min`, `max`, `step`, `initial`, `format`) |
+| `inputs.<key>` | `type: text` (`max-length`, `multiline`), `bool`, `option` (`options:` with `display`, `initial`), `number` (a slider: `min`, `max`, `step`, `initial`, `format`), `number-field` (typed number, see below: `format: integer \| decimal`, `min`, `max`, `initial`, `max-length`, `width`) |
 | `buttons` | by type (see above); each has `label`, `tooltip`, `width`, `click` |
 | `errors.<input-key>` | the line shown above the body when server-side validation of that input fails |
 
@@ -124,49 +134,78 @@ error with its path and a safe fallback (dropped input / button, default buttons
 ## Typed answers and validation
 
 `submit(name, Record.class, (form, click) -> ...)` decodes the answers with the config codecs: `@Range`, `@NotEmpty`, enums
-for option ids, `int` / `long` / `double` from the client's float. Without a record use `click.response()`:
-`number(key)` (`OptionalDouble`), `integer(key)`, `text(key)`, `bool(key)`, `option(key)`.
+for option ids, `int` / `long` / `double` from the client's float (a slider) or from the typed text (a `number-field`:
+`int` / `long`, `double` / `BigDecimal`). Without a record use `click.response()`: `number(key)` (`OptionalDouble`),
+`integer(key)`, `text(key)`, `bool(key)`, `option(key)`; `number` and `integer` also read a `number-field`.
 
 **The client is never trusted.** `max-length`, ranges and the option list are re-checked on the server. An invalid answer
 re-shows the dialog with the `errors:` line and what the player typed as the initial values. Text is shown again as plain
 text, never parsed as MiniMessage.
 
-### Wide numbers and limits that come from config
+### Money and wide numbers: `number-field`
 
-- A `number` input is drawn as a **slider** (`min`, `max`, `step`). It suits small ranges (1-64 items), not a price from 1
-  to 1,000,000,000: use a `text` input (set `max-length`) and parse the number yourself, as below.
-- `min` / `max` / `@Range` live in the dialog file or the record, so a limit that comes from `config.yml` (min / max
-  price, max per purchase) cannot be expressed there; check the config value in the handler. Do not keep the same limit
-  in both places (slider `max: 64` and config `max-per-purchase` drift apart).
-- On a bad value re-show the dialog with `view.next(dialog, context)`: the context carries what was typed and the error
-  text; the file shows it with a `placeholder("error", ...)` in a `body` message, and `input("price", ...)` gives the
-  typed value back. The dialog type is read when the click happens, so it can be a field of your class.
+A `number` input is a **slider**: fine for a small range (about 100 steps or fewer), useless for a price. For money or any
+wide range use `type: number-field` (rule `dialog-money-is-a-number-field`): a text input that the server reads as a
+number. The sell dialog above has one (`price`); the keys are `label`, `format: integer | decimal` (default integer),
+`min`, `max` (both optional), `initial`, `max-length` (default 18) and `width`.
 
-```java snippet=dialog-config-limits
-priceDialog = dialogs.dialog("price").<PriceAsk>withContext()
-        .placeholder("error", view -> Component.text(view.context().error()))   // "" or the message
-        .input("price", view -> view.context().typed())                         // text input: any size
-        .action("confirm", click -> {
-            final String typed = click.response().text("price").orElse("").trim();
-            long price = -1;
-            try {
-                price = Long.parseLong(typed);
-            } catch (final NumberFormatException ignored) {
-                // stays -1: the same error as a price out of range
+- The text is trimmed; `1,000` and `1_000` are accepted (groups of exactly three digits, so `12,5` is **not** 12.5), a
+  `decimal` also takes `12.50`. No exponent, no `NaN` / `Infinity`, a number that does not fit a `long` is refused.
+- The record component is `long` or `int` for `integer`, `double` or `BigDecimal` for `decimal`. `build()` makes the
+  buttons that use the submit inert (and warns) if the component is a `String` or a `boolean`.
+- Wrong text, or a number outside `min..max`, is refused like any other limit: the dialog is shown again with the
+  `errors.<key>` line and the typed text kept. In that line `<value>` is exactly what was typed (plain text, never
+  parsed), `<min>` and `<max>` are the limits of that showing (empty if the field has none).
+
+### Limits that come from code
+
+`min` / `max` in the file are fixed text; a limit from `config.yml` (min / max price, max per purchase) or from the thing
+the dialog is about (the stock of a lot) is set in code, per showing:
+
+- `inputRange(key, view -> Range.of(min, max))` for a `number` (slider; `Range.of(min, max, step)` also sets the step) and
+  for a `number-field`. `maxLength(key, view -> n)` for a `text` input (also a `number-field`).
+- The function is called when the dialog is shown **and its values are kept in the view**: the answer is checked against
+  the same limits the player saw, even if the config changed meanwhile, and `<min>` / `<max>` of the error line are those
+  values. The file value is the fallback (when the function throws or gives nothing). Do not write the same limit in the
+  file and in code unless the file one is only the fallback.
+- Registry dialogs (pause menu) have no per-player rendering: their limits are the file's.
+
+### Checks that need code: `validate`
+
+`validate(name, Record.class, (form, click) -> Optional<FieldError>)` runs for the submit called `name` (register the
+`submit` first): after the limits of the file and the reading of the record, on the player's thread, **before** the
+handler (also before a `submitAsync` handler goes async). A non-empty answer shows the dialog again exactly like a file
+limit would (the error line above the body, the typed values kept, fresh buttons) and the handler is not called.
+`validateAll` takes a function that returns a `List<FieldError>` for several problems (a different name, because Java
+cannot tell two lambdas apart by their return type).
+
+`FieldError.of(key, markup, resolvers...)` is a line for an input; `FieldError.form(markup, resolvers...)` belongs to the
+whole form. The markup is MiniMessage with your placeholders, `<lang:key>` for a language message, `<min> <max> <value>`
+of the input, and the `TagResolver`s you pass. Use `Placeholder.unparsed` for anything the player typed. The `dialog-submit`
+snippet above has `inputRange` and `validate` for the sell form; this one has `maxLength` and `validateAll`:
+
+```java snippet=dialog-limits-validate
+dialogs.dialog("buy").<Lot>withContext()
+        // limits that come from config.yml or from the lot itself: asked for every showing, and the answer
+        // is checked against the same values (<min> and <max> of the error line are these)
+        .inputRange("amount", view -> Range.of(1, Math.min(view.context().stock(), settings.get().maxPerPurchase())))
+        .maxLength("note", view -> settings.get().maxNoteLength())
+        .submit("buy", BuyForm.class, (form, click) -> economy.buy(click.player(), click.view().context(), form.amount()))
+        // checks that need code run after the limits of the file, before the handler; any number of errors
+        .validateAll("buy", BuyForm.class, (form, click) -> {
+            final List<FieldError> errors = new ArrayList<>();
+            final long cost = form.amount() * click.view().context().unitPrice();
+            if (cost > economy.balance(click.player())) {
+                errors.add(FieldError.of("amount", "<red>You need <cost> coins",
+                        Placeholder.unparsed("cost", String.valueOf(cost))));
             }
-            if (price < 1 || price > maxPrice) {                                // limit from config.yml
-                click.view().next(priceDialog, new PriceAsk(typed, "Price must be 1-" + maxPrice));
-                return;
+            if (form.note().contains("http")) {
+                errors.add(FieldError.of("note", "<lang:buy.no-links>"));
             }
-            click.player().sendMessage("Price: " + price);
+            return errors;
         })
         .build();
-priceDialog.open(player, new PriceAsk("", ""));
 ```
-
-Planned (task P2-34, not available yet): a `validate` hook on `submit`, limits from code and a typed number text input,
-so this hand-written flow goes away. Today the pattern above is the supported way. In real code build the error text
-from your `Messages` (`lang.get(player, Messages::x)`).
 
 ## More registrations, service options, async
 
@@ -264,10 +303,12 @@ these keys at any time, so a handler must check its own state. Clicks are limite
 |---|---|---|
 | `DialogService` | `create(lib, configs)`, `messages`, `settings`, `fallback`, `bootstrapped`, `registered`, `link`, `opener`, `dialog(id)`, `reload`, `lib()`, `configs()`, `isClosed`, `close` | 0.6.0 |
 | `DialogBuilder<C>` | `withContext()`, `placeholder`, `item`, `action`, `submit`, `submitAsync`, `input`, `onClose`, `build()` | 0.6.0 |
+| `DialogBuilder<C>` | `inputRange`, `maxLength`, `validate`, `validateAll` | 0.8.0 |
+| `Range`, `FieldError` | limits of one showing (`Range.of(min, max[, step])`); a problem found by code (`FieldError.of(key, markup, resolvers...)`, `FieldError.form(...)`) | 0.8.0 |
 | `DialogType<C>` | `id()`, `file()`, `isInert(path)`, `open(player)`, `open(player, context)` | 0.6.0 |
 | `DialogView<C>` | `player`, `context`, `reopen`, `close`, `next` | 0.6.0 |
 | `DialogClick<C>` | `view()`, `player()`, `response()` | 0.6.0 |
-| `DialogResponse` | `number`, `integer`, `text`, `bool`, `option` | 0.6.0 |
+| `DialogResponse` | `number`, `integer`, `text`, `bool`, `option` (`number-field` since 0.8.0) | 0.6.0 |
 | `DialogSettings` | record; `defaults()` | 0.6.0 |
 | `SynthetixDialogs` | bootstrap registry (see above) | 0.6.0 |
 
@@ -283,6 +324,8 @@ the thread Paper fires `ClickCallback` on; the hop makes that irrelevant.
 
 ## Pitfalls
 
+- Wrong: a `number` slider for a price, or a hand-made "show again with an error" -> right: `number-field`, `inputRange`
+  and `validate` (rule `dialog-money-is-a-number-field`).
 - Wrong: trusting `min`/`max` of the file in your handler -> right: use `@Range` on the record and let the library
   re-validate; re-check game state too (the item is still in the hand) because the context is a snapshot (rule
   `dialog-validate-on-server`).
@@ -298,7 +341,7 @@ the thread Paper fires `ClickCallback` on; the hop makes that irrelevant.
 ## Limits
 
 - Needs a client 1.21.6+. No live update: changing anything means showing again (typed values come back as `initial`).
-- Widths 1-1024; number inputs are floats; `multi-action` has `columns`. Values are clamped at load with an error.
+- Widths 1-1024; a `number` slider is a float (a `number-field` is exact: `long` / `BigDecimal`); `multi-action` has `columns`. Values are clamped at load with an error.
 - Bedrock (Geyser) support level is not established yet (the table in the design doc is pending).
 - Configuration-phase dialogs and a built-in chat fallback do not exist.
 

@@ -8,6 +8,7 @@ import com.github.dewarepk.synthetixlib.core.SynthetixLib;
 import com.github.dewarepk.synthetixlib.dialog.file.ClickAction;
 import com.github.dewarepk.synthetixlib.dialog.file.ClickActions;
 import com.github.dewarepk.synthetixlib.dialog.file.DialogFile;
+import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.util.Locale;
 import java.util.Map;
@@ -38,7 +39,8 @@ import org.jspecify.annotations.Nullable;
  * result.errors().forEach(sender::sendMessage);
  * }</pre>
  *
- * <p>Registers a codec for the {@code click:} key of buttons in {@code configs.codecs()}, and listens to players quitting.
+ * <p>Registers a codec for the {@code click:} key of buttons and one for {@code BigDecimal} (a decimal
+ * {@code number-field}) in {@code configs.codecs()}, and listens to players quitting.
  * Dialog files are read on the thread that calls {@link DialogBuilder#build()} or {@link #reload()}; dialogs that are
  * open keep the file they were shown with.
  *
@@ -59,6 +61,7 @@ public final class DialogService implements AutoCloseable {
         this.lib = lib;
         this.configs = configs;
         configs.codecs().register(ClickActions.class, new ClickActionsCodec());
+        configs.codecs().register(BigDecimal.class, new BigDecimalCodec());
         final Path folder = lib.plugin().getDataFolder().toPath().resolve("dialogs");
         final DialogLoader loader = new DialogLoader(new DialogStore(folder, lib.plugin()::getResource),
                 new DialogParser(configs.codecs()), lib.text(), configs.codecs());

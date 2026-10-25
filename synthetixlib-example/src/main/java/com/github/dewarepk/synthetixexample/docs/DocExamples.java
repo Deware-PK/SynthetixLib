@@ -23,11 +23,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
+import java.util.ArrayList;
 import java.util.UUID;
 import java.util.List;
 import com.github.dewarepk.synthetixlib.gui.MenuType;
 import com.github.dewarepk.synthetixlib.gui.GuiService;
 import com.github.dewarepk.synthetixlib.dialog.DialogType;
+import com.github.dewarepk.synthetixlib.dialog.FieldError;
+import com.github.dewarepk.synthetixlib.dialog.Range;
 import com.github.dewarepk.synthetixlib.dialog.DialogSettings;
 import com.github.dewarepk.synthetixlib.dialog.DialogService;
 import com.github.dewarepk.synthetixlib.database.RowMapper;
@@ -304,34 +307,48 @@ final class DocExamples {
         // @end
     }
 
-    /** What the price dialog shows: what the player typed and the error line ({@code <error>} in the file). */
-    record PriceAsk(String typed, String error) {
+    /** What the buy dialog is opened for. */
+    record Lot(String name, int stock, long unitPrice) {
     }
 
-    private DialogType<PriceAsk> priceDialog;
+    /** The answers of the buy dialog: {@code amount} is a number-field, {@code note} a text input. */
+    record BuyForm(int amount, String note) {
+    }
 
-    void dialogLimits(final DialogService dialogs, final long maxPrice, final Player player) {
-        // @snippet:dialog-config-limits
-        priceDialog = dialogs.dialog("price").<PriceAsk>withContext()
-                .placeholder("error", view -> Component.text(view.context().error()))   // "" or the message
-                .input("price", view -> view.context().typed())                         // text input: any size
-                .action("confirm", click -> {
-                    final String typed = click.response().text("price").orElse("").trim();
-                    long price = -1;
-                    try {
-                        price = Long.parseLong(typed);
-                    } catch (final NumberFormatException ignored) {
-                        // stays -1: the same error as a price out of range
+    void dialogLimits(final DialogService dialogs, final ConfigHandle<DocSettings> settings, final Economy economy) {
+        // @snippet:dialog-limits-validate
+        dialogs.dialog("buy").<Lot>withContext()
+                // limits that come from config.yml or from the lot itself: asked for every showing, and the answer
+                // is checked against the same values (<min> and <max> of the error line are these)
+                .inputRange("amount", view -> Range.of(1, Math.min(view.context().stock(), settings.get().maxPerPurchase())))
+                .maxLength("note", view -> settings.get().maxNoteLength())
+                .submit("buy", BuyForm.class, (form, click) -> economy.buy(click.player(), click.view().context(), form.amount()))
+                // checks that need code run after the limits of the file, before the handler; any number of errors
+                .validateAll("buy", BuyForm.class, (form, click) -> {
+                    final List<FieldError> errors = new ArrayList<>();
+                    final long cost = form.amount() * click.view().context().unitPrice();
+                    if (cost > economy.balance(click.player())) {
+                        errors.add(FieldError.of("amount", "<red>You need <cost> coins",
+                                Placeholder.unparsed("cost", String.valueOf(cost))));
                     }
-                    if (price < 1 || price > maxPrice) {                                // limit from config.yml
-                        click.view().next(priceDialog, new PriceAsk(typed, "Price must be 1-" + maxPrice));
-                        return;
+                    if (form.note().contains("http")) {
+                        errors.add(FieldError.of("note", "<lang:buy.no-links>"));
                     }
-                    click.player().sendMessage("Price: " + price);
+                    return errors;
                 })
                 .build();
-        priceDialog.open(player, new PriceAsk("", ""));
         // @end
+    }
+
+    /** What the buy example reads from its config. */
+    record DocSettings(int maxPerPurchase, int maxNoteLength) {
+    }
+
+    /** The plugin's own money code, whatever it is. */
+    interface Economy {
+        long balance(Player player);
+
+        void buy(Player player, Lot lot, int amount);
     }
 
     // @snippet:command-own-cooldown

@@ -4,6 +4,7 @@ import com.github.dewarepk.synthetixlib.config.codec.Codecs;
 import com.github.dewarepk.synthetixlib.config.codec.DecodeException;
 import com.github.dewarepk.synthetixlib.config.codec.Problem;
 import com.github.dewarepk.synthetixlib.dialog.file.DialogInput;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -11,6 +12,7 @@ import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -28,8 +30,9 @@ final class FormSubmit {
      * @param min    {@code <min>} of the line: the smallest value of a number input, else empty
      * @param max    {@code <max>} of the line
      * @param value  {@code <value>} of the line: what the player sent, as plain text
+     * @param extra  more tags of the line, from the {@link FieldError} of a validator
      */
-    record Failure(String key, @Nullable String markup, String min, String max, String value) {
+    record Failure(String key, @Nullable String markup, String min, String max, String value, TagResolver extra) {
     }
 
     /**
@@ -44,10 +47,16 @@ final class FormSubmit {
 
     static Outcome decode(final Codecs codecs, final Map<String, DialogInput> inputs, final Map<String, String> lines,
                           final Class<?> form, final Map<String, Object> answers) {
-        final FormValidator.Result checked = FormValidator.validate(inputs, answers);
+        return decode(codecs, inputs, lines, form, answers, InputLimits.file());
+    }
+
+    /** @param limits what the showing really used (see {@link InputLimits}) */
+    static Outcome decode(final Codecs codecs, final Map<String, DialogInput> inputs, final Map<String, String> lines,
+                          final Class<?> form, final Map<String, Object> answers, final InputLimits limits) {
+        final FormValidator.Result checked = FormValidator.validate(inputs, answers, limits);
         final Map<String, Failure> failures = new LinkedHashMap<>();
         for (final String key : checked.bad()) {
-            failures.put(key, failure(key, inputs, lines, answers));
+            failures.put(key, failure(key, inputs, lines, answers, limits));
         }
         if (failures.isEmpty()) {
             try {
@@ -55,7 +64,7 @@ final class FormSubmit {
             } catch (final DecodeException e) {
                 for (final Problem problem : e.problems()) {
                     final String key = keyOf(problem.path());
-                    failures.putIfAbsent(key, failure(key, inputs, lines, answers));
+                    failures.putIfAbsent(key, failure(key, inputs, lines, answers, limits));
                 }
             }
         }
@@ -74,24 +83,48 @@ final class FormSubmit {
         return path.substring(0, end);
     }
 
+    /**
+     * The lines for the errors a validator of the code returned: {@code <min> <max> <value>} are those of the input the
+     * error names, so the text can say what the player saw.
+     */
+    static List<Failure> failures(final List<FieldError> errors, final Map<String, DialogInput> inputs,
+                                  final Map<String, Object> answers, final InputLimits limits) {
+        final List<Failure> out = new ArrayList<>();
+        for (final FieldError error : errors) {
+            out.add(failure(error.key(), error.markup(), error.resolver(), inputs, answers, limits));
+        }
+        return out;
+    }
+
     private static Failure failure(final String key, final Map<String, DialogInput> inputs,
-                                   final Map<String, String> lines, final Map<String, Object> answers) {
+                                   final Map<String, String> lines, final Map<String, Object> answers,
+                                   final InputLimits limits) {
+        return failure(key, lines.get(key), TagResolver.empty(), inputs, answers, limits);
+    }
+
+    private static Failure failure(final String key, final @Nullable String markup, final TagResolver extra,
+                                   final Map<String, DialogInput> inputs, final Map<String, Object> answers,
+                                   final InputLimits limits) {
         final DialogInput input = inputs.get(key);
         String min = "";
         String max = "";
-        if (input instanceof DialogInput.NumberInput number) {
-            min = format(number.min());
-            max = format(number.max());
+        if (input instanceof DialogInput.NumberInput || input instanceof DialogInput.NumberFieldInput) {
+            final InputLimits.Bounds bounds = limits.bounds(key, input);
+            min = Double.isFinite(bounds.min()) ? format(bounds.min()) : "";
+            max = Double.isFinite(bounds.max()) ? format(bounds.max()) : "";
         }
         final Object sent = answers.get(key);
         final String value = sent instanceof Float f ? format(FormValidator.exact(f)) : sent == null ? "" : sent.toString();
-        return new Failure(key, lines.get(key), min, max, value);
+        return new Failure(key, markup, min, max, value, extra);
     }
 
-    /** 5.0 as {@code 5}, 2.5 as {@code 2.5}. */
+    /** 5.0 as {@code 5}, 2.5 as {@code 2.5}, never with an exponent. */
     static String format(final double number) {
+        if (!Double.isFinite(number)) {
+            return Double.toString(number);
+        }
         return number == Math.rint(number) && Math.abs(number) < 1e15 ? Long.toString((long) number)
-                : Double.toString(number);
+                : BigDecimal.valueOf(number).stripTrailingZeros().toPlainString();
     }
 
     /**

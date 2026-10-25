@@ -246,6 +246,7 @@ final class ViewManager implements ViewHost {
                     case DialogInput.BoolInput ignored -> response.getBoolean(wire);
                     case DialogInput.NumberInput ignored -> response.getFloat(wire);
                     case DialogInput.TextInput ignored -> response.getText(wire);
+                    case DialogInput.NumberFieldInput ignored -> response.getText(wire);
                     case DialogInput.OptionInput ignored -> response.getText(wire);
                 };
                 if (value != null) {
@@ -383,7 +384,7 @@ final class ViewManager implements ViewHost {
     private <C> void submit(final DialogViewImpl<C> view, final String name, final Registrations.Submit<C> submit) {
         final var file = view.resolved().file();
         final FormSubmit.Outcome outcome = FormSubmit.decode(codecs, file.inputs(), file.errors(), submit.form(),
-                view.answers());
+                view.answers(), view.limits());
         final Object form = outcome.form();
         if (form == null) {
             debug("[dialogs/" + view.type().id() + ".yml] submit '" + name + "' refused: " + outcome.failures());
@@ -392,6 +393,16 @@ final class ViewManager implements ViewHost {
             return;
         }
         final ClickImpl<C> click = new ClickImpl<>(view);
+        final Registrations.Validator<C> validator = view.type().registrations().validators().get(name);
+        if (validator != null) {
+            final List<FieldError> errors = validator.check().apply(form, click);
+            if (errors != null && !errors.isEmpty()) {
+                debug("[dialogs/" + view.type().id() + ".yml] submit '" + name + "' refused by its validator: " + errors);
+                view.failures(FormSubmit.failures(errors, file.inputs(), view.answers(), view.limits()));
+                view.reopen();
+                return;
+            }
+        }
         if (submit.async()) {
             view.defer();
         }
@@ -410,7 +421,7 @@ final class ViewManager implements ViewHost {
 
         @Override
         public DialogResponse response() {
-            return new ResponseImpl(view.resolved().file().inputs(), view.answers());
+            return new ResponseImpl(view.resolved().file().inputs(), view.answers(), view.limits());
         }
     }
 

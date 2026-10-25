@@ -47,6 +47,8 @@ final class DialogViewImpl<C> implements DialogView<C> {
     /** Only touched on the viewer's thread; a view inside a list uses the fields of its root. */
     private @Nullable Pending pending;
     private volatile boolean inClick;
+    /** The limits of the current showing, set when it is rendered; the answers are checked against these. */
+    private volatile InputLimits limits = InputLimits.file();
     /** What the last submit refused; shown above the body of the next showing. */
     private volatile List<FormSubmit.Failure> failures = List.of();
     /** A handler on another thread decides how the view ends. */
@@ -143,6 +145,14 @@ final class DialogViewImpl<C> implements DialogView<C> {
 
     void answers(final Map<String, Object> value) {
         answers = Map.copyOf(value);
+    }
+
+    InputLimits limits() {
+        return limits;
+    }
+
+    void limits(final InputLimits value) {
+        limits = value;
     }
 
     void registerCallback(final String path, final DialogActionCallback callback) {

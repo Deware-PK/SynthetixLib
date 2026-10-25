@@ -44,6 +44,7 @@
 - [db-never-block-server-thread](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/db-never-block-server-thread.md): Database results are futures; never join on a server thread
 - [db-parameters-not-concatenation](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/db-parameters-not-concatenation.md): Bind values with ?, never concatenate SQL
 - [dialog-instead-of-anvil](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/dialog-instead-of-anvil.md): Text and number input uses a dialog, not an anvil GUI
+- [dialog-money-is-a-number-field](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/dialog-money-is-a-number-field.md): Money and wide numbers are a number-field, not a slider
 - [dialog-one-use-callbacks](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/dialog-one-use-callbacks.md): Buttons are one-use; do not cache dialogs
 - [dialog-validate-on-server](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/dialog-validate-on-server.md): Never trust the dialog client
 - [gui-deny-by-default](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/gui-deny-by-default.md): Every slot is locked unless it is an input slot

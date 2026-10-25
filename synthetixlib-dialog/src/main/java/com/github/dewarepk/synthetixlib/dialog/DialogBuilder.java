@@ -2,9 +2,12 @@ package com.github.dewarepk.synthetixlib.dialog;
 
 import com.github.dewarepk.synthetixlib.dialog.file.ClickAction;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.regex.Pattern;
@@ -43,6 +46,9 @@ public final class DialogBuilder<C> {
     private final Map<String, Consumer<DialogClick<C>>> actions = new LinkedHashMap<>();
     private final Map<String, Registrations.Submit<C>> submits = new LinkedHashMap<>();
     private final Map<String, Function<DialogView<C>, ?>> inputs = new LinkedHashMap<>();
+    private final Map<String, Function<DialogView<C>, Range>> ranges = new LinkedHashMap<>();
+    private final Map<String, Function<DialogView<C>, Integer>> maxLengths = new LinkedHashMap<>();
+    private final Map<String, Registrations.Validator<C>> validators = new LinkedHashMap<>();
     private @Nullable Consumer<DialogView<C>> onClose;
     private boolean built;
 
@@ -73,7 +79,7 @@ public final class DialogBuilder<C> {
     public <N> DialogBuilder<N> withContext() {
         ensureOpen();
         if (!placeholders.isEmpty() || !items.isEmpty() || !actions.isEmpty() || !submits.isEmpty() || !inputs.isEmpty()
-                || onClose != null) {
+                || !ranges.isEmpty() || !maxLengths.isEmpty() || !validators.isEmpty() || onClose != null) {
             throw new IllegalStateException("withContext() must come before the first registration of dialog '" + id
                     + "'");
         }
@@ -206,6 +212,109 @@ public final class DialogBuilder<C> {
     }
 
     /**
+     * Sets the limits of a number input from code for every showing, e.g. a price range from {@code config.yml}. Asked
+     * when the dialog is rendered, and the answer is checked against the same values the player saw (they are kept in
+     * the view). Replaces {@code min} / {@code max} (and {@code step} of a slider if the range has one) of the file;
+     * the file is the fallback if the function throws. {@code <min>} and {@code <max>} of an error line are these
+     * values.
+     *
+     * <pre>{@code
+     * dialogs.dialog("sell").inputRange("price", view -> Range.of(settings.minPrice(), settings.maxPrice()))
+     * }</pre>
+     *
+     * @param key   the key of a {@code number} or {@code number-field} input
+     * @param range called whenever the dialog is shown
+     * @return this
+     * @throws IllegalArgumentException if the key is not valid or registered already
+     */
+    public DialogBuilder<C> inputRange(final String key, final Function<DialogView<C>, Range> range) {
+        ensureOpen();
+        checkName("inputRange", key);
+        Objects.requireNonNull(range, "range");
+        putNew(ranges, "inputRange", key, range);
+        return this;
+    }
+
+    /**
+     * Sets the {@code max-length} of a {@code text} (or {@code number-field}) input from code for every showing. Asked
+     * when the dialog is rendered and the answer is checked against the same value. The file is the fallback.
+     *
+     * <pre>{@code
+     * dialogs.dialog("note").maxLength("note", view -> settings.maxNoteLength())
+     * }</pre>
+     *
+     * @param key    the key of the input
+     * @param length called whenever the dialog is shown; at least 1
+     * @return this
+     * @throws IllegalArgumentException if the key is not valid or registered already
+     */
+    public DialogBuilder<C> maxLength(final String key, final Function<DialogView<C>, Integer> length) {
+        ensureOpen();
+        checkName("maxLength", key);
+        Objects.requireNonNull(length, "length");
+        putNew(maxLengths, "maxLength", key, length);
+        return this;
+    }
+
+    /**
+     * Checks the record of a {@link #submit} / {@link #submitAsync} in code, after the limits of the file and the
+     * reading of the record and before the handler. A non-empty answer shows the dialog again like a limit of the file
+     * would: the error line above the body, what the player typed kept, fresh buttons; the handler is not called. Runs
+     * on the viewer's thread, so it may read the world; do not make it slow.
+     *
+     * <pre>{@code
+     * dialogs.dialog("sell").<ItemStack>withContext()
+     *         .submit("sell", SellForm.class, (form, click) -> auctions.list(click.player(), form))
+     *         .validate("sell", SellForm.class, (form, click) -> form.price() > limit
+     *                 ? Optional.of(FieldError.of("price", "<red>At most <limit>", Placeholder.unparsed("limit", "500")))
+     *                 : Optional.empty());
+     * }</pre>
+     *
+     * @param name      the name of a submit (register it first)
+     * @param form      the record of that submit (lets Java type the lambda)
+     * @param validator called with the record, the error to show or empty
+     * @param <R>       the record of the submit
+     * @return this
+     * @throws IllegalArgumentException if no submit has this name, it reads another record, or it has a validator already
+     */
+    public <R extends Record> DialogBuilder<C> validate(final String name, final Class<R> form,
+                                                        final BiFunction<R, DialogClick<C>, Optional<FieldError>> validator) {
+        Objects.requireNonNull(validator, "validator");
+        return validateAll(name, form, (parsed, click) -> validator.apply(parsed, click).map(List::of)
+                .orElse(List.of()));
+    }
+
+    /**
+     * Like {@link #validate} for a check that reports several problems at once; each error is a line above the body.
+     * (A different name because two lambdas that differ only in what they return cannot be told apart by Java.)
+     *
+     * @param name      the name of a submit (register it first)
+     * @param form      the record of that submit
+     * @param validator called with the record, the errors to show or an empty list
+     * @param <R>       the record of the submit
+     * @return this
+     * @throws IllegalArgumentException if no submit has this name, it reads another record, or it has a validator already
+     */
+    public <R extends Record> DialogBuilder<C> validateAll(final String name, final Class<R> form,
+                                                           final BiFunction<R, DialogClick<C>, List<FieldError>> validator) {
+        ensureOpen();
+        checkName("validate", name);
+        Objects.requireNonNull(form, "form");
+        Objects.requireNonNull(validator, "validator");
+        final Registrations.Submit<C> submit = submits.get(name);
+        if (submit == null) {
+            throw new IllegalArgumentException("validate('" + name + "'): register submit('" + name + "') first");
+        }
+        if (submit.form() != form) {
+            throw new IllegalArgumentException("validate('" + name + "'): the submit reads " + submit.form().getSimpleName()
+                    + ", not " + form.getSimpleName());
+        }
+        putNew(validators, "validate", name, new Registrations.Validator<C>(
+                (parsed, click) -> validator.apply(form.cast(parsed), click)));
+        return this;
+    }
+
+    /**
      * Registers what happens when the viewer leaves with an exit button. Escape is not reported by the client for
      * notices and confirmations, so a dialog that must get an answer sets {@code can-close-with-escape: false}.
      *
@@ -231,7 +340,8 @@ public final class DialogBuilder<C> {
         ensureOpen();
         built = true;
         return registry.register(id, new Registrations<>(Map.copyOf(placeholders), Map.copyOf(items), Map.copyOf(actions),
-                Map.copyOf(submits), Map.copyOf(inputs), onClose));
+                Map.copyOf(submits), Map.copyOf(inputs), onClose, Map.copyOf(ranges), Map.copyOf(maxLengths),
+                Map.copyOf(validators)));
     }
 
     private void ensureOpen() {

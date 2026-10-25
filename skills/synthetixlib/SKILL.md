@@ -102,7 +102,7 @@ Each file in `rules/` has the why and a wrong -> right pair.
 - `command-use-brigadier`, `command-messages-through-locale`, `command-register-in-onenable`
 - `threads-no-blocking-server-thread`
 - `gui-take-inputs-atomically`, `gui-item-model-not-custom-model-data`
-- `dialog-instead-of-anvil`, `dialog-one-use-callbacks`
+- `dialog-instead-of-anvil`, `dialog-one-use-callbacks`, `dialog-money-is-a-number-field`
 - `db-migrations-are-append-only`
 
 **MEDIUM**

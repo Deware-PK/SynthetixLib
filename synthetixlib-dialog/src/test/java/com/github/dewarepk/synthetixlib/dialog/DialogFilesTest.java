@@ -326,6 +326,84 @@ class DialogFilesTest {
     }
 
     @Test
+    void validatorsNeedAnEarlierSubmitOfTheSameRecord() {
+        final DialogBuilder<Void> builder = dialog("x");
+        assertThrows(IllegalArgumentException.class,
+                () -> builder.validate("go", CountForm.class, (form, click) -> java.util.Optional.empty()),
+                "no submit 'go' yet");
+        builder.submit("go", CountForm.class, (form, click) -> { });
+        assertThrows(IllegalArgumentException.class,
+                () -> builder.validate("go", NumberFieldTest.Whole.class, (form, click) -> java.util.Optional.empty()),
+                "another record");
+        builder.validate("go", CountForm.class, (form, click) -> java.util.Optional.empty());
+        assertThrows(IllegalArgumentException.class,
+                () -> builder.validateAll("go", CountForm.class, (form, click) -> List.of()), "one validator per submit");
+        assertThrows(IllegalArgumentException.class, () -> builder.inputRange("Bad Key", view -> Range.of(0, 1)));
+        builder.inputRange("amount", view -> Range.of(0, 1));
+        assertThrows(IllegalArgumentException.class, () -> builder.inputRange("amount", view -> Range.of(0, 1)));
+        builder.maxLength("note", view -> 5);
+        assertThrows(IllegalStateException.class, builder::withContext);
+    }
+
+    @Test
+    void theErrorsOfAValidatorAreReadFromItsCheck() {
+        jar.put("dialogs/a.yml", "title: t\ntype: notice\n");
+        final var type = dialog("a")
+                .submit("go", CountForm.class, (form, click) -> { })
+                .validate("go", CountForm.class, (form, click) -> form.amount() > 5
+                        ? java.util.Optional.of(FieldError.of("amount", "too many")) : java.util.Optional.empty())
+                .build();
+        final var validator = type.registrations().validators().get("go");
+        assertTrue(validator.check().apply(new CountForm(3), null).isEmpty());
+        assertEquals(List.of("amount"), validator.check().apply(new CountForm(9), null).stream()
+                .map(FieldError::key).toList());
+    }
+
+    @Test
+    void rangesAndLengthsForInputsThatCannotUseThemWarn() {
+        jar.put("dialogs/a.yml", """
+                title: t
+                type: notice
+                inputs:
+                  amount: { type: number-field, label: 'A' }
+                  slider: { type: number, label: 'S', min: 0, max: 1 }
+                  note: { type: text, label: 'N' }
+                  flag: { type: bool, label: 'F' }
+                """);
+        dialog("a")
+                .inputRange("amount", view -> Range.of(0, 5))
+                .inputRange("slider", view -> Range.of(0, 5))
+                .inputRange("note", view -> Range.of(0, 5))
+                .inputRange("missing", view -> Range.of(0, 5))
+                .maxLength("note", view -> 5)
+                .maxLength("amount", view -> 5)
+                .maxLength("flag", view -> 5)
+                .build();
+        assertTrue(logHas("inputs.note", "inputRange('note')"), logged.toString());
+        assertTrue(logHas("inputs.missing", "inputRange('missing')"), logged.toString());
+        assertTrue(logHas("inputs.flag", "maxLength('flag')"), logged.toString());
+        assertFalse(logHas("inputRange('amount')"), logged.toString());
+        assertFalse(logHas("inputRange('slider')"), logged.toString());
+        assertFalse(logHas("maxLength('note')"), logged.toString());
+        assertFalse(logHas("maxLength('amount')"), logged.toString());
+    }
+
+    @Test
+    void aSubmitRecordThatDoesNotFitANumberFieldMakesItsButtonsInert() {
+        jar.put("dialogs/a.yml", """
+                title: t
+                type: confirmation
+                inputs:
+                  amount: { type: number-field, label: 'A', min: 1, max: 9 }
+                buttons:
+                  yes: { label: 'Y', click: ['action:go'] }
+                  no: { label: 'N', click: [close] }
+                """);
+        final var ok = dialog("a").submit("go", CountForm.class, (form, click) -> { }).build();
+        assertFalse(ok.isInert("buttons.yes"), logged.toString());
+    }
+
+    @Test
     void aBuilderIsUsedOnce() {
         jar.put("dialogs/a.yml", "title: t\ntype: notice\n");
         final DialogBuilder<Void> builder = dialog("a");

@@ -3,13 +3,14 @@
 Package: `com.github.dewarepk.synthetixlib.dialog` (only this module may use it). Design: docs/design/dialog.md.
 Depends on core + config (dialog files are read with the config codecs; no dependency on gui, see design §12.4).
 
-Status: **complete, 0.6.0** (P2-29..P2-33). Open for the owner: Geyser table + callback thread note in docs/design/dialog.md.
+Status: **complete, 0.6.0** (P2-29..P2-33); 0.8.0 adds number-field, limits from code and `validate` (P2-34). Open for the owner: Geyser table + callback thread note in docs/design/dialog.md.
 
 Types
 - `DialogService` - one per `SynthetixLib`; `dialog(id)` -> `DialogBuilder<Void>`; `reload()` re-reads every dialog file.
   Registers the `click:` codec (`ClickActions`) in `configs.codecs()`.
-- `DialogBuilder<C>` - stores `placeholder`, `action`, `submit`, `submitAsync`, `input`, `onClose` (names a file may refer
-  to) and `build()`s a `DialogType<C>`. `withContext()` must come first (it changes `C`).
+- `DialogBuilder<C>` - stores `placeholder`, `action`, `submit`, `submitAsync`, `input`, `onClose`, `inputRange`, `maxLength`,
+  `validate`/`validateAll` (names a file may refer to) and `build()`s a `DialogType<C>`. `withContext()` must come first
+  (it changes `C`). `Range` and `FieldError` are the public value types of `inputRange` / `validate`.
 - `DialogType<C>` - immutable apart from the swapped file contents; `file()` (parsed `DialogFile`), `isInert(buttonPath)`,
   `open(player[, ctx])` (any thread). `preview` / `attach` / `click` are `@ApiStatus.Internal` hooks for self-tests.
 - `DialogView<C>` - `player() context() reopen() close() next(type, ctx)`; `DialogClick<C>` - `view() player() response()` (`DialogResponse`,
@@ -17,7 +18,7 @@ Types
   default 5m), `fallback(cannotShow, handler)`, `@Internal executor(...)` (self-tests with fake players).
 - `DialogBuilder` also has `item(name, fn)`: the item behind `item: { placeholder: name }` (the design lacked a way to register it).
 - `dialog.file` (INTERNAL, public only so the config codecs can map them): `DialogFile`, `DialogKind`, `DialogBody`
-  (+ raw `BodyEntry`, `ItemSpec`), `DialogInput` (sealed: text / bool / option / number), `DialogButtons`, `DialogButton`,
+  (+ raw `BodyEntry`, `ItemSpec`), `DialogInput` (sealed: text / bool / option / number / number-field), `DialogButtons`, `DialogButton`,
   `ClickAction` (sealed, `parse`/`format`), `ClickActions`.
 - Package-private: `DialogStore` (dialogs/<id>.yml, bundled copy from the jar once, never overwritten), `DialogParser`
   (raw YAML -> `DialogFile`), `DialogChecker` + `FormCheck` (file vs registrations -> inert buttons), `DialogLoader`,
@@ -80,3 +81,14 @@ Rules specific to dialog
   `asyncDone`, plus `DialogSettings.registryClickInterval`, default 250 ms); cleared on quit/close, never static.
 - Links (P2-32): `DialogService#link("menu", opener)` (only `menu`), `#opener()` (also finds registry keys); `menu:` ends the dialog view
   when the opener opened something. `DialogSettings.debug` -> `ViewManager#debug` logs at INFO instead of FINE.
+- number-field (P2-34): a vanilla text input to the client (`DialogRenderer`), read as a number by `FormValidator.field` (regex
+  `1234 | 1,234 | 1_234`, `.digits` for decimal; clean value `Long` for integer, `BigDecimal` for decimal; max-length, min / max
+  checked exactly with `BigDecimal`). `BigDecimalCodec` (registered by `DialogService`, and by `DialogFixtures` in tests)
+  maps it to `BigDecimal` components; `FormCheck` samples `Long` / `BigDecimal` inside the file range. The answer is stored
+  as the typed `String` and shown again as typed.
+- Limits of a showing (P2-34): `InputLimits` (bounds + max-lengths per key) is made by `DialogRenderer.parts()` from
+  `Registrations.ranges/maxLengths` and kept in `DialogViewImpl.limits()`; `FormValidator`, `FormSubmit`, `ResponseImpl` and the
+  error line (`<min>` `<max>`) read it. A view that was never rendered (registry click, tests) uses `InputLimits.file()`.
+- Validators (P2-34): `ViewManager.submit` runs `Registrations.validators` after `FormSubmit.decode` and before the handler;
+  errors become `FormSubmit.Failure`s (`FormSubmit.failures`) shown like file-limit failures; `Failure.extra` is the
+  `FieldError`'s `TagResolver`.

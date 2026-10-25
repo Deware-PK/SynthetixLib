@@ -1,7 +1,9 @@
 package com.github.dewarepk.synthetixlib.dialog;
 
+import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import net.kyori.adventure.text.Component;
@@ -17,13 +19,23 @@ import org.jspecify.annotations.Nullable;
  * @param submits      action name to the form it reads and the handler
  * @param inputs       input key to the function that answers its initial value
  * @param onClose      called when the viewer leaves with an exit button, {@code null} if none
+ * @param ranges       number input key to the range of the showing ({@link DialogBuilder#inputRange})
+ * @param maxLengths   text input key to its length limit of the showing ({@link DialogBuilder#maxLength})
+ * @param validators   submit name to the code check that runs before its handler ({@link DialogBuilder#validate})
  */
 record Registrations<C>(Map<String, Function<DialogView<C>, Component>> placeholders,
                         Map<String, Function<DialogView<C>, ItemStack>> items,
                         Map<String, Consumer<DialogClick<C>>> actions,
                         Map<String, Submit<C>> submits,
                         Map<String, Function<DialogView<C>, ?>> inputs,
-                        @Nullable Consumer<DialogView<C>> onClose) {
+                        @Nullable Consumer<DialogView<C>> onClose,
+                        Map<String, Function<DialogView<C>, Range>> ranges,
+                        Map<String, Function<DialogView<C>, Integer>> maxLengths,
+                        Map<String, Validator<C>> validators) {
+
+    /** The check of a submit: the errors found in the record, empty if it is fine. The type is erased on purpose. */
+    record Validator<C>(BiFunction<Object, DialogClick<C>, List<FieldError>> check) {
+    }
 
     /**
      * A {@code submit}: the record the answers are read into and what to do with it. The type is erased on purpose;
@@ -38,7 +50,7 @@ record Registrations<C>(Map<String, Function<DialogView<C>, Component>> placehol
 
     /** Nothing registered: what a registry dialog has until code calls {@code registered(key)}. */
     static <C> Registrations<C> none() {
-        return new Registrations<>(Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), null);
+        return new Registrations<>(Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), null, Map.of(), Map.of(), Map.of());
     }
 
     /** Tags every text has without registering them. */

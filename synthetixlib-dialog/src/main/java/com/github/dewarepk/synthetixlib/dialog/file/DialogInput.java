@@ -16,6 +16,7 @@ import java.util.Optional;
  *   price:  { type: number, label: 'Price', min: 1, max: 1000000, step: 1, initial: 100 }
  *   note:   { type: text, label: 'Note', max-length: 64, multiline: { max-lines: 3, height: 48 } }
  *   hide:   { type: bool, label: 'Hide my name' }
+ *   money:  { type: number-field, label: 'Price', format: decimal, min: 0.01, max: 1000000000, max-length: 18 }
  *   length:
  *     type: option
  *     label: 'Duration'
@@ -102,6 +103,46 @@ public sealed interface DialogInput {
             Objects.requireNonNull(initial, "initial");
             Objects.requireNonNull(format, "format");
         }
+    }
+
+    /**
+     * A typed number: a text input that the server reads as a number, for money and any wide range a slider cannot
+     * show. The player may write {@code 1,000} or {@code 1_000}; no exponent, no {@code NaN}.
+     *
+     * @param label     MiniMessage label
+     * @param width     width in pixels, 1 to 1024
+     * @param format    {@code integer} (whole numbers, a long) or {@code decimal}; integer if absent
+     * @param min       smallest value; none if absent
+     * @param max       largest value; none if absent
+     * @param initial   start value
+     * @param maxLength most characters typed, at least 1; 18 if absent
+     */
+    @TypeName("number-field")
+    record NumberFieldInput(String label, Optional<Integer> width, Optional<NumberFormat> format, Optional<Double> min,
+                            Optional<Double> max, Optional<Double> initial, Optional<Integer> maxLength)
+            implements DialogInput {
+        public NumberFieldInput {
+            Objects.requireNonNull(label, "label");
+            Objects.requireNonNull(width, "width");
+            Objects.requireNonNull(format, "format");
+            Objects.requireNonNull(min, "min");
+            Objects.requireNonNull(max, "max");
+            Objects.requireNonNull(initial, "initial");
+            Objects.requireNonNull(maxLength, "maxLength");
+        }
+
+        /** @return {@code true} unless the file says {@code format: decimal} */
+        public boolean isInteger() {
+            return format.orElse(NumberFormat.INTEGER) == NumberFormat.INTEGER;
+        }
+    }
+
+    /** What a {@link NumberFieldInput} accepts, written as {@code format:}. */
+    enum NumberFormat {
+        /** Whole numbers; the record gets a {@code long} or {@code int}. */
+        INTEGER,
+        /** Numbers with a {@code .}; the record gets a {@code double} or {@code BigDecimal}. */
+        DECIMAL
     }
 
     /**

@@ -4,6 +4,18 @@ SynthetixLib release notes for people (and agents) using the library. Newest fir
 Releases are git tags `v<x.y.z>` (0.1.0 and 0.2.0 were never tagged). JitPack works from **v0.7.0** on
 (`com.github.Deware-PK.SynthetixLib:synthetixlib-<module>:v<x.y.z>`); older tags have no `jitpack.yml` and do not build there.
 
+## 0.8.0
+- dialog: `type: number-field` input, a typed number for money and wide ranges (`format: integer | decimal`, `min`, `max`,
+  `initial`, `max-length`); the record gets `long` / `int` or `double` / `BigDecimal`; `1,000` and `1_000` are accepted.
+  `click.response().number(key)` / `integer(key)` read it too.
+- dialog: limits from code per showing: `DialogBuilder#inputRange(key, view -> Range)` (slider or number-field) and
+  `#maxLength(key, view -> int)`; the answer is checked against the values the player saw, `<min>` / `<max>` of the error
+  line use them. New `Range`.
+- dialog: `DialogBuilder#validate(name, Record.class, (form, click) -> Optional<FieldError>)` and `#validateAll(... List<FieldError>)`
+  run before the handler of a `submit` / `submitAsync`; an error re-shows the dialog like a file limit. New `FieldError`.
+- dialog: the config codecs gained a `BigDecimal` codec (registered by `DialogService`).
+- **Breaking:** none.
+
 ## 0.7.0
 - First JitPack release. Agent skill (`skills/synthetixlib`), `llms.txt`, Claude Code marketplace, consumer template and
   `new-plugin` script. No library API change.

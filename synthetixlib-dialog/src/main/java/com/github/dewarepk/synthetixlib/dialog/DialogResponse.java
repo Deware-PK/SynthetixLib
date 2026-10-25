@@ -6,7 +6,9 @@ import java.util.OptionalInt;
 
 /**
  * What the player filled in at a click, by the input keys of the dialog file. Only answers that keep the limits of the
- * file are returned (text length and lines, number range and step, option in the list); a missing, wrong-kind or
+ * showing (the file's, or those code set with {@link DialogBuilder#inputRange} / {@link DialogBuilder#maxLength}) are
+ * returned: text length and lines, number range and step, a number-field's text read as a number, option in the list;
+ * a missing, wrong-kind or
  * out-of-limits answer is empty, never an exception. For a typed result use {@link DialogBuilder#submit} instead.
  *
  * <pre>{@code
@@ -18,10 +20,10 @@ import java.util.OptionalInt;
  */
 public interface DialogResponse {
 
-    /** @return the value of a number input */
+    /** @return the value of a number (slider) or number-field input */
     OptionalDouble number(String key);
 
-    /** @return the value of a number input, empty if it is not a whole number or does not fit an int */
+    /** @return the value of a number or number-field input, empty if it is not a whole number or does not fit an int */
     OptionalInt integer(String key);
 
     /** @return the text of a text input, as typed (never parsed as MiniMessage) */

@@ -20,14 +20,24 @@ player.sendMessage("Type the price in chat");
 ```java snippet=dialog-submit
 final DialogType<ItemStack> sell = dialogs.dialog("sell").<ItemStack>withContext()
         .placeholder("item-name", view -> itemName(view.context()))
+        // limits from settings.yml, read for every showing and again when the answer is checked
+        .inputRange("price", view -> Range.of(settings.get().sellMinPrice(), settings.get().sellMaxPrice()))
         .submit("sell", SellForm.class, (form, click) -> {
             final Player player = click.player();
             lang.send(player, Messages::dialogSold,
                     Placeholder.component("item", itemName(click.view().context())),
-                    Placeholder.unparsed("price", String.valueOf((long) form.price())),
+                    Placeholder.unparsed("price", String.valueOf(form.price())),
                     Placeholder.unparsed("duration", form.duration()),
                     Placeholder.unparsed("note", form.note().isBlank() ? "-" : form.note()),
                     Placeholder.unparsed("who", form.anonymous() ? "anonymous" : player.getName()));
+        })
+        // a check that needs code: not more than 10 x the base value of the stack (a demo rule)
+        .validate("sell", SellForm.class, (form, click) -> {
+            final long limit = maxPrice(click.view().context());
+            return form.price() > limit
+                    ? Optional.of(FieldError.of("price", "<lang:sell-error-too-high>",
+                            Placeholder.unparsed("limit", String.valueOf(limit))))
+                    : Optional.empty();
         })
         .build();
 ```

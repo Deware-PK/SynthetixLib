@@ -26,12 +26,18 @@ public record Settings(@Comment("Give every joining player a demo ticket") boole
                        @Comment("Where the airdrop claims are stored (sqlite or mysql); a restart applies a change")
                        DatabaseSettings database,
                        @Comment("Dialogs: how long their buttons work; debug logs the thread of the first click at INFO")
-                       DialogSettings dialog) {
+                       DialogSettings dialog,
+                       @Key("sell-min-price")
+                       @Comment("The sell dialog: the lowest price a player may type")
+                       long sellMinPrice,
+                       @Key("sell-max-price")
+                       @Comment("The sell dialog: the highest price a player may type")
+                       long sellMaxPrice) {
 
     public static Settings defaults() {
         return new Settings(true, Airdrop.standard(),
                 DatabaseSettings.sqlite("example.db").withTablePrefix("ex_"),
-                new DialogSettings(Duration.ofMinutes(5), true));
+                new DialogSettings(Duration.ofMinutes(5), true), 1, 1_000_000);
     }
 }
 ```

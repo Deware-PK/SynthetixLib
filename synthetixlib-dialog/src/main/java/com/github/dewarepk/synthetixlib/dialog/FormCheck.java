@@ -4,6 +4,7 @@ import com.github.dewarepk.synthetixlib.config.codec.Codecs;
 import com.github.dewarepk.synthetixlib.config.codec.DecodeException;
 import com.github.dewarepk.synthetixlib.config.codec.Problem;
 import com.github.dewarepk.synthetixlib.dialog.file.DialogInput;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -56,6 +57,9 @@ final class FormCheck {
         for (final Map.Entry<String, DialogInput> entry : inputs.entrySet()) {
             final String what = switch (entry.getValue()) {
                 case DialogInput.NumberInput ignored -> "a number input needs an int, long, float or double component";
+                case DialogInput.NumberFieldInput field -> field.isInteger()
+                        ? "an integer number-field needs an int or long component"
+                        : "a decimal number-field needs a double or BigDecimal component";
                 case DialogInput.BoolInput ignored -> "a bool input needs a boolean component";
                 default -> null;
             };
@@ -98,6 +102,13 @@ final class FormCheck {
         }
     }
 
+    /** The answer a number-field gives the record: a long for integer, a BigDecimal for decimal; inside its file range. */
+    private static Object field(final DialogInput.NumberFieldInput input, final boolean low) {
+        final double min = input.min().orElse(1.0);
+        final double value = low ? min : input.max().orElse(min + 1);
+        return input.isInteger() ? (Object) (long) value : BigDecimal.valueOf(value);
+    }
+
     /** A valid answer for every input; {@code poisoned} (if any) gets text of no kind instead. */
     private static Map<String, Object> sample(final Map<String, DialogInput> inputs, final int round,
                                               final String poisoned) {
@@ -111,6 +122,7 @@ final class FormCheck {
                 case DialogInput.TextInput ignored -> "x";
                 case DialogInput.BoolInput ignored -> Boolean.TRUE;
                 case DialogInput.NumberInput number -> round % 2 == 0 ? number.min() : number.max();
+                case DialogInput.NumberFieldInput field -> field(field, round % 2 == 0);
                 case DialogInput.OptionInput option -> option.options().keySet().stream()
                         .skip(round % option.options().size()).findFirst().orElse("");
             });

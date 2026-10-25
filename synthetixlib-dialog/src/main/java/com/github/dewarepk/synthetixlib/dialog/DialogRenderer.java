@@ -20,6 +20,7 @@ import io.papermc.paper.registry.data.dialog.action.DialogAction;
 import io.papermc.paper.registry.data.dialog.input.SingleOptionDialogInput;
 import io.papermc.paper.registry.data.dialog.input.TextDialogInput;
 import io.papermc.paper.registry.set.RegistrySet;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -139,8 +140,12 @@ final class DialogRenderer<C> {
         for (final DialogBody entry : file.body()) {
             body.add(body(entry));
         }
+        final InputLimits limits = statics != null ? InputLimits.file()
+                : InputLimits.resolve(type.id(), file.inputs(), registered.ranges(), registered.maxLengths(), view,
+                env.warn());
+        view.limits(limits);
         final List<io.papermc.paper.registry.data.dialog.input.DialogInput> inputs = new ArrayList<>();
-        file.inputs().forEach((key, input) -> inputs.add(input(key, input)));
+        file.inputs().forEach((key, input) -> inputs.add(input(key, input, limits)));
 
         final io.papermc.paper.registry.data.dialog.type.DialogType kind = kind(file, inside);
         final DialogBase.DialogAfterAction after = !hasCallback ? DialogBase.DialogAfterAction.CLOSE
@@ -163,7 +168,7 @@ final class DialogRenderer<C> {
         final TagResolver values = TagResolver.resolver(Placeholder.unparsed("min", failure.min()),
                 Placeholder.unparsed("max", failure.max()), Placeholder.unparsed("value", failure.value()));
         if (failure.markup() != null) {
-            return env.text().parse(failure.markup(), values, pass.resolver());
+            return env.text().parse(failure.markup(), values, pass.resolver(), failure.extra());
         }
         final DialogMessages source = env.messages().get();
         final Component message = source == null ? null
@@ -395,13 +400,14 @@ final class DialogRenderer<C> {
 
     // --- inputs -------------------------------------------------------------------------------------------------
 
-    private io.papermc.paper.registry.data.dialog.input.DialogInput input(final String key, final DialogInput input) {
+    private io.papermc.paper.registry.data.dialog.input.DialogInput input(final String key, final DialogInput input,
+                                                                          final InputLimits limits) {
         final String wire = InputKeys.wire(key);
         final Object initial = initialOf(key);
         final Component label = pass.parse(input.label());
         return switch (input) {
             case DialogInput.TextInput text -> {
-                final int limit = text.maxLength().orElse(DialogParser.DEFAULT_TEXT_LENGTH);
+                final int limit = limits.maxLength(key, text);
                 final var builder = io.papermc.paper.registry.data.dialog.input.DialogInput.text(wire, label)
                         .maxLength(limit);
                 text.width().ifPresent(builder::width);
@@ -429,19 +435,50 @@ final class DialogRenderer<C> {
                 yield builder.build();
             }
             case DialogInput.NumberInput number -> {
+                final InputLimits.Bounds bounds = limits.bounds(key, number);
                 final var builder = io.papermc.paper.registry.data.dialog.input.DialogInput.numberRange(wire, label,
-                        (float) number.min(), (float) number.max());
+                        (float) bounds.min(), (float) bounds.max());
                 number.width().ifPresent(builder::width);
-                number.step().ifPresent(step -> builder.step(step.floatValue()));
+                bounds.step().ifPresent(step -> builder.step((float) step));
                 number.format().ifPresent(builder::labelFormat);
                 final Double start = initial instanceof Number n ? Double.valueOf(n.doubleValue())
                         : number.initial().orElse(null);
                 if (start != null && !start.isNaN()) {
-                    builder.initial((float) Math.max(number.min(), Math.min(number.max(), start)));
+                    builder.initial((float) Math.max(bounds.min(), Math.min(bounds.max(), start)));
+                }
+                yield builder.build();
+            }
+            case DialogInput.NumberFieldInput field -> {
+                // a text input to the client; the server reads the text as a number (FormValidator)
+                final int limit = limits.maxLength(key, field);
+                final InputLimits.Bounds bounds = limits.bounds(key, field);
+                final var builder = io.papermc.paper.registry.data.dialog.input.DialogInput.text(wire, label)
+                        .maxLength(limit);
+                field.width().ifPresent(builder::width);
+                final String start = initial instanceof String typed ? typed
+                        : initial instanceof Number n ? plain(n, field.isInteger(), bounds)
+                        : field.initial().map(value -> plain(value, field.isInteger(), bounds)).orElse(null);
+                if (start != null) {
+                    builder.initial(start.length() > limit ? start.substring(0, limit) : start);
                 }
                 yield builder.build();
             }
         };
+    }
+
+    /** A number as the text a number-field starts with: no exponent, a whole number without {@code .0}, in the range. */
+    private static String plain(final Number number, final boolean integer, final InputLimits.Bounds bounds) {
+        if (number instanceof Long || number instanceof Integer) {
+            return Long.toString(number.longValue());
+        }
+        if (number instanceof BigDecimal big) {
+            return big.stripTrailingZeros().toPlainString();
+        }
+        final double value = number.doubleValue();
+        if (Double.isNaN(value)) {
+            return "";
+        }
+        return FormSubmit.format(Math.max(bounds.min(), Math.min(bounds.max(), integer ? Math.rint(value) : value)));
     }
 
     /** The value an input starts with when code or the last click chose one: typed values win over code. */

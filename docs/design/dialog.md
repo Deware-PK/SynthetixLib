@@ -1,6 +1,6 @@
 # synthetixlib-dialog — API design
 
-Status: **Implemented (0.6.0)** — approved 2026-10-24 (all §12 defaults accepted; Geyser test on Bedrock for Windows, §10) · Task: P1-05 · Implementation: P2-29..P2-33 · Date: 2026-10-24
+Status: **Implemented (0.6.0; number-field, limits from code and validate in 0.8.0)** — approved 2026-10-24 (all §12 defaults accepted; Geyser test on Bedrock for Windows, §10) · Task: P1-05 · Implementation: P2-29..P2-33, P2-34 · Date: 2026-10-24
 Package root: `com.github.dewarepk.synthetixlib.dialog` · Depends on: core, config (codecs, locale), paper-api only
 
 Wrapper over the Paper Dialog API (`io.papermc.paper.dialog`, `io.papermc.paper.registry.data.dialog`, client 1.21.6+;
@@ -35,7 +35,7 @@ body:
     description: '<gray>The item you are selling'
 inputs:
   price:
-    type: number                      # text | bool | option | number
+    type: number                      # text | bool | option | number (slider) | number-field
     label: 'Price'
     min: 1
     max: 1000000
@@ -49,6 +49,14 @@ inputs:
       1h:  { display: '1 hour' }
       12h: { display: '12 hours', initial: true }
       24h: { display: '24 hours' }
+  money:
+    type: number-field                # a typed number (0.8.0): money and wide ranges; a slider is for ~100 steps
+    label: 'Starting bid'
+    format: decimal                   # integer (default) | decimal
+    min: 0.01                         # optional; code can replace min / max per showing (§2)
+    max: 1000000000
+    initial: 100
+    max-length: 18                    # default 18; width optional
   note:
     type: text
     label: 'Note (optional)'
@@ -91,6 +99,15 @@ sell.open(player, player.getInventory().getItemInMainHand());     // any thread;
   placeholder the code did not register, or a `submit` form whose record components do not match the file's inputs.
 - Also: `.action(name, click -> …)` (no form), `.onClose(view -> …)` (exit button / escape where the client reports it, §9),
   `.input(key, view -> initialValue)` (initial value from code, e.g. last price).
+- Limits from code (0.8.0): `.inputRange(key, view -> Range.of(min, max[, step]))` for a `number` slider or a `number-field`,
+  `.maxLength(key, view -> n)` for `text` (and `number-field`). Called when the dialog is rendered; the values are kept in the
+  view and the answer is validated against the same ones; they replace the file's `min` / `max` / `step` / `max-length`
+  (the file is the fallback) and are what `<min>` / `<max>` of an error line show.
+- Code-side validation (0.8.0): `.validate("sell", SellForm.class, (form, click) -> Optional<FieldError>)` and
+  `.validateAll(... -> List<FieldError>)`, by submit name. Runs on the player's thread after the file limits and the record
+  decoding, before the handler (also before a `submitAsync` goes async). Non-empty -> re-show like a file-limit failure
+  (§4), handler not called. `FieldError.of(key, markup, TagResolver...)` / `FieldError.form(markup, ...)`; the markup is
+  MiniMessage with the dialog's placeholders, `<lang:key>`, `<min> <max> <value>` and the given resolvers.
 - `dialogs.reload()` re-reads all dialog files; buttons of a dialog opened before a reload that changed its file do nothing (unchanged reload: they keep working).
 - `DialogView`: `player()`, `context()`, `reopen()` (keeps typed values), `close()`, `next(DialogType, ctx)` (chain).
   One view per viewer, nothing per-player in `DialogType` or static maps (bug #4/#5 spirit).
@@ -100,12 +117,20 @@ sell.open(player, player.getInventory().getItemInMainHand());     // any thread;
 - `DialogResponseView` gives `String` / `Boolean` / `Float` by key. The library maps the submitted map onto the form
   record with the **config codec layer** (key kebab-case ↔ component, `@Range`, `@NotEmpty`, enums for option ids,
   `int`/`long`/`double` from the float), so validation rules are written once, the same as config.
-- Without a record: `click.response().number("price")`, `.text("note")`, `.bool("anonymous")`, `.option("duration")`.
+- `number-field` (0.8.0): the client sends the text (a vanilla text input underneath). The server trims it, accepts `1,000` /
+  `1_000` (groups of exactly three digits; `12,5` is refused, not read as 125), `decimal` also `12.50`; no exponent, no
+  `NaN` / `Infinity`; checks `min` / `max` and `max-length` with exact decimals (`BigDecimal`), then the record gets a
+  `long` / `int` (`integer`, must fit a long) or a `double` / `BigDecimal` (`decimal`). `FormCheck` makes the buttons of a
+  submit inert when the component is another type. `DialogService` registers a `BigDecimal` codec for this.
+- Without a record: `click.response().number("price")`, `.integer("amount")`, `.text("note")`, `.bool("anonymous")`,
+  `.option("duration")` (`number` / `integer` also read a `number-field`).
 
 ## 4. Never trust the client (dupe / exploit safety)
 
 - Client limits (`max-length`, number range, option list) are **re-checked on the server**; a modified client can send
-  anything. Invalid → the dialog is re-shown with the `errors:` line and the values the player typed (as `initial`).
+  anything. Invalid → the dialog is re-shown with the `errors:` line and the values the player typed (as `initial`). A
+  `number-field` keeps the exact text typed; in the line `<value>` is that text as plain text, `<min>` / `<max>` the limits of
+  the showing the player saw. Errors from a code validator (§2) are shown the same way (the line is the `FieldError`'s).
 - Each shown dialog gets fresh one-use callbacks (`ClickCallback.Options` uses = 1, lifetime from settings, default 5m):
   a button clicked twice / replayed packet / stale dialog after reload does nothing (no double-sell, no double-pay).
 - The clicking audience must be the view's player, else ignored + debug log.
@@ -215,6 +240,20 @@ Anvil / sign input, chat prompts, resource-pack generation, Bedrock-native forms
 - The callback thread of Paper is not measured by the smoke tests (no client); the owner notes it from the debug log:
   _pending_. Handlers always run on the player's entity scheduler anyway.
 - Configuration-phase dialogs are not supported (decision 7).
+
+Added in 0.8.0 (P2-34), with these differences from the task text:
+
+- `validate` / `validateAll` take the record class: `validate("sell", SellForm.class, (form, click) -> …)`. Java cannot infer
+  the record type of an implicit lambda from the submit name alone, and the `List<FieldError>` form needs another name
+  (`validateAll`): two lambdas that differ only in their return type are ambiguous. The class must be the one of the submit
+  (`IllegalArgumentException` otherwise); one validator per submit.
+- `FieldError`'s text is one MiniMessage string: a language message is `<lang:key>` in it (no separate "lang key" argument).
+- `Range` is `Range(double min, double max, OptionalDouble step)`, `min <= max`; for a slider `min < max` is needed (else the
+  file's range is used with a warning). A `number-field` ignores `step`. The limits of a registry dialog stay the file's (no
+  per-viewer rendering).
+- `inputRange` / `maxLength` for an input they cannot apply to (`inputRange` on a text, `maxLength` on a bool, unknown key)
+  warn at `build()`; `maxLength` is also accepted for a `number-field` (it has `max-length`).
+- Money limits are doubles (`min` / `max` in the file and `Range`): exact up to 2^53; the typed value itself is exact.
 
 ## Open questions (planner to check before tasks)
 - Thread Paper fires `ClickCallback` / `PlayerCustomClickEvent` on (main / region / netty) on 1.21.11 and 26.x.

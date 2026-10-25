@@ -49,6 +49,8 @@ final class DialogParser {
     static final int MAX_ITEM_SIZE = 256;
     /** What the client uses when a text input has no {@code max-length}. */
     static final int DEFAULT_TEXT_LENGTH = 32;
+    /** Most characters a {@code number-field} takes when the file gives no {@code max-length}. */
+    static final int DEFAULT_NUMBER_LENGTH = 18;
 
     private static final Pattern NAME = Pattern.compile(ClickAction.NAME_PATTERN);
     private static final String VERSION_KEY = "config-version";
@@ -260,6 +262,7 @@ final class DialogParser {
             case DialogInput.BoolInput bool -> bool;
             case DialogInput.OptionInput option -> option(option, path, errors);
             case DialogInput.NumberInput number -> number(number, path, errors);
+            case DialogInput.NumberFieldInput field -> numberField(field, path, errors);
         };
     }
 
@@ -332,6 +335,41 @@ final class DialogParser {
         }
         return new DialogInput.NumberInput(number.label(), range(number.width(), 1, MAX_WIDTH, path + ".width",
                 errors), number.min(), number.max(), step, initial, number.format());
+    }
+
+    private @Nullable DialogInput numberField(final DialogInput.NumberFieldInput field, final String path,
+                                              final List<Problem> errors) {
+        Optional<Double> min = finite(field.min(), path + ".min", errors);
+        Optional<Double> max = finite(field.max(), path + ".max", errors);
+        if (min.isPresent() && max.isPresent() && min.get() > max.get()) {
+            errors.add(new Problem(path, "min must not be greater than max (was " + min.get() + " and " + max.get()
+                    + "), the input is dropped"));
+            return null;
+        }
+        final Optional<Integer> maxLength = range(field.maxLength(), 1, Integer.MAX_VALUE, path + ".max-length", errors);
+        Optional<Double> initial = finite(field.initial(), path + ".initial", errors);
+        if (initial.isPresent()) {
+            final double value = initial.get();
+            final double low = min.orElse(Double.NEGATIVE_INFINITY);
+            final double high = max.orElse(Double.POSITIVE_INFINITY);
+            if (value < low || value > high) {
+                final double clamped = Math.max(low, Math.min(high, value));
+                errors.add(new Problem(path + ".initial", "must be between " + low + " and " + high + " (was " + value
+                        + "), using " + clamped));
+                initial = Optional.of(clamped);
+            }
+        }
+        return new DialogInput.NumberFieldInput(field.label(), range(field.width(), 1, MAX_WIDTH, path + ".width",
+                errors), field.format(), min, max, initial, maxLength);
+    }
+
+    /** @return {@code value}, or empty (with an error) if it is NaN or infinite */
+    private static Optional<Double> finite(final Optional<Double> value, final String path, final List<Problem> errors) {
+        if (value.isPresent() && !Double.isFinite(value.get())) {
+            errors.add(new Problem(path, "must be a finite number (was " + value.get() + "), ignored"));
+            return Optional.empty();
+        }
+        return value;
     }
 
     // --- buttons ------------------------------------------------------------------------------------------------

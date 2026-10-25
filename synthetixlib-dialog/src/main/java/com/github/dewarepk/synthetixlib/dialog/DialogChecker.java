@@ -119,6 +119,20 @@ final class DialogChecker {
                         + " with this key, the value is never used"));
             }
         }
+        for (final String key : registered.ranges().keySet()) {
+            final DialogInput input = file.inputs().get(key);
+            if (!(input instanceof DialogInput.NumberInput || input instanceof DialogInput.NumberFieldInput)) {
+                warnings.add(new Problem("inputs." + key, "inputRange('" + key + "') is registered but the file has no"
+                        + " number or number-field input with this key, the range is never used"));
+            }
+        }
+        for (final String key : registered.maxLengths().keySet()) {
+            final DialogInput input = file.inputs().get(key);
+            if (!(input instanceof DialogInput.TextInput || input instanceof DialogInput.NumberFieldInput)) {
+                warnings.add(new Problem("inputs." + key, "maxLength('" + key + "') is registered but the file has no"
+                        + " text or number-field input with this key, the length is never used"));
+            }
+        }
         return new Checked(inert, warnings);
     }
 

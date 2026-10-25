@@ -8,6 +8,8 @@ import com.github.dewarepk.synthetixlib.core.SynthetixLib;
 import com.github.dewarepk.synthetixexample.ExampleBootstrap;
 import com.github.dewarepk.synthetixexample.SynthetixExamplePlugin;
 import com.github.dewarepk.synthetixlib.dialog.DialogService;
+import com.github.dewarepk.synthetixlib.dialog.FieldError;
+import com.github.dewarepk.synthetixlib.dialog.Range;
 import com.github.dewarepk.synthetixlib.gui.GuiService;
 import com.github.dewarepk.synthetixlib.gui.MenuType;
 import io.papermc.paper.registry.RegistryAccess;
@@ -34,6 +36,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -44,6 +47,7 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 import net.kyori.adventure.nbt.api.BinaryTagHolder;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -62,6 +66,10 @@ final class DialogSelfTests {
 
     /** The form of selftest-submit.yml; public so the config codecs can fill it. */
     public record SubmitForm(double price, String myKey, String duration, boolean anonymous) {
+    }
+
+    /** The form of selftest-number.yml; public so the config codecs can fill it. */
+    public record NumberForm(long price, java.math.BigDecimal money, String note) {
     }
 
     private DialogSelfTests() {
@@ -125,6 +133,7 @@ final class DialogSelfTests {
                 SelfTest.sync("dialog.fallback", () -> fallback(plugin, dialogs)),
                 SelfTest.sync("dialog.submit", () -> submit(plugin, dialogs, submitBed)),
                 SelfTest.async("dialog.submit-async", () -> submitAsync(submitBed)),
+                SelfTest.sync("dialog.number-field", () -> numberField(plugin, dialogs)),
                 SelfTest.sync("dialog.limits", () -> limits(plugin)),
                 SelfTest.sync("dialog.registry", () -> registry(plugin, dialogs)),
                 SelfTest.sync("dialog.link", () -> link(plugin, lib, configs, dialogs)));
@@ -249,6 +258,68 @@ final class DialogSelfTests {
         type.click(type.attach(offStep.player, null), "buttons.yes", new Fake(Map.of("price", 12.5f, "my_key", "a",
                 "duration", "h1", "anonymous", true)), offStep.player);
         require(bed.forms().size() == 1 && offStep.shown == 1, "a value off the step reached the handler");
+    }
+
+    /**
+     * A number-field (a text input to the client) is rendered, and its text is read as a number on the server: limits
+     * set by code for a showing are the ones the answer is checked against, and a validator of the code refuses an
+     * answer before the handler without touching the file limits.
+     */
+    private static void numberField(final JavaPlugin plugin, final DialogService dialogs) throws Exception {
+        Files.deleteIfExists(plugin.getDataFolder().toPath().resolve("dialogs/selftest-number.yml"));
+        final List<NumberForm> forms = new ArrayList<>();
+        final AtomicInteger maxPrice = new AtomicInteger(2000);
+        final DialogType<Void> type = dialogs.dialog("selftest-number")
+                .inputRange("price", view -> Range.of(10, maxPrice.get()))
+                .maxLength("note", view -> 5)
+                .submit("send", NumberForm.class, (form, click) -> forms.add(form))
+                .validate("send", NumberForm.class, (form, click) -> form.money().compareTo(new java.math.BigDecimal(50)) > 0
+                        ? Optional.of(FieldError.of("money", "<red>At most <limit>", Placeholder.unparsed("limit", "50")))
+                        : Optional.empty())
+                .build();
+        require(!type.isInert("buttons.yes"), "a long, a BigDecimal and a String fit the inputs");
+        require(type.preview("Preview", null) != null, "Paper refused the dialog");
+
+        final FakePlayer player = new FakePlayer("Number", Locale.US);
+        final DialogView<Void> view = type.attach(player.player, null);
+        final Map<String, Object> good = Map.of("price", " 1,500 ", "money", "12.50", "note", "hello");
+        type.click(view, "buttons.yes", new Fake(good), player.player);
+        require(forms.equals(List.of(new NumberForm(1500, new java.math.BigDecimal("12.50"), "hello"))),
+                "the form: " + forms);
+        require(player.closed == 1 && player.shown == 0, "a valid form closes the dialog");
+
+        // the code range (10..2000) replaces the file range (1..1000000) for the check, in both directions
+        for (final String price : List.of("5", "2001", "1e3", "12.5", "")) {
+            final FakePlayer refused = new FakePlayer("Refused", Locale.US);
+            final Map<String, Object> answers = new java.util.HashMap<>(good);
+            answers.put("price", price);
+            type.click(type.attach(refused.player, null), "buttons.yes", new Fake(answers), refused.player);
+            require(forms.size() == 1 && refused.shown == 1 && refused.closed == 0,
+                    "price '" + price + "' reached the handler or the dialog was not shown again: " + forms);
+        }
+        // the max-length of the note comes from code too (file: 20)
+        final FakePlayer longNote = new FakePlayer("LongNote", Locale.US);
+        type.click(type.attach(longNote.player, null), "buttons.yes",
+                new Fake(Map.of("price", "50", "money", "1", "note", "123456")), longNote.player);
+        require(forms.size() == 1 && longNote.shown == 1, "a note over the code's max-length reached the handler");
+
+        // the validator of the code: the handler is not called and the dialog is shown again, whatever the file says
+        final FakePlayer validated = new FakePlayer("Validated", Locale.US);
+        final DialogView<Void> validatedView = type.attach(validated.player, null);
+        type.click(validatedView, "buttons.yes", new Fake(Map.of("price", "50", "money", "60.5", "note", "x")),
+                validated.player);
+        require(forms.size() == 1 && validated.shown == 1 && validated.closed == 0,
+                "the validator must refuse money above 50: " + forms);
+        type.click(validatedView, "buttons.yes", new Fake(Map.of("price", "50", "money", "49.99", "note", "x")),
+                validated.player);
+        require(forms.size() == 2 && validated.closed == 1, "after the error the corrected form works: " + forms);
+
+        // the range is asked again for every showing, and the answer meets the range of the showing it came from
+        maxPrice.set(100);
+        final FakePlayer later = new FakePlayer("Later", Locale.US);
+        type.click(type.attach(later.player, null), "buttons.yes", new Fake(Map.of("price", "1,500", "money", "1",
+                "note", "x")), later.player);
+        require(forms.size() == 2 && later.shown == 1, "the new range 10..100 must refuse 1,500: " + forms);
     }
 
     /** {@code submitAsync}: the handler is not on the server thread and the dialog closes when it is over. */

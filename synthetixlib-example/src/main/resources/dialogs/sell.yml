@@ -12,11 +12,11 @@ body:
     description: '<lang:sell-item>'
 inputs:
   price:
-    type: number
+    type: number-field          # typed, for money; min / max here are the fallback of DemoDialogs.inputRange
     label: '<lang:sell-price>'
+    format: integer
     min: 1
     max: 1000000
-    step: 1
     initial: 100
   duration:
     type: option
