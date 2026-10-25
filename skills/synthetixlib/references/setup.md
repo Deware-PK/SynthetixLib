@@ -16,14 +16,14 @@ bash scripts/new-plugin.sh ../auction com.acme.auction Auction
 | Repository | `https://jitpack.io` |
 | Group | `com.github.Deware-PK.SynthetixLib` |
 | Artifacts | `synthetixlib-core`, `-config`, `-command`, `-gui`, `-dialog`, `-database` |
-| Version | the git tag, **with the `v`**: `v0.7.0` |
+| Version | the git tag, **with the `v`**: `v0.8.0` |
 
 Modules depend on each other (`dialog`, `gui`, `command`, `database` bring `config`, which brings `core`), but list
 every module you call; it makes the build file honest. Add only the modules you use.
 
 `-PsynthetixLocal=true` (template) switches to `mavenLocal()` and group `com.github.dewarepk` with the snapshot that
 `./gradlew publishToMavenLocal` in a SynthetixLib checkout installed (`synthetixLocalVersion` in `gradle.properties`,
-e.g. `0.7.0-SNAPSHOT`). JitPack and mavenLocal have different groups on purpose.
+e.g. `0.8.0-SNAPSHOT`). JitPack and mavenLocal have different groups on purpose.
 
 ## Build file (shade + relocate)
 
@@ -162,7 +162,7 @@ thread: schedule through `lib.scheduler()` (global / region / entity / async). S
 | Wrong | Right |
 |---|---|
 | `implementation(...)` without `relocate` | `shadowJar { relocate(...) }`; keep `verifyRelocation` in `check` |
-| Version `0.7.0` on JitPack | the tag: `v0.7.0` |
+| Version `0.8.0` on JitPack | the tag: `v0.8.0` |
 | Group `com.github.dewarepk` on JitPack | `com.github.Deware-PK.SynthetixLib` (only mavenLocal uses `com.github.dewarepk`) |
 | Plugin package `com.github.dewarepk.synthetixlib.myplugin` | any other package, e.g. `com.acme.myplugin` |
 | `plugin.yml` with `loader:` | `paper-plugin.yml` |

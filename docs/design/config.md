@@ -87,7 +87,7 @@ Known limits (P2-11 / P2-11a)
 - **Invalid values, per container:** a record field falls back to its default; a **list/set** keeps its valid
   elements and drops each invalid one (`path[i]: ... -> element ignored`; all dropped + `@NotEmpty` = field default);
   a **map** entry falls back to the default entry with the same key, or is ignored if there is none
-  (`-> entry ignored`) and a map entry the user removed is never added back. In every case the file keeps the
+  (`-> entry ignored`) and a map entry the user removed is never added back (locale files: see §10). In every case the file keeps the
   user's text.
 - **Comments** are written only for keys with a fixed path (record components, also in nested records and
   `Optional<Record>`), not for records inside `Map`/`List` entries.
@@ -273,4 +273,8 @@ per-player locale send.
   returns `boolean`; `create` reports a file that differs from the id only in letter case (`MyDrop.yml`).
 - **Invalid values** fall back per container (record field / list element / map entry) rather than the whole file; see the
   known limits in §2.
+- **Locale files fill map entries (0.8.0):** a `Map<String, T>` section of a language file gets every default entry it lacks
+  (the bundled `lang/<tag>.yml` of that language if it has the key, else the default locale's text), like a record
+  component, because a message key added in a release must reach `lang/*.yml` files that already exist. `''` stays the way
+  to switch a message off. File configs and collections keep the rule of §2 (a removed map entry is never added back).
 - **Not implemented:** file watcher (reload is explicit), `Set`/`Map` comments inside collection entries.

@@ -252,6 +252,21 @@ SubSpec kit(final ConfigHandle<KitSettings> settings) {
 }
 ```
 
+A child inherits the cooldown of its parent. An admin child (a `reset`, a `give`) opts out with `.cooldown(Duration.ZERO)`
+(`sender -> Duration.ZERO` works too); a later `cooldown(fn)` on the same child sets its own again:
+
+```java snippet=command-cooldown-child-opt-out
+CommandSpec kitWithAdminChild(final ConfigHandle<KitSettings> settings) {
+    return CommandSpec.literal("kit")
+            .cooldown(sender -> settings.get().kitWait())          // every child inherits the wait
+            .sub(SubSpec.literal("reset")
+                    .permission("kit.admin")
+                    .cooldown(Duration.ZERO)                       // this child has none: it opts out
+                    .executes(ctx -> ctx.reply("<green>Done")))
+            .build();
+}
+```
+
 Reading or clearing another player's cooldown (an admin command): `commandService.cooldowns()` returns
 `CommandCooldowns` with `remaining(Player | UUID, commandPath)`, `reset(UUID, commandPath)` and `reset(UUID)` (every
 command). `commandPath` is the command **as written in code**, space separated from the root name (`"kit"`,

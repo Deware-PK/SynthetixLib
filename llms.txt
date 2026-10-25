@@ -47,6 +47,7 @@
 - [dialog-money-is-a-number-field](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/dialog-money-is-a-number-field.md): Money and wide numbers are a number-field, not a slider
 - [dialog-one-use-callbacks](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/dialog-one-use-callbacks.md): Buttons are one-use; do not cache dialogs
 - [dialog-validate-on-server](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/dialog-validate-on-server.md): Never trust the dialog client
+- [files-bump-config-version](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/files-bump-config-version.md): Changed a bundled menu, dialog or config file? Bump its config-version
 - [gui-deny-by-default](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/gui-deny-by-default.md): Every slot is locked unless it is an input slot
 - [gui-getholder-false](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/gui-getholder-false.md): Inventories: getHolder(false) only
 - [gui-item-model-not-custom-model-data](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/gui-item-model-not-custom-model-data.md): Item art: item-model, never int custom model data

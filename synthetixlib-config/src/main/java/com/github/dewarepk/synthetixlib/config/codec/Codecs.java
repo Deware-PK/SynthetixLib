@@ -140,6 +140,22 @@ public final class Codecs {
                 TypeRef.of(Objects.requireNonNull(type, "type")), raw, defaults, newContext());
     }
 
+    /**
+     * Like {@link #decodeLenient(Object, Class, Object)}, and each entry a map of the data lacks is added from
+     * {@code defaults}, with the value of {@code supplement} (a data tree of the same shape) where it has one.
+     *
+     * @apiNote Internal: used by the YAML layer for locale files
+     */
+    @org.jetbrains.annotations.ApiStatus.Internal
+    @SuppressWarnings("unchecked")
+    public <T> LenientResult<T> decodeLenientFillingMaps(final Object raw, final Class<T> type, final T defaults,
+                                                         final Map<String, Object> supplement) {
+        Objects.requireNonNull(defaults, "defaults");
+        Objects.requireNonNull(supplement, "supplement");
+        return (LenientResult<T>) (LenientResult<?>) resolver.decodeLenientFillingMaps(
+                TypeRef.of(Objects.requireNonNull(type, "type")), raw, defaults, newContext(), supplement);
+    }
+
     // --- JSON -------------------------------------------------------------------------------------------------
 
     /**

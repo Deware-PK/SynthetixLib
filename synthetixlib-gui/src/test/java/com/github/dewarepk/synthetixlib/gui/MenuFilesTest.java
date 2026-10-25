@@ -19,7 +19,6 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
@@ -45,7 +44,6 @@ class MenuFilesTest {
     Path folder;
 
     private final Map<String, String> jar = new HashMap<>();
-    private final AtomicInteger jarReads = new AtomicInteger();
     private final List<String> logged = new java.util.ArrayList<>();
     private MenuRegistry registry;
 
@@ -53,7 +51,6 @@ class MenuFilesTest {
     void setUp() {
         final MenuStore store = new MenuStore(folder.resolve("menus"), path -> {
             final String text = jar.get(path);
-            jarReads.incrementAndGet();
             return text == null ? null : (InputStream) new ByteArrayInputStream(text.getBytes(StandardCharsets.UTF_8));
         });
         final Logger logger = Logger.getAnonymousLogger();
@@ -99,7 +96,7 @@ class MenuFilesTest {
     }
 
     @Test
-    void anExistingFileIsNeverOverwrittenNorReadFromTheJar() throws IOException {
+    void anExistingFileIsNeverOverwritten() throws IOException {
         Files.createDirectories(file("shop").getParent());
         Files.writeString(file("shop"), BUNDLED.replace("Bundled", "Edited by the buyer"));
         jar.put("menus/shop.yml", BUNDLED);
@@ -109,7 +106,39 @@ class MenuFilesTest {
 
         assertEquals("Edited by the buyer", shop.file().title());
         assertTrue(Files.readString(file("shop")).contains("Edited by the buyer"));
-        assertEquals(0, jarReads.get(), "the jar is not even opened when the file exists");
+    }
+
+    @Test
+    void aFileOlderThanTheBundledOneWarnsOnceAtLoadAndIsKept() throws IOException {
+        Files.createDirectories(file("shop").getParent());
+        final String old = BUNDLED.replace("title: 'Bundled'", "config-version: 1\ntitle: 'Old copy'");
+        Files.writeString(file("shop"), old);
+        jar.put("menus/shop.yml", BUNDLED.replace("title: 'Bundled'", "config-version: 2\ntitle: 'New default'"));
+
+        final MenuType<Void> shop = menu("shop").action("buy", click -> { }).build();
+
+        assertEquals(List.of("[menus/shop.yml] the plugin ships config-version 2, this file is 1: delete it to get the new"
+                + " default or update it by hand (old copy kept)"), logged);
+        assertEquals(old, Files.readString(file("shop")));
+        assertEquals("Old copy", shop.file().title());
+    }
+
+    @Test
+    void aFileWithoutVersionCountsAsOneAndEqualOrNewerFilesDoNotWarn() throws IOException {
+        Files.createDirectories(file("shop").getParent());
+        Files.writeString(file("shop"), BUNDLED);
+        jar.put("menus/shop.yml", BUNDLED);
+        menu("shop").action("buy", click -> { }).build();
+        assertEquals(List.of(), logged);
+
+        Files.writeString(file("shop"), BUNDLED.replace("title: 'Bundled'", "config-version: 3\ntitle: 'Bundled'"));
+        jar.put("menus/shop.yml", BUNDLED.replace("title: 'Bundled'", "config-version: 2\ntitle: 'Bundled'"));
+        assertEquals(List.of(), registry.reload().warnings());
+
+        jar.put("menus/shop.yml", BUNDLED.replace("title: 'Bundled'", "config-version: 4\ntitle: 'Bundled'"));
+        final List<String> warnings = registry.reload().warnings();
+        assertEquals(1, warnings.size(), warnings.toString());
+        assertTrue(warnings.get(0).contains("config-version 4, this file is 3"), warnings.get(0));
     }
 
     @Test

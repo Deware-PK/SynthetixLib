@@ -62,6 +62,7 @@ public final class SelfTestTrigger implements Listener {
         tests.addAll(DatabaseSelfTests.all(plugin, lib));
         tests.addAll(DialogSelfTests.all(plugin, lib));
         tests.addAll(RecipeSelfTests.all(plugin, lib));
+        tests.addAll(UpgradeSelfTests.all(plugin, lib));
         // one line per module as modules are added
 
         new Run(tests).start();

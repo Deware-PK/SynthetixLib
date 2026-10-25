@@ -76,6 +76,7 @@ public final class FileConfig<T> {
     private final Codecs codecs;
     private final int version;
     private final List<Migration> migrations;
+    private final @Nullable Map<String, Object> mapSupplement;
 
     /**
      * @param file       the YAML file, need not exist
@@ -88,6 +89,12 @@ public final class FileConfig<T> {
      */
     public FileConfig(final Path file, final Class<T> type, final Supplier<T> defaults, final Codecs codecs,
                       final int version, final List<Migration> migrations) {
+        this(file, type, defaults, codecs, version, migrations, null);
+    }
+
+    private FileConfig(final Path file, final Class<T> type, final Supplier<T> defaults, final Codecs codecs,
+                       final int version, final List<Migration> migrations,
+                       final @Nullable Map<String, Object> mapSupplement) {
         if (version < 1) {
             throw new IllegalArgumentException("version must be at least 1, got " + version);
         }
@@ -106,6 +113,19 @@ public final class FileConfig<T> {
         this.codecs = Objects.requireNonNull(codecs, "codecs");
         this.version = version;
         this.migrations = migrations.stream().sorted(Comparator.comparingInt(Migration::from)).toList();
+        this.mapSupplement = mapSupplement;
+    }
+
+    /**
+     * The same file config for a locale file: every entry a map of the record lacks is added to the file as well (a
+     * config file leaves a removed map entry alone). The added text is the default's, or the one in
+     * {@code supplement} if that has it.
+     *
+     * @param supplement a data tree shaped like the record, e.g. the bundled file of the same language; may be empty
+     */
+    public FileConfig<T> fillingMaps(final Map<String, Object> supplement) {
+        return new FileConfig<>(file, type, defaults, codecs, version, migrations,
+                Objects.requireNonNull(supplement, "supplement"));
     }
 
     /** @return the file this config is read from and saved to */
@@ -211,7 +231,9 @@ public final class FileConfig<T> {
 
         final Map<String, Object> data = YamlTrees.toPlain(yaml);
         data.remove(VERSION_KEY);
-        final LenientResult<T> decoded = codecs.decodeLenient(data, type, defaultValue);
+        final LenientResult<T> decoded = mapSupplement == null
+                ? codecs.decodeLenient(data, type, defaultValue)
+                : codecs.decodeLenientFillingMaps(data, type, defaultValue, mapSupplement);
         errors.addAll(decoded.errors());
         warnings.addAll(decoded.warnings());
         for (final LenientResult.Missing missing : decoded.missing()) {

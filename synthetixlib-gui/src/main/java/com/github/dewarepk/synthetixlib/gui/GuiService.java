@@ -77,7 +77,8 @@ public final class GuiService implements AutoCloseable {
     /**
      * Turns on the {@code <lang:key>} tag in every text of every menu file (title, names, lore, {@code message:}). The key
      * is looked up in the language file of the viewer's client locale (the {@code perPlayer} setting of {@code lang}); a
-     * key that no file has is logged once and shown as the key. The message may use the placeholders of the menu
+     * key that no file has is logged once and shown as the key; a key only the default language has is shown in the default
+     * language (logged once). The message may use the placeholders of the menu
      * ({@code <player>}, {@code <page>}, registered ones) and can be mixed with inline text.
      *
      * <pre>{@code
@@ -106,8 +107,16 @@ public final class GuiService implements AutoCloseable {
                 found[0] = raw != null;
                 return raw;
             };
-            final Component message = viewer == null ? lang.get((Locale) null, pick, nested)
+            Component message = viewer == null ? lang.get((Locale) null, pick, nested)
                     : lang.get(viewer, pick, nested);
+            if (!found[0] && viewer != null) {
+                // the viewer's file lacks the key (a removed entry): the default language still has its text
+                message = lang.get((Locale) null, pick, nested);
+                if (found[0]) {
+                    views.warnOnce("[lang] the key '" + key + "' is missing in the language file of " + viewer.locale()
+                            + ", using the default language's text");
+                }
+            }
             return found[0] ? message : null;
         });
         return this;

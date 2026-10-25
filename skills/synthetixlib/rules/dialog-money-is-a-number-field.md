@@ -22,7 +22,7 @@ priceDialog.open(player, new PriceAsk(typed, "Price must be 1-" + maxPrice));   
 **✅ Correct**
 
 ```yaml snippet=dialog-sell-yml
-config-version: 1
+config-version: 2
 title: '<lang:sell-title>'
 external-title: '<lang:sell-external>'
 type: confirmation

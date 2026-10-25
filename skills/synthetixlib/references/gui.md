@@ -86,6 +86,10 @@ items:
     click: [close]
 ```
 
+A release that changes a bundled menu file must raise its `config-version`: the library logs one warning at load when the
+jar ships a higher version than the copy on the server (`the plugin ships config-version 2, this file is 1: delete it to get
+the new default or update it by hand (old copy kept)`) and keeps the old copy (rule `files-bump-config-version`).
+
 The code only registers the names the file uses (`list`, `state`, `action`, placeholders):
 
 ```java snippet=gui-menu-builder

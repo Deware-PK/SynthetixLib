@@ -5,6 +5,7 @@ import com.github.dewarepk.synthetixexample.demo.Messages;
 import com.github.dewarepk.synthetixlib.command.Arg;
 import com.github.dewarepk.synthetixlib.command.Args;
 import com.github.dewarepk.synthetixlib.command.CommandCall;
+import com.github.dewarepk.synthetixlib.command.CommandSpec;
 import com.github.dewarepk.synthetixlib.command.SubCommand;
 import com.github.dewarepk.synthetixlib.command.SubSpec;
 import com.github.dewarepk.synthetixlib.config.Change;
@@ -356,6 +357,18 @@ final class DocExamples {
         return SubSpec.literal("kit")
                 .cooldown(sender -> settings.get().kitWait(), "kit.bypass")   // asked at every successful run
                 .executes(ctx -> ctx.reply("<green>Here is your kit"));
+    }
+    // @end
+
+    // @snippet:command-cooldown-child-opt-out
+    CommandSpec kitWithAdminChild(final ConfigHandle<KitSettings> settings) {
+        return CommandSpec.literal("kit")
+                .cooldown(sender -> settings.get().kitWait())          // every child inherits the wait
+                .sub(SubSpec.literal("reset")
+                        .permission("kit.admin")
+                        .cooldown(Duration.ZERO)                       // this child has none: it opts out
+                        .executes(ctx -> ctx.reply("<green>Done")))
+                .build();
     }
     // @end
 

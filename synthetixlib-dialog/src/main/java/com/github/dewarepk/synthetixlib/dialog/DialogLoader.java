@@ -71,6 +71,10 @@ final class DialogLoader {
         }
         final DialogChecker.Checked checked = DialogChecker.check(file, registered, tags, codecs);
         final List<Problem> warnings = new ArrayList<>(parsed.warnings());
+        final String outdated = store.outdated(id, text);
+        if (outdated != null) {
+            warnings.add(0, new Problem("", outdated));
+        }
         warnings.addAll(checked.warnings());
         final Resolved resolved = new Resolved(file, checked.inert());
         return new Loaded(resolved, new ReloadResult(strings(parsed.errors()), strings(warnings),

@@ -43,6 +43,18 @@ class LocaleHandleTest {
         }
     }
 
+    /** A record with a map section, like the {@code dialog: {key: text}} of a plugin's messages. */
+    public record Sectioned(String title, Map<String, String> dialog) {
+
+        static Sectioned defaults() {
+            final Map<String, String> dialog = new java.util.LinkedHashMap<>();
+            dialog.put("sell-title", "Sell");
+            dialog.put("sell-error-too-high", "Too high");
+            dialog.put("sell-note", "Note");
+            return new Sectioned("Auction", dialog);
+        }
+    }
+
     /** Resources "inside the jar" and a logger; nothing else is needed from the server. */
     private static final class Host implements ConfigHost {
         final Map<String, String> resources = new HashMap<>();
@@ -417,6 +429,72 @@ class LocaleHandleTest {
 
         assertEquals(List.of("en_US"), List.copyOf(lang.reload().files().keySet()));
         assertEquals("hello: world\n", read("notes"));
+    }
+
+    private LocaleHandle<Sectioned> sectioned(final String... bundled) {
+        return LocaleHandle.open(new LocaleHandle<>(host, TextService.create(), lang(), "lang", Sectioned.class,
+                Sectioned::defaults, Codecs.create(), 1, List.of(), Locale.US, List.of(bundled), true));
+    }
+
+    // --- map sections -----------------------------------------------------------------------------------------
+
+    @Test
+    void aKeyAddedToAMapSectionReachesAnOldFile() throws IOException {
+        write("en_US", "config-version: 1\ntitle: Mine\ndialog:\n  sell-title: My sell\n  sell-note: My note\n");
+
+        final LocaleHandle<Sectioned> lang = sectioned();
+
+        final String text = read("en_US");
+        assertTrue(text.contains("sell-error-too-high: Too high"), text);
+        assertTrue(text.contains("sell-title: My sell") && text.contains("sell-note: My note"), text);
+        assertEquals("Too high", plain(lang.get((Locale) null, m -> m.dialog().get("sell-error-too-high"))));
+        assertEquals("My sell", plain(lang.get((Locale) null, m -> m.dialog().get("sell-title"))));
+    }
+
+    @Test
+    void anEntryThatIsEmptyStaysEmpty() throws IOException {
+        write("en_US", "config-version: 1\ntitle: Mine\ndialog:\n  sell-title: Sell\n  sell-error-too-high: ''\n"
+                + "  sell-note: Note\n");
+
+        final LocaleHandle<Sectioned> lang = sectioned();
+
+        assertEquals("", plain(lang.get((Locale) null, m -> m.dialog().get("sell-error-too-high"))));
+        assertTrue(read("en_US").contains("sell-error-too-high: ''"), read("en_US"));
+    }
+
+    @Test
+    void aMissingEntryTakesTheBundledTextOfItsLanguageElseTheDefault() throws IOException {
+        host.resources.put("lang/th_TH.yml", "title: ประมูล\ndialog:\n  sell-title: ขาย\n  sell-error-too-high: แพงไป\n");
+        write("th_TH", "config-version: 1\ntitle: ประมูล\ndialog:\n  sell-title: ขาย\n");
+
+        final LocaleHandle<Sectioned> lang = sectioned("th_TH");
+
+        final Locale thai = Locale.of("th", "TH");
+        assertEquals("แพงไป", plain(lang.get(thai, m -> m.dialog().get("sell-error-too-high"))));
+        assertEquals("Note", plain(lang.get(thai, m -> m.dialog().get("sell-note"))), "not bundled: the default");
+        assertEquals("ขาย", plain(lang.get(thai, m -> m.dialog().get("sell-title"))));
+    }
+
+    @Test
+    void aFilledEntryIsWrittenOnceAndLaterReloadsLeaveTheFileAlone() throws IOException {
+        write("en_US", "config-version: 1\ntitle: Mine\ndialog:\n  sell-title: Sell\n");
+        final LocaleHandle<Sectioned> lang = sectioned();
+        final String filled = read("en_US");
+
+        final FilesReloadResult result = lang.reload();
+
+        assertEquals(filled, read("en_US"));
+        assertFalse(result.changed());
+    }
+
+    @Test
+    void aRemovedMapSectionOfOtherConfigsIsStillTheUsersToRemove() {
+        final Codecs codecs = Codecs.create();
+        final var result = codecs.decodeLenient(Map.of("title", "T", "dialog", Map.of("sell-title", "x")),
+                Sectioned.class, Sectioned.defaults());
+
+        assertEquals(Map.of("sell-title", "x"), result.value().dialog());
+        assertTrue(result.missing().isEmpty());
     }
 
     @Test

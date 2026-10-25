@@ -75,8 +75,21 @@ public final class CodecResolver {
      */
     public LenientResult<Object> decodeLenient(final TypeRef ref, final Object raw, final Object defaults,
                                                final DecodeContext ctx) {
+        return decodeLenient(ref, raw, defaults, ctx, new LenientReport());
+    }
+
+    /**
+     * Like {@link #decodeLenient(TypeRef, Object, Object, DecodeContext)}, and every map entry the data lacks is added
+     * from {@code defaults}, taking the value of {@code supplement} (a data tree) where it has one: for locale files.
+     */
+    public LenientResult<Object> decodeLenientFillingMaps(final TypeRef ref, final Object raw, final Object defaults,
+                                                          final DecodeContext ctx, final Map<String, Object> supplement) {
+        return decodeLenient(ref, raw, defaults, ctx, new LenientReport(true, supplement));
+    }
+
+    private LenientResult<Object> decodeLenient(final TypeRef ref, final Object raw, final Object defaults,
+                                                final DecodeContext ctx, final LenientReport report) {
         final Codec<?> codec = resolve(ref);
-        final LenientReport report = new LenientReport();
         Object value;
         if (codec instanceof LenientCodec lenient) {
             value = lenient.decodeLenient(raw, defaults, ctx, report);

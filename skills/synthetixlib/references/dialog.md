@@ -17,7 +17,7 @@ registers what happens by name**. Depends on core and config. Design: `docs/desi
 The file (`dialogs/<id>.yml`, copied from the jar on first start, never overwritten):
 
 ```yaml snippet=dialog-sell-yml
-config-version: 1
+config-version: 2
 title: '<lang:sell-title>'
 external-title: '<lang:sell-external>'
 type: confirmation
@@ -54,6 +54,10 @@ buttons:
 errors:
   price: '<lang:sell-error-price>'
 ```
+
+A release that changes a bundled dialog file must raise its `config-version`: the library logs one warning at load when the
+jar ships a higher version than the copy on the server (`the plugin ships config-version 2, this file is 1: delete it to get
+the new default or update it by hand (old copy kept)`) and keeps the old copy (rule `files-bump-config-version`).
 
 The code: a record for the answers (public; components are the input keys in camelCase, the file uses kebab-case) and a
 registration per name the file uses.

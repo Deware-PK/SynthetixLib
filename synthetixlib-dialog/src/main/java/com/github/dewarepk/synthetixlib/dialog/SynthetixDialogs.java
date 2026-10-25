@@ -169,6 +169,10 @@ public final class SynthetixDialogs {
             return this;
         }
         final DialogParser.Parsed result = parser.parse(text);
+        final String outdated = store.outdated(fileId, text);
+        if (outdated != null) {
+            context.getLogger().warn("[dialogs/{}.yml] {}", fileId, outdated);
+        }
         result.errors().forEach(problem -> context.getLogger().warn("[dialogs/{}.yml] {}", fileId, problem));
         result.warnings().forEach(problem -> context.getLogger().warn("[dialogs/{}.yml] {}", fileId, problem));
         final DialogFile file = result.file();

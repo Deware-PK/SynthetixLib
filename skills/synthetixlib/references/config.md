@@ -221,6 +221,12 @@ final Component forConsole = lang.get(lang.defaultLocale(), Messages::reloaded);
 - Language of an audience: exact tag (`th_TH`) -> language file (`th`) -> any file of that language -> default. An explicit
   `Locale` is always honoured; `perPlayer` (default `false`) only decides whether an `Audience` is asked for its locale.
 - An empty string disables a message. A `List<String>` message is read with `sendLines` / `getLines` (not `send`/`get`).
+- **A key you add later reaches old files.** Every language file gets the keys it lacks on load, also the entries of a
+  `Map<String, String>` section (`dialog: { sell-error-too-high: ... }`): the text of the bundled `lang/<tag>.yml` if the jar
+  has it, else the default locale's. What the owner wrote stays, an entry set to `''` stays empty (that is how a message is
+  switched off) and a removed entry comes back on the next load. (Settings files and collections do not do this for maps:
+  a map entry the owner removed there is never added back.) A `<lang:key>` that is in the default language but not in the
+  viewer's file is shown in the default language (logged once).
 - Messages are MiniMessage rendered through `lib.text()`; use placeholders, never string concatenation of player input.
 - Nest `CommandMessages` and `Map<String, String>` (menu and dialog texts, used as `<lang:key>`) in the same record so
   every text lives in the language file.

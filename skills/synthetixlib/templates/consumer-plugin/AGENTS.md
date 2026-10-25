@@ -5,7 +5,7 @@ reference for each module you touch) before writing code; install it with `npx s
 
 ## Build
 - `./gradlew build` → `build/libs/myplugin-<version>.jar` (the shaded jar; `*-plain.jar` is not for servers).
-- Library version: `synthetixVersion` in `gradle.properties` (a JitPack tag, e.g. `v0.7.0`). If it is older than the
+- Library version: `synthetixVersion` in `gradle.properties` (a JitPack tag, e.g. `v0.8.0`). If it is older than the
   skill, read the skill's CHANGELOG.md before using a newer API.
 - Using a local SynthetixLib checkout: `-PsynthetixLocal=true` (reads `synthetixLocalVersion`, from `publishToMavenLocal`).
 
@@ -24,6 +24,8 @@ reference for each module you touch) before writing code; install it with `npx s
 10. Database: shut down through `lib.close()` so pending writes finish; HikariCP is loaded by `MyPluginLoader`, never shaded.
 11. Your package must not start with `com.github.dewarepk.synthetixlib` (relocation would rewrite it).
 12. Third-party runtime libraries are not shaded: load them with the Paper `PluginLoader` (`paper-plugin.yml`).
+13. Bundled files (`menus/*.yml`, `dialogs/*.yml`, `config.yml`) are copied once and never overwritten: when a release changes
+    one, raise its `config-version`, otherwise servers that update keep the old copy (the library warns when it is behind).
 
 ## Layout
 `MyPlugin` (wiring) · `MyPluginLoader` (runtime libs) · `Settings` (config.yml) · `Messages` (lang/*.yml) ·

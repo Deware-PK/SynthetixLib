@@ -22,6 +22,17 @@ Releases are git tags `v<x.y.z>` (0.1.0 and 0.2.0 were never tagged). JitPack wo
 - dialog: `DialogBuilder#validate(name, Record.class, (form, click) -> Optional<FieldError>)` and `#validateAll(... List<FieldError>)`
   run before the handler of a `submit` / `submitAsync`; an error re-shows the dialog like a file limit. New `FieldError`.
 - dialog: the config codecs gained a `BigDecimal` codec (registered by `DialogService`).
+- gui + dialog: a bundled menu / dialog file is still copied once and never overwritten, but when the jar ships a higher
+  `config-version` than the copy in the data folder, the library logs one warning at load (`[dialogs/sell.yml] the plugin ships
+  config-version 2, this file is 1: delete it to get the new default or update it by hand (old copy kept)`). New rule
+  `files-bump-config-version`: raise the version whenever a release changes a bundled file.
+- config (behaviour change, not breaking): language files (`LocaleHandle`) now also get the **map entries** they lack
+  (`dialog: { sell-error-too-high: ... }`), from the bundled `lang/<tag>.yml` of that language if it has the key, else from the
+  default locale; before, a key added in a release never reached an existing `lang/*.yml` and the client showed the raw key.
+  `''` still switches a message off. File configs and collections keep their rule (a removed map entry is not added back).
+- gui + dialog: a `<lang:key>` that is in the default language but not in the viewer's language file is shown in the
+  default language (logged once) instead of as a translatable.
+- docs: `references/command.md` shows how an admin child opts out of an inherited cooldown (`cooldown(Duration.ZERO)`).
 - **Breaking:** `CommandMessages` has a new last component `timeUnits` (code that calls its constructor directly must
   add it; `CommandMessages.defaults()` and lang files are filled automatically). Nothing else.
 

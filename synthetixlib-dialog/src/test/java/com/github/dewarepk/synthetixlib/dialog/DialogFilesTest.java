@@ -134,6 +134,43 @@ class DialogFilesTest {
     }
 
     @Test
+    void aFileOlderThanTheBundledOneWarnsAtLoadAndIsKept() throws IOException {
+        final Path file = folder.resolve("dialogs/sell.yml");
+        Files.createDirectories(file.getParent());
+        final String old = "config-version: 1\ntitle: 'Old copy'\ntype: notice\n";
+        Files.writeString(file, old);
+        jar.put("dialogs/sell.yml", "config-version: 2\ntitle: 'New default'\ntype: notice\n");
+
+        final DialogType<Void> type = dialog("sell").build();
+
+        assertEquals(List.of("[dialogs/sell.yml] the plugin ships config-version 2, this file is 1: delete it to get the"
+                + " new default or update it by hand (old copy kept)"), logged);
+        assertEquals(old, Files.readString(file));
+        assertEquals("Old copy", type.file().title());
+    }
+
+    @Test
+    void aFileWithoutVersionCountsAsOneAndEqualOrNewerFilesDoNotWarn() throws IOException {
+        final Path file = folder.resolve("dialogs/a.yml");
+        Files.createDirectories(file.getParent());
+        Files.writeString(file, "title: t\ntype: notice\n");
+        jar.put("dialogs/a.yml", "config-version: 1\ntitle: t\ntype: notice\n");
+        dialog("a").build();
+        assertEquals(List.of(), logged);
+
+        Files.writeString(file, "config-version: 3\ntitle: t\ntype: notice\n");
+        jar.put("dialogs/a.yml", "config-version: 2\ntitle: t\ntype: notice\n");
+        assertEquals(List.of(), registry.reload().warnings());
+
+        jar.put("dialogs/a.yml", "title: t\ntype: notice\n");
+        assertEquals(List.of(), registry.reload().warnings());
+        jar.put("dialogs/a.yml", "config-version: 4\ntitle: t\ntype: notice\n");
+        final List<String> warnings = registry.reload().warnings();
+        assertEquals(1, warnings.size(), warnings.toString());
+        assertTrue(warnings.get(0).contains("config-version 4, this file is 3"), warnings.get(0));
+    }
+
+    @Test
     void noFileAndNoBundledOneFailsClearly() {
         final IllegalStateException e = assertThrows(IllegalStateException.class, () -> dialog("ghost").build());
         assertTrue(e.getMessage().contains("dialogs/ghost.yml"), e.getMessage());

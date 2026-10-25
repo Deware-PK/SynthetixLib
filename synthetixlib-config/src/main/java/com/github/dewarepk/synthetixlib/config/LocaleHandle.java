@@ -5,6 +5,7 @@ import com.github.dewarepk.synthetixlib.config.codec.Problem;
 import com.github.dewarepk.synthetixlib.config.migration.Migration;
 import com.github.dewarepk.synthetixlib.config.yaml.AtomicFiles;
 import com.github.dewarepk.synthetixlib.config.yaml.FileConfig;
+import com.github.dewarepk.synthetixlib.config.yaml.YamlTrees;
 import com.github.dewarepk.synthetixlib.core.text.TextService;
 import java.io.IOException;
 import java.io.InputStream;
@@ -30,6 +31,7 @@ import net.kyori.adventure.identity.Identity;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.JoinConfiguration;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
+import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.entity.Player;
 import org.jspecify.annotations.Nullable;
 
@@ -50,7 +52,9 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>The file of the default locale is created from the defaults; bundled files are copied from the plugin jar if
  * they are missing. Every file then gets the keys it lacks from the defaults (with comments), like a config file,
- * and a plain reload never writes a file. Other {@code <tag>.yml} files that server owners add are loaded as well.
+ * and a plain reload never writes a file. That includes the entries a map of the record lacks (a section such as
+ * {@code dialog: {sell-title: ...}}), taken from the bundled file of the same language if that has them, else from
+ * the defaults; an entry set to an empty string is kept (it switches the message off). Other {@code <tag>.yml} files that server owners add are loaded as well.
  * A message that is an empty string is disabled: {@code send} does nothing and {@code get} returns an empty
  * component. A list message ({@code List<String>}, via {@code sendLines} / {@code getLines}) is one line per entry.
  * Thread-safe: the loaded messages are an immutable snapshot that {@link #reload()} swaps.
@@ -340,9 +344,26 @@ public final class LocaleHandle<T> {
 
     private FileConfig.Result<T> load(final String tag) {
         try {
-            return new FileConfig<>(file(tag), type, defaults, codecs, version, migrations).load();
+            return new FileConfig<>(file(tag), type, defaults, codecs, version, migrations)
+                    .fillingMaps(bundledData(tag)).load();
         } catch (final RuntimeException e) {
             return new FileConfig.Result<>(null, List.of(new Problem("", "cannot load: " + e)), List.of());
+        }
+    }
+
+    /** The data of {@code lang/<tag>.yml} in the plugin jar, to fill map entries a file lacks in that language. */
+    private Map<String, Object> bundledData(final String tag) {
+        final String resource = name.replace('\\', '/') + "/" + tag + EXTENSION;
+        try (InputStream in = host.resource(resource)) {
+            if (in == null) {
+                return Map.of();
+            }
+            final Map<String, Object> data = YamlTrees.toPlain(
+                    YamlTrees.parse(new String(in.readAllBytes(), StandardCharsets.UTF_8)));
+            data.remove(FileConfig.VERSION_KEY);
+            return data;
+        } catch (final IOException | InvalidConfigurationException e) {
+            return Map.of();
         }
     }
 

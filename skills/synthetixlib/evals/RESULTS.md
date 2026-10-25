@@ -3,6 +3,37 @@
 One table per SynthetixLib version. How to run: `RUNNING.md`. Reviewer prompt: `REVIEW.md`. Green = builds and score >= 9/10.
 `Fixed by`: the doc file (or task) that closed the gap; "API" gaps become proposed tasks, not doc fixes.
 
+## 0.8.0
+
+| Eval | Run | Builds | Score | Gaps | Fixed by |
+|---|---|---|---|---|---|
+| auction-lite | 2 (Sonnet, medium) | yes (builder log; not booted) | 10/10 | none new; uses number-field + inputRange, no hand-made re-show or parsing | P2-34 confirmed |
+| shop | 2 (Sonnet, medium) | yes · **owner played it in game: all works** | 10/10 | small: no async validate (money check needs the DB) → re-open with a context flag | proposal (validateAsync) |
+| cooldown-command | 2 (Sonnet, medium) | yes · owner tested in game: all works | 10/10 | small: agent unsure that `cooldown(Duration.ZERO)` on a child clears the inherited wait | references/command.md (P2-36 C) |
+
+### auction-lite run 2 (reviewer: planner in Cowork, 2026-10-25)
+Builds: yes · Score: 10/10. Same checklist evidence as run 1 (relocated, 0 `com/github` entries, no static state, no
+Bukkit scheduler, `.join()` only in onEnable and inside `listAsync`, typed config, locale incl. th_TH, one-transaction buy
+with delivery queue). **Change vs run 1:** `dialogs/sell.yml` uses `type: number-field` + `format: integer`, code uses
+`.inputRange("price", view -> Range.of(min, max))` from config; the hand-written parser and the `next(dialog, ctx)` error
+flow are gone (SellDialog about half the logic). Nit: a dead `return` without a message when limits change between
+showing and answer (the library already checks with the shown range).
+
+### shop run 2 (reviewer: planner in Cowork, 2026-10-25)
+Builds: yes; owner ran it on Paper: everything worked · Score: 10/10. 0 `com/github` entries, no static state, `.join()` only
+in onEnable. **Change vs run 1:** `type: number-field` + `.inputRange("amount", view -> Range.of(1, maxPerPurchase))` — the
+config value and the dialog limit can no longer disagree. "Not enough money" needs the database, so the agent re-opens the
+dialog with a `tooPoor` context and the typed amount (`input("amount", …)`): correct, but a `validateAsync` would make it a
+one-liner → proposal for a later task. Database settings are fixed in code (no `database:` in config.yml): allowed by the
+prompt, noted.
+
+### cooldown-command run 2 (reviewer: planner in Cowork, 2026-10-25)
+Builds: yes; owner tested in game: all works · Score: 10/10. **Change vs run 1:** no own cooldown map any more —
+`.cooldown(sender -> settings.get().kitWait())` (reload applies), `/kit reset` uses `commandService.cooldowns().reset(uuid, "kit")`,
+full inventory is `throw ctx.fail(...)` (comment: "a failure does not start the wait"); cleanup on quit is the library's.
+222 lines (run 1: 295). Doc gap: references/command.md says cooldowns are inherited but not how an admin child opts
+out; the agent guessed `.cooldown(sender -> Duration.ZERO)` (correct) → add that example.
+
 ## 0.7.0
 
 | Eval | Run | Builds | Score | Gaps | Fixed by |

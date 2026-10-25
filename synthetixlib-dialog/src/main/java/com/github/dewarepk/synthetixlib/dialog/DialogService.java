@@ -90,8 +90,9 @@ public final class DialogService implements AutoCloseable {
     /**
      * Turns on the {@code <lang:key>} tag in every text of every dialog file (title, labels, body, {@code message:}). The
      * key is looked up in the language file of the viewer's client locale (the {@code perPlayer} setting of {@code lang});
-     * a key that no file has is shown as MiniMessage's own {@code <lang>}, a translatable, so vanilla keys work. The
-     * message may use the placeholders of the dialog and can be mixed with inline text.
+     * a key only the default language has is shown in that language (logged once); a key that no file has is shown as
+     * MiniMessage's own {@code <lang>}, a translatable, so vanilla keys work. The message may use the placeholders of
+     * the dialog and can be mixed with inline text.
      *
      * <pre>{@code
      * // lang/en_US.yml:  dialog: { sell-title: "<gold>Sell" }       (a Map<String, String> in Messages)
@@ -117,8 +118,16 @@ public final class DialogService implements AutoCloseable {
                 found[0] = raw != null;
                 return raw;
             };
-            final Component message = viewer == null ? lang.get((Locale) null, pick, nested)
+            Component message = viewer == null ? lang.get((Locale) null, pick, nested)
                     : lang.get(viewer, pick, nested);
+            if (!found[0] && viewer != null) {
+                // the viewer's file lacks the key (a removed entry): the default language still has its text
+                message = lang.get((Locale) null, pick, nested);
+                if (found[0]) {
+                    views.warnOnce("[lang] the key '" + key + "' is missing in the language file of " + viewer.locale()
+                            + ", using the default language's text");
+                }
+            }
             return found[0] ? message : null;
         });
         return this;
