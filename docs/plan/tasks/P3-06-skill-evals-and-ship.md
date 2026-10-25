@@ -1,5 +1,5 @@
 # P3-06 Eval suite, fixes, ship 0.7.0 (first JitPack release)
-Status: review · Approved: yes · Model: sonnet · Effort: high · Ship: yes (skill 0.7.0)
+Status: done · Approved: yes · Model: sonnet · Effort: high · Ship: yes (skill 0.7.0)
 Module: synthetixlib-skill (docs, not a Gradle module) · Depends on: P3-05 · Design: docs-skill.md §5 · ADR 0015
 
 ## Prompt (paste into Claude Code)
@@ -30,9 +30,9 @@ set Status: review, then ship: `powershell -ExecutionPolicy Bypass -File scripts
 ## Acceptance criteria
 - [x] Part A files exist
 - [x] 3 evals run by the owner, every gap fixed or proposed, re-run green (≥ 9/10 checklist each)
-- [ ] after ship: owner opens https://jitpack.io/#Deware-PK/SynthetixLib/v0.7.0 → build log green, modules listed
+- [x] after ship: owner opens https://jitpack.io/#Deware-PK/SynthetixLib/v0.7.0 → build log green, modules listed
       (if the groupId differs from ADR 0015, update ADR + setup.md + template)
-- [ ] `gradlew.bat check smokeTest publishToMavenLocal` green
+- [x] `gradlew.bat check smokeTest publishToMavenLocal` green
 
 ## Verify
 gradlew.bat check smokeTest publishToMavenLocal
@@ -51,3 +51,8 @@ How the owner starts eval 1 (auction-lite), details in `skills/synthetixlib/eval
 2. `$eval='D:\Minecraft\Evals\auction-lite'; New-Item -ItemType Directory -Force "$eval\.claude\skills"; Copy-Item -Recurse -Force 'D:\Minecraft\Plugins\SynthetixLib\skills\synthetixlib' "$eval\.claude\skills\synthetixlib"; Remove-Item -Recurse -Force "$eval\.claude\skills\synthetixlib\evals"`
 3. `cd $eval; claude --model sonnet` (new session), paste the `## Prompt` block of `auction-lite.md` plus the line: `Build with gradlew build -PsynthetixLocal=true -PsynthetixLocalVersion=0.7.0-SNAPSHOT (SynthetixLib is in mavenLocal, not on JitPack yet).`
 4. When it finishes, open a second session in the same folder and paste the prompt from `REVIEW.md` (`<eval>` = `auction-lite`); put the output in `RESULTS.md`.
+
+## Review (planner, 2026-10-25)
+Done. 3 evals 10/10 (Sonnet, medium), doc gaps fixed, shipped b04378f / v0.7.0. Repo made public (secret scan of the
+whole history clean), MIT LICENSE + README rewritten (AI-driven). JitPack v0.7.0 build green, checked by the owner.
+API gaps → P2-34 (dialog code-side validation / input limits from code), P2-35 (command cooldowns).

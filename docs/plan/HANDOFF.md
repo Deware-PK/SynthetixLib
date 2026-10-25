@@ -22,14 +22,16 @@
 | gui | ✅ 0.4.0, tag v0.4.0 (P2-19..23a) |
 | database | ✅ 0.5.0, tag v0.5.0 (P2-24..28); owner เทสในเกมผ่าน 24 ต.ค. |
 | dialog | ✅ 0.6.0 shipped, tag v0.6.0 (P2-29..33); รอ owner เทสในเกม + Geyser (P2-33 step 1-2) |
+| docs (Phase 3) | ✅ 0.7.0 skill + JitPack (P3-01..06) |
 | npc | ☐ |
 
 Smoke ล่าสุด: 84/84 PASS บน 1.21.11 และ 26.3
 
-## ค้าง
+## ค้าง (25 ต.ค.)
+- 0.7.0 ขึ้น JitPack แล้ว (repo public, MIT) · skill: `npx skills add Deware-PK/SynthetixLib` · evals 3× 10/10
+- ถัดไป 0.8.0: P2-34 (dialog number-field + inputRange + validate) → P2-35 (cooldown function + reset + TimeFormat) → P2-36 (pom MIT, eval re-run, ship). Vault/economy: ไม่ทำใน lib (owner 25 ต.ค.) ทำในโปรเจกต์ที่ต้องใช้
 - dialog: owner เทสในเกม + Geyser (26.3) → กรอก dialog.md §9 + thread → P2-33 done
-- Phase 3 docs (skill แบบ vercel-labs/agent-skills, ติดตั้ง `npx skills add Deware-PK/SynthetixLib`) + JitPack (ADR 0015): ส่ง P3-01 → 06; ship 0.7.0 = JitPack ครั้งแรก · npc เลื่อนไปก่อน
-- P3-06 Part A เสร็จ (evals/ 3 ไฟล์ + RUNNING/REVIEW/RESULTS, version 0.7.0-SNAPSHOT) → owner รัน eval ตาม `skills/synthetixlib/evals/RUNNING.md` แล้ววาง review ใน RESULTS.md (Part B) ก่อน ship
+- npc เลื่อนไปก่อน
 
 ## Stack
 Gradle 9.8.1 · build-logic `synthetix.java-base|library|paper-plugin` · versions ใน `gradle/libs.versions.toml`
