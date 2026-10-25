@@ -12,10 +12,11 @@ One decision per file, numbered, never renumbered. To change a decision, add a n
 | 0005 | Consumers shade + relocate the library | Accepted |
 | 0006 | Native Brigadier commands | Accepted |
 | 0007 | Typed config | Accepted |
-| 0008 | Paper API only: no NMS/reflection, packets via PacketEvents | Accepted |
+| 0008 | Paper API only: no NMS/reflection, packets via PacketEvents | Accepted, amended by 0016 |
 | 0009 | Runtime third-party libs via Paper PluginLoader | Accepted |
 | 0010 | Verification harness (check / smokeTest / bot E2E) | Accepted |
 | 0011 | Publishing: mavenLocal until 1.0.0, then JitPack | Accepted |
-| 0012 | No third-party runtime deps except PacketEvents | Accepted |
+| 0012 | No third-party runtime deps except PacketEvents | Accepted, amended by 0016 |
 | 0013 | Reflection allowed only in config.mapping | Accepted |
 | 0014 | Database pool: HikariCP via consumer PluginLoader | Accepted |
+| 0016 | No NPC module, no packets in the library | Accepted |

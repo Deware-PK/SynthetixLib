@@ -1,5 +1,5 @@
 # P2-36 Release 0.8.0: pom license, eval re-run, ship
-Status: review · Approved: yes · Model: sonnet · Effort: low · Ship: yes (dialog 0.8.0)
+Status: done · Approved: yes · Model: sonnet · Effort: low · Ship: yes (dialog 0.8.0)
 Module: synthetixlib-dialog, synthetixlib-command · Depends on: P2-35 · Design: docs-skill.md §5
 
 ## Prompt (paste into Claude Code)
@@ -45,7 +45,7 @@ set Status: review, then ship: `powershell -ExecutionPolicy Bypass -File scripts
 - [x] pom license, versions, CHANGELOG
 - [x] 3 evals re-run ≥ 9/10 and use the new APIs (or gaps fixed)
 - [x] `gradlew.bat syncSnippets check smokeTest publishToMavenLocal` green
-- [ ] JitPack v0.8.0 green (owner, after the push)
+- [x] JitPack v0.8.0 green (owner, after the push)
 
 ## Verify
 gradlew.bat syncSnippets check smokeTest publishToMavenLocal
@@ -114,3 +114,10 @@ Proposed API, next to `validate` / `validateAll`:
 - Not a replacement for checking inside the handler's transaction (balance can change between check and handler): document it.
 - Open question for the planner: whether the dialog should show a "checking..." state; Paper cannot update a shown dialog, so
   probably no (the client keeps it open until the server answers with a new one).
+
+## Review (planner, 2026-10-25)
+Done. Shipped c5786e8 / v0.8.0, smoke 88/88 incl. `upgrade.old-files`. Evals 0.8.0: 3× 10/10, all three use the new
+APIs (number-field + inputRange, cooldown function + cooldowns().reset). Owner in-game test found the two upgrade bugs
+(old bundled files, missing lang map keys) — fixed here. Accepted: self-test uses the real `<data>/dialogs` with
+backup/restore; gui test renamed because the version check opens the jar. Runtime `<lang:key>` fallback is code-reviewed
+only. Follow-up proposal: `validateAsync` (shop run 2). JitPack v0.8.0: owner.

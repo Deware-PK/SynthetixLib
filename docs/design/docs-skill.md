@@ -78,7 +78,7 @@ Written from the approved design + its "Deviations" section (as built), not from
 
 ## 7. Not in this phase
 
-Website / docs site, Thai translation, Javadoc site hosting (Javadoc stays in code), npc module docs.
+Website / docs site, Thai translation, Javadoc site hosting (Javadoc stays in code).
 
 ## 8. Decisions for owner (defaults chosen, change if you disagree)
 

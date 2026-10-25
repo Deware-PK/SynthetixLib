@@ -1,5 +1,7 @@
 # 0008. Paper API only: no NMS, no reflection; packets via PacketEvents
 
+> Amended by 0016: no NPC module, the library uses no packets at all.
+
 - Status: Accepted
 - Date: 2026-10-14
 

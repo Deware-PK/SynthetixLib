@@ -6,11 +6,11 @@ Status: ☐ todo · ◐ in progress · ☑ done. Each phase is broken into task 
 Multi-module build, build-logic, version catalog, ArchUnit rules, smoke tests on 1.21.11 + 26.x,
 CI, AGENTS.md/CLAUDE.md, ADRs. → `tasks/P0-01-harness.md`
 
-## Phase 1 — API design (no code) ◐ core..dialog approved; next: npc
+## Phase 1 — API design (no code) ☑ core..dialog approved (npc dropped, ADR 0016)
 One design doc per module in `docs/design/<module>.md`, written as **user-side code examples first**,
 reviewed by the owner before implementation. Start with core. → `tasks/P1-01-core-api-design.md`
 
-## Phase 2 — Modules (in order) ◐ core + config + command + gui + database + dialog done (P2-01..P2-33) · next: npc
+## Phase 2 — Modules (in order) ☑ core + config + command + gui + database + dialog done (P2-01..P2-36, 0.8.0)
 | # | Module | Scope | Key "never again" |
 |---|---|---|---|
 | 1 ✅ | core | init, scheduler (global/region/entity/async), text (MiniMessage), ItemBuilder (data components, item_model), PDC utils | static state, getHolder(false) |
@@ -19,7 +19,7 @@ reviewed by the owner before implementation. Start with core. → `tasks/P1-01-c
 | 4 ✅ | gui | GUI per viewer, layout from config (char pattern, custom-font title), dupe-proof container → tasks P2-19..P2-23 | bugs 2, 3, 5 + go-mcbots E2E |
 | 5 ✅ | database | async DB, graceful shutdown; HikariCP loaded by consumer PluginLoader, Paper's drivers (ADR 0014) → tasks P2-24..P2-28 | bug 1 |
 | 6 ✅ | dialog | Paper Dialog API wrapper: YAML dialogs, typed submit + server validation, registry dialogs at bootstrap, Geyser test → tasks P2-29..P2-33 | dupe-safe one-use buttons |
-| 7 | npc | PacketEvents player NPC (starts with Farm Workers prototype) | — |
+| ~~7~~ | ~~npc~~ | dropped (ADR 0016): packets/PacketEvents stay in the product (Farm Workers) | — |
 
 ## Phase 3 — Docs ☑ AI-first skill (docs/design/docs-skill.md, ADR 0015 JitPack), P3-01..P3-06, v0.7.0 on JitPack · evals 3× 10/10
 P3-01..P3-05 done · P3-06: Part A (eval files in `skills/synthetixlib/evals/`, version 0.7.0-SNAPSHOT) done; Part B (owner runs 3 evals, fixes) + ship 0.7.0 next.
@@ -27,4 +27,4 @@ P3-01..P3-05 done · P3-06: Part A (eval files in `skills/synthetixlib/evals/`, 
 
 ## Products using the lib
 - InteractiveAuction 2.0 — needs core, config, command, gui, database (+ migration from 1.0 data).
-- Farm Workers — needs core, config, command, gui, database, npc.
+- Farm Workers — needs core, config, command, gui, database; NPCs with PacketEvents in its own code.

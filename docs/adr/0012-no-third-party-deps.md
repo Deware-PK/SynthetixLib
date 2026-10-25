@@ -1,5 +1,7 @@
 # 0012. No third-party runtime dependencies (except PacketEvents)
 
+> Amended by 0016: the PacketEvents exception is removed (no NPC module). Only HikariCP remains, runtime-loaded (0014).
+
 - Status: Accepted
 - Date: 2026-10-14
 

@@ -23,15 +23,15 @@
 | database | ✅ 0.5.0, tag v0.5.0 (P2-24..28); owner เทสในเกมผ่าน 24 ต.ค. |
 | dialog | ✅ 0.6.0 shipped, tag v0.6.0 (P2-29..33); รอ owner เทสในเกม + Geyser (P2-33 step 1-2) |
 | docs (Phase 3) | ✅ 0.7.0 skill + JitPack (P3-01..06) |
-| npc | ☐ |
+| npc | ✖ ตัดออก (ADR 0016) — packet/PacketEvents ทำในโปรเจกต์ Farm Workers |
 
-Smoke ล่าสุด: 84/84 PASS บน 1.21.11 และ 26.3
+Smoke ล่าสุด: 88/88 PASS บน 1.21.11 และ 26.3
 
 ## ค้าง (25 ต.ค.)
-- 0.7.0 ขึ้น JitPack แล้ว (repo public, MIT) · skill: `npx skills add Deware-PK/SynthetixLib` · evals 3× 10/10
-- ถัดไป 0.8.0: P2-34 (dialog number-field + inputRange + validate) → P2-35 (cooldown function + reset + TimeFormat) → P2-36 (pom MIT, eval re-run, ship). Vault/economy: ไม่ทำใน lib (owner 25 ต.ค.) ทำในโปรเจกต์ที่ต้องใช้
-- dialog: owner เทสในเกม + Geyser (26.3) → กรอก dialog.md §9 + thread → P2-33 done
-- npc เลื่อนไปก่อน
+- 0.8.0 shipped (c5786e8, tag v0.8.0): dialog number-field/inputRange/validate, command cooldown function/reset/TimeFormat,
+  upgrade fixes (config-version warning, lang map keys). evals 0.8.0 3× 10/10 ใช้ API ใหม่เอง. JitPack v0.8.0: owner เช็ค
+- ข้อเสนอถัดไป (ยังไม่ approve): `validateAsync` (shop-2), IA 2.0 เริ่มได้ (economy ทำในโปรเจกต์ ไม่ใส่ lib)
+- dialog P2-33: owner เทสในเกมแล้วบางส่วน; Geyser (26.3) ยังค้าง → dialog.md §9
 
 ## Stack
 Gradle 9.8.1 · build-logic `synthetix.java-base|library|paper-plugin` · versions ใน `gradle/libs.versions.toml`
@@ -39,10 +39,10 @@ paper-api 1.21.11-R0.1-SNAPSHOT · JDK 21 (compile) + 25 (Paper 26.x) · คำ�
 โมดูล: core, config, command, gui, database, example (test bed, package `com.github.dewarepk.synthetixexample`), archtest
 
 ## การตัดสินใจ → `docs/adr/0001..0014`, กติกาใน `AGENTS.md`
-ไม่พึ่ง lib ภายนอก (ADR 0012) ยกเว้น PacketEvents (npc) และ HikariCP ที่ consumer โหลดผ่าน PluginLoader (ADR 0014)
+ไม่พึ่ง lib ภายนอก (ADR 0012) ยกเว้น HikariCP ที่ consumer โหลดผ่าน PluginLoader (ADR 0014); ไม่มี npc/packet (ADR 0016)
 
 ## Product ที่จะใช้ lib
-InteractiveAuction 2.0 (core, config, command, gui, database, dialog + migrate 1.0) · Farm Workers (+ npc)
+InteractiveAuction 2.0 (core, config, command, gui, database, dialog + migrate 1.0) · Farm Workers (npc ใช้ PacketEvents ในโปรเจกต์เอง)
 
 ## สไตล์
 ตอบไทย กระชับ · เสนอ default ให้ owner เลือกในหัวข้อ "Decisions for owner" · Phakin ชอบยืดหยุ่นแต่ใช้ง่าย ไม่พึ่งของนอก

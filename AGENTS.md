@@ -43,7 +43,7 @@ Windows: use `gradlew.bat`.
 - **Entry:** plugin `extends JavaPlugin`, calls `SynthetixLib.init(this)` in onEnable, `close()` in onDisable. No base class.
 - **Commands:** native **Brigadier** (Paper lifecycle `COMMANDS` event), one fluent API. Not `BasicCommand`.
 - **Config:** typed (record/class ⇄ YAML, Okaeri-style), never string paths.
-- **No NMS / CraftBukkit / reflection.** Packets via **PacketEvents** (NPC module only).
+- **No NMS / CraftBukkit / reflection, no packets** (no PacketEvents; ADR 0016).
 - **Folia-safe:** schedule only through the core scheduler facade (global / region / entity / async).
 - **Text:** MiniMessage / Adventure only. No `ChatColor`, no `§`, no legacy serializer.
 - **Items:** data components + `item_model`. No int custom model data. **PDC** for item/entity data.
@@ -72,7 +72,7 @@ synthetixlib-example/     example plugin = smoke-test bed + docs examples   (not
 synthetixlib-archtest/    ArchUnit rules over every library module           (not published)
 docs/adr/                 decisions        docs/plan/  roadmap + tasks        docs/design/  API design per module
 ```
-Planned modules (in order): config → command → gui → database → dialog → npc. See docs/plan/ROADMAP.md.
+Modules: core, config, command, gui, database, dialog (complete; no npc module, ADR 0016). See docs/plan/ROADMAP.md.
 
 ## Adding a library module (checklist)
 1. `synthetixlib-<m>/build.gradle.kts` with `id("synthetix.library")`; `include(...)` in settings.gradle.kts.
