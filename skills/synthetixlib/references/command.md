@@ -237,6 +237,42 @@ private void run(final CommandCall ctx) {
   consumed only when the handler returns normally (`fail` and exceptions do not use it), cleared on quit and on close. The
   console and command blocks have no cooldown. A restart clears cooldowns; persist them yourself if needed.
 
+The cooldown is a **fixed length given at registration**: a config reload does not change it, another player's cooldown
+cannot be reset (`resetCooldown()` only affects the sender of the running command), and it starts whenever the handler
+returns normally (`skipCooldown()` avoids that). When you need a length from `config.yml`, an admin reset or a wait that
+depends on the result, keep your own map, per instance, cleaned on quit:
+
+```java snippet=command-own-cooldown
+/** A cooldown the command module cannot express: a reloadable length and a reset for one player. */
+final class KitCooldowns implements Listener {
+
+    private final Map<UUID, Long> readyAt = new ConcurrentHashMap<>();   // instance field, never static
+
+    /** @return the seconds left, 0 if the player may use the kit now (and starts the wait if so) */
+    long tryUse(final UUID player, final Duration length) {
+        final long now = System.currentTimeMillis();
+        final Long ready = readyAt.get(player);
+        if (ready != null && ready > now) {
+            return (ready - now + 999) / 1000;
+        }
+        readyAt.put(player, now + length.toMillis());                    // length read per use: reload works
+        return 0;
+    }
+
+    void reset(final UUID player) {
+        readyAt.remove(player);                                          // e.g. /kit reset <player>
+    }
+
+    @EventHandler
+    void onQuit(final PlayerQuitEvent event) {
+        readyAt.remove(event.getPlayer().getUniqueId());                 // clean up on quit
+    }
+}
+```
+
+Register it as a listener, call `tryUse` in the handler and `throw ctx.fail(...)` with the seconds left. Planned (task
+P2-35): reloadable length, per-player reset and a time formatter in the module.
+
 ## Messages
 
 Put `CommandMessages` as a record component of your `Messages` and pass it with `.messages(lang, Messages::commands)`:

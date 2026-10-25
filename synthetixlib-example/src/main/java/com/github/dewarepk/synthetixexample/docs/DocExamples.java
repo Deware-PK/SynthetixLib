@@ -19,6 +19,10 @@ import com.github.dewarepk.synthetixlib.config.codec.Codecs;
 import com.github.dewarepk.synthetixlib.config.codec.DecodeException;
 import com.github.dewarepk.synthetixlib.core.SynthetixLib;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerQuitEvent;
 import java.util.UUID;
 import java.util.List;
 import com.github.dewarepk.synthetixlib.gui.MenuType;
@@ -299,6 +303,64 @@ final class DocExamples {
                         (player, view) -> player.sendMessage("Please update your game"));
         // @end
     }
+
+    /** What the price dialog shows: what the player typed and the error line ({@code <error>} in the file). */
+    record PriceAsk(String typed, String error) {
+    }
+
+    private DialogType<PriceAsk> priceDialog;
+
+    void dialogLimits(final DialogService dialogs, final long maxPrice, final Player player) {
+        // @snippet:dialog-config-limits
+        priceDialog = dialogs.dialog("price").<PriceAsk>withContext()
+                .placeholder("error", view -> Component.text(view.context().error()))   // "" or the message
+                .input("price", view -> view.context().typed())                         // text input: any size
+                .action("confirm", click -> {
+                    final String typed = click.response().text("price").orElse("").trim();
+                    long price = -1;
+                    try {
+                        price = Long.parseLong(typed);
+                    } catch (final NumberFormatException ignored) {
+                        // stays -1: the same error as a price out of range
+                    }
+                    if (price < 1 || price > maxPrice) {                                // limit from config.yml
+                        click.view().next(priceDialog, new PriceAsk(typed, "Price must be 1-" + maxPrice));
+                        return;
+                    }
+                    click.player().sendMessage("Price: " + price);
+                })
+                .build();
+        priceDialog.open(player, new PriceAsk("", ""));
+        // @end
+    }
+
+    // @snippet:command-own-cooldown
+    /** A cooldown the command module cannot express: a reloadable length and a reset for one player. */
+    final class KitCooldowns implements Listener {
+
+        private final Map<UUID, Long> readyAt = new ConcurrentHashMap<>();   // instance field, never static
+
+        /** @return the seconds left, 0 if the player may use the kit now (and starts the wait if so) */
+        long tryUse(final UUID player, final Duration length) {
+            final long now = System.currentTimeMillis();
+            final Long ready = readyAt.get(player);
+            if (ready != null && ready > now) {
+                return (ready - now + 999) / 1000;
+            }
+            readyAt.put(player, now + length.toMillis());                    // length read per use: reload works
+            return 0;
+        }
+
+        void reset(final UUID player) {
+            readyAt.remove(player);                                          // e.g. /kit reset <player>
+        }
+
+        @EventHandler
+        void onQuit(final PlayerQuitEvent event) {
+            readyAt.remove(event.getPlayer().getUniqueId());                 // clean up on quit
+        }
+    }
+    // @end
 
     void database(final Database db, final Player player, final UUID seller, final long price) {
         // @snippet:db-statements

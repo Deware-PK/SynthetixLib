@@ -279,7 +279,8 @@ Left out on purpose (not for consumers): `codec.BukkitCodecs` (internal, `config
 
 ## Limits
 
-- Comments only for fixed paths (not for records inside a `Map`/`List`). Invalid list element is dropped, invalid map entry
+- Comments only for fixed paths: a key keeps its `@Comment`, a **list entry never gets one** (nor a record inside a
+  `Map`/`List`); put the comment on the key that holds the list. Invalid list element is dropped, invalid map entry
   falls back to the entry with the same default key or is ignored; the file text stays.
 - No file watcher; reload is explicit (`/yourcommand reload`).
 - No `Validated` interface (design deviation).

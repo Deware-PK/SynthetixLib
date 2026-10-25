@@ -131,6 +131,43 @@ for option ids, `int` / `long` / `double` from the client's float. Without a rec
 re-shows the dialog with the `errors:` line and what the player typed as the initial values. Text is shown again as plain
 text, never parsed as MiniMessage.
 
+### Wide numbers and limits that come from config
+
+- A `number` input is drawn as a **slider** (`min`, `max`, `step`). It suits small ranges (1-64 items), not a price from 1
+  to 1,000,000,000: use a `text` input (set `max-length`) and parse the number yourself, as below.
+- `min` / `max` / `@Range` live in the dialog file or the record, so a limit that comes from `config.yml` (min / max
+  price, max per purchase) cannot be expressed there; check the config value in the handler. Do not keep the same limit
+  in both places (slider `max: 64` and config `max-per-purchase` drift apart).
+- On a bad value re-show the dialog with `view.next(dialog, context)`: the context carries what was typed and the error
+  text; the file shows it with a `placeholder("error", ...)` in a `body` message, and `input("price", ...)` gives the
+  typed value back. The dialog type is read when the click happens, so it can be a field of your class.
+
+```java snippet=dialog-config-limits
+priceDialog = dialogs.dialog("price").<PriceAsk>withContext()
+        .placeholder("error", view -> Component.text(view.context().error()))   // "" or the message
+        .input("price", view -> view.context().typed())                         // text input: any size
+        .action("confirm", click -> {
+            final String typed = click.response().text("price").orElse("").trim();
+            long price = -1;
+            try {
+                price = Long.parseLong(typed);
+            } catch (final NumberFormatException ignored) {
+                // stays -1: the same error as a price out of range
+            }
+            if (price < 1 || price > maxPrice) {                                // limit from config.yml
+                click.view().next(priceDialog, new PriceAsk(typed, "Price must be 1-" + maxPrice));
+                return;
+            }
+            click.player().sendMessage("Price: " + price);
+        })
+        .build();
+priceDialog.open(player, new PriceAsk("", ""));
+```
+
+Planned (task P2-34, not available yet): a `validate` hook on `submit`, limits from code and a typed number text input,
+so this hand-written flow goes away. Today the pattern above is the supported way. In real code build the error text
+from your `Messages` (`lang.get(player, Messages::x)`).
+
 ## More registrations, service options, async
 
 ```java snippet=dialog-more

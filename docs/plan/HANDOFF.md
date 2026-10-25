@@ -29,6 +29,7 @@ Smoke ล่าสุด: 84/84 PASS บน 1.21.11 และ 26.3
 ## ค้าง
 - dialog: owner เทสในเกม + Geyser (26.3) → กรอก dialog.md §9 + thread → P2-33 done
 - Phase 3 docs (skill แบบ vercel-labs/agent-skills, ติดตั้ง `npx skills add Deware-PK/SynthetixLib`) + JitPack (ADR 0015): ส่ง P3-01 → 06; ship 0.7.0 = JitPack ครั้งแรก · npc เลื่อนไปก่อน
+- P3-06 Part A เสร็จ (evals/ 3 ไฟล์ + RUNNING/REVIEW/RESULTS, version 0.7.0-SNAPSHOT) → owner รัน eval ตาม `skills/synthetixlib/evals/RUNNING.md` แล้ววาง review ใน RESULTS.md (Part B) ก่อน ship
 
 ## Stack
 Gradle 9.8.1 · build-logic `synthetix.java-base|library|paper-plugin` · versions ใน `gradle/libs.versions.toml`
