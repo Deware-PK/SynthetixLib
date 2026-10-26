@@ -12,7 +12,7 @@ SynthetixLib is a library for **Paper** plugins (Java 21, Paper 1.21.11 to 26.x,
 and calls `SynthetixLib.init(this)`; the library is **shaded and relocated** into the plugin jar, so buyers get one jar.
 Menus and dialogs are YAML files that server owners can edit; code only registers the behaviour they refer to by name.
 
-Written for SynthetixLib 0.9.0.
+Written for SynthetixLib 0.9.1.
 Check the library version in the project's build file (`synthetixVersion` in `gradle.properties`, or the
 `synthetixlib-*` dependency). If it is older than the version above, read `CHANGELOG.md` before using an API: every API
 in the references is marked `since` / `changed in`.

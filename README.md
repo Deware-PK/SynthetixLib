@@ -70,7 +70,7 @@ and the reference of each module you use.
 ```kotlin
 repositories { maven("https://jitpack.io") }
 dependencies {
-    implementation("com.github.Deware-PK.SynthetixLib:synthetixlib-core:v0.9.0")
+    implementation("com.github.Deware-PK.SynthetixLib:synthetixlib-core:v0.9.1")
     // add the modules you use: synthetixlib-config, -command, -gui, -dialog, -database, -selftest
 }
 ```
@@ -80,7 +80,7 @@ You shade and relocate the library into your plugin, so your users install one j
 
 ## Status
 
-`0.9.0`. Every module is tested on Paper 1.21.11 and 26.x, but the API may still change before `1.0.0`. Breaking changes
+`0.9.1`. Every module is tested on Paper 1.21.11 and 26.x, but the API may still change before `1.0.0`. Breaking changes
 are listed in the [CHANGELOG](skills/synthetixlib/CHANGELOG.md), and the skill tells the agent to check it when the
 project uses an older version. Planned next: `validateAsync`, 0.10.0 hardening. No NPC/packet module: the library stays Paper API only.
 

@@ -1,5 +1,5 @@
 # P4-08 Release 0.9.1: database gaps from IA2-03
-Status: todo · Approved: yes · Model: sonnet · Effort: low · Ship: yes (database 0.9.1)
+Status: review · Approved: yes · Model: sonnet · Effort: low · Ship: yes (database 0.9.1)
 Module: synthetixlib-database · Depends on: P4-06, P4-07 · Design: ROADMAP Phase 4 (0.9.x)
 
 ## Prompt (paste into Claude Code)
@@ -19,7 +19,8 @@ workarounds (IA2-03b).
 - After the push: tell me to check `https://jitpack.io/#Deware-PK/SynthetixLib/v0.9.1` (all modules built).
 
 ## Acceptance criteria
-- [ ] full check + smokeTest green, MySQL tests not skipped
+- [x] full check + smokeTest green, MySQL tests not skipped
 - [ ] tag `v0.9.1` pushed; JitPack build green (owner)
 
 ## Result
+syncSnippets check smokeTest publishToMavenLocal green (1.21.11 + 26.x); MySQL tests ran, 0 skipped. Versions bumped to 0.9.1-SNAPSHOT (root, template), README 0.9.1.
