@@ -45,6 +45,7 @@ Paper 1.21.11 and 26.x. See [`docs/`](docs) and [`AGENTS.md`](AGENTS.md).
 | `synthetixlib-gui` | Inventory menus defined in YAML: pages, lists, states, input slots, one view per viewer, dupe-proof clicks |
 | `synthetixlib-dialog` | Native Paper dialogs defined in YAML: forms with typed, server-validated submit, confirmations, pause-menu dialogs |
 | `synthetixlib-database` | Async SQLite / MySQL, migrations, transactions, copy between databases, shutdown that never loses a write |
+| `synthetixlib-selftest` | In-server self-tests for your plugin (`smokeTest` on Paper 1.21.11 and 26.x), used by the template's dev servers |
 
 Paper only, 1.21.11 to 26.x, Java 21, Folia-safe. No third-party runtime dependencies (HikariCP is loaded by your
 plugin's `PluginLoader`, never shaded).
@@ -69,8 +70,8 @@ and the reference of each module you use.
 ```kotlin
 repositories { maven("https://jitpack.io") }
 dependencies {
-    implementation("com.github.Deware-PK.SynthetixLib:synthetixlib-core:v0.8.0")
-    // add the modules you use: synthetixlib-config, -command, -gui, -dialog, -database
+    implementation("com.github.Deware-PK.SynthetixLib:synthetixlib-core:v0.9.0")
+    // add the modules you use: synthetixlib-config, -command, -gui, -dialog, -database, -selftest
 }
 ```
 
@@ -79,9 +80,9 @@ You shade and relocate the library into your plugin, so your users install one j
 
 ## Status
 
-`0.8.0`. Every module is tested on Paper 1.21.11 and 26.x, but the API may still change before `1.0.0`. Breaking changes
+`0.9.0`. Every module is tested on Paper 1.21.11 and 26.x, but the API may still change before `1.0.0`. Breaking changes
 are listed in the [CHANGELOG](skills/synthetixlib/CHANGELOG.md), and the skill tells the agent to check it when the
-project uses an older version. Planned next: async dialog validation. No NPC/packet module: the library stays Paper API only.
+project uses an older version. Planned next: `validateAsync`, 0.10.0 hardening. No NPC/packet module: the library stays Paper API only.
 
 ## Working on the library
 

@@ -51,6 +51,8 @@ final class DialogViewImpl<C> implements DialogView<C> {
     private volatile InputLimits limits = InputLimits.file();
     /** What the last submit refused; shown above the body of the next showing. */
     private volatile List<FormSubmit.Failure> failures = List.of();
+    /** The error lines of the last rendering (plain text), for self-tests. */
+    private volatile List<String> errorTexts = List.of();
     /** A handler on another thread decides how the view ends. */
     private volatile boolean deferred;
     private volatile boolean requested;
@@ -177,6 +179,14 @@ final class DialogViewImpl<C> implements DialogView<C> {
     }
 
     /** The refused inputs of the last submit, shown above the body of the next showing. */
+    List<String> errorTexts() {
+        return errorTexts;
+    }
+
+    void errorTexts(final List<String> value) {
+        errorTexts = value;
+    }
+
     List<FormSubmit.Failure> failures() {
         return failures;
     }

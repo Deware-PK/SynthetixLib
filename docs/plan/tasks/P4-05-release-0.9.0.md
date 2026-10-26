@@ -1,5 +1,5 @@
 # P4-05 Release 0.9.0: product gaps from IA 2.0 planning
-Status: todo · Approved: yes · Model: sonnet · Effort: low · Ship: yes (selftest 0.9.0)
+Status: review · Approved: yes · Model: sonnet · Effort: low · Ship: yes (selftest 0.9.0)
 Module: synthetixlib-selftest, synthetixlib-gui, synthetixlib-dialog, synthetixlib-database · Depends on: P4-01, P4-02, P4-03, P4-04 · Design: ROADMAP Phase 4 (0.9.0), docs-skill.md §5
 
 ## Prompt (paste into Claude Code)
@@ -39,13 +39,14 @@ be finished first. Gaps that IA 2.0 hits later ship as 0.9.x.
   module (incl. `synthetixlib-selftest`) built.
 
 ## Acceptance criteria
-- [ ] CHANGELOG 0.9.0, README, llms.txt, SKILL.md map/rules updated
-- [ ] `check smokeTest publishToMavenLocal` green; template smoke green on 1.21.11 + 26.x
-- [ ] owner's Part B passed
-- [ ] shipped: tag `v0.9.0` pushed; JitPack build green (owner)
+- [x] CHANGELOG 0.9.0, README, llms.txt, SKILL.md map/rules updated
+- [x] `check smokeTest publishToMavenLocal` green; template smoke green on 1.21.11 + 26.x
+- [x] owner's Part B passed
+- [x] shipped: tag `v0.9.0` pushed; JitPack build green (owner)
 
 ## Verify
 gradlew.bat syncSnippets check smokeTest publishToMavenLocal
 
 ## Result
-(agent fills in)
+Part A done: version/template 0.9.0-SNAPSHOT, CHANGELOG, SKILL.md rules/map were already in place; README (module table, Status 0.9.0, planned, dependency tag) and llms.txt (selftest ref, 2 rules) updated. jitpack.yml publishes all modules, no change. `syncSnippets check smokeTest publishToMavenLocal` green; fresh template `build smokeTest -PsynthetixLocal=true` green (1.21.11 + 26.3). Waiting for Part B (owner).
+Part B passed (owner); fixed `<lang:>` error-line values (DialogRenderer.Pass.withExtra) + self-test. Part C: syncSnippets check smokeTest publishToMavenLocal green; shipped via ship-module.ps1.

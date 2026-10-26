@@ -1,6 +1,6 @@
 # SynthetixLib
 
-> Library for Paper (1.21.11 to 26.x, Java 21, Folia-safe) plugins: typed YAML config and locale, Brigadier commands, YAML menus, native dialogs, async SQL. Shaded and relocated into the consumer plugin. This index is for AI coding agents; the same files are an installable agent skill.
+> Library for Paper (1.21.11 to 26.x, Java 21, Folia-safe) plugins: typed YAML config and locale, Brigadier commands, YAML menus, native dialogs, async SQL, in-server self-tests. Shaded and relocated into the consumer plugin. This index is for AI coding agents; the same files are an installable agent skill.
 
 ## Skill
 
@@ -17,6 +17,7 @@
 - [gui](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/references/gui.md): YAML inventory menus
 - [dialog](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/references/dialog.md): Native Paper dialogs
 - [database](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/references/database.md): Async SQL (SQLite/MySQL)
+- [selftest](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/references/selftest.md): In-server self-tests (SelfTests, Checks), dev servers, smokeTest
 - [recipes](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/references/recipes.md): End-to-end recipes
 - [troubleshooting](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/references/troubleshooting.md): Symptom -> cause -> fix
 
@@ -48,6 +49,7 @@
 - [dialog-one-use-callbacks](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/dialog-one-use-callbacks.md): Buttons are one-use; do not cache dialogs
 - [dialog-validate-on-server](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/dialog-validate-on-server.md): Never trust the dialog client
 - [files-bump-config-version](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/files-bump-config-version.md): Changed a bundled menu, dialog or config file? Bump its config-version
+- [gui-async-action-for-io](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/gui-async-action-for-io.md): Use actionAsync for menu actions that do database or HTTP work
 - [gui-deny-by-default](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/gui-deny-by-default.md): Every slot is locked unless it is an input slot
 - [gui-getholder-false](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/gui-getholder-false.md): Inventories: getHolder(false) only
 - [gui-item-model-not-custom-model-data](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/gui-item-model-not-custom-model-data.md): Item art: item-model, never int custom model data
@@ -56,6 +58,7 @@
 - [gui-shift-click-input-only](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/gui-shift-click-input-only.md): Shift-click must target only editable slots
 - [gui-take-inputs-atomically](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/gui-take-inputs-atomically.md): Read input slots with takeInputs, not getItem
 - [state-no-static-maps](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/state-no-static-maps.md): Per-player state is an instance field, cleaned on quit, thread-safe
+- [test-in-server-for-bukkit-state](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/test-in-server-for-bukkit-state.md): Test ItemStacks, entities, worlds and inventories in a server; plain SQL with a unit test
 - [text-escape-player-input](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/text-escape-player-input.md): Player input is a placeholder or escaped, never concatenated
 - [text-minimessage-only](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/text-minimessage-only.md): Text is MiniMessage / Adventure only
 - [threads-async-then-back](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/threads-async-then-back.md): Do IO async, then return to the owning thread

@@ -1,5 +1,5 @@
 # Bundled with the example plugin: the dialog.number-field self-test copies it and answers it with fake clients.
-config-version: 2
+config-version: 3
 title: '<gold>Number-field self-test'
 type: confirmation
 inputs:
@@ -10,4 +10,4 @@ buttons:
   yes: { label: '<green>Send', click: ['action:send'] }
   no: { label: '<red>Cancel', click: [close] }
 errors:
-  price: '<red>Between <min> and <max>, not <value>'
+  price: '<lang:err>'

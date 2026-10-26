@@ -25,6 +25,7 @@ Releases are git tags `v<x.y.z>` (0.1.0 and 0.2.0 were never tagged). JitPack wo
 - template: `runServer` (Paper 1.21.11, Java 21), `runServer26` (26.x, Java 25) and `smokeTest` (both headless, fails unless
   both PASS) via run-paper; an `extraPlugins` block downloads Vault / EssentialsX / PacketEvents for the test servers; the
   template plugin has one self-test. `synthetixLocalVersion=0.9.0-SNAPSHOT`.
+- Fixed (dialog, since 0.8.0): an `errors.<key>: '<lang:some-key>'` line showed the raw `<min> <max> <value>`; the language message now gets the error's `<min> <max> <value> <decimals>` and a validator's own tags.
 - docs: reference `selftest`, rule `test-in-server-for-bukkit-state` (items, worlds, inventories in a server; plain SQL in a unit test).
 
 ## 0.8.0

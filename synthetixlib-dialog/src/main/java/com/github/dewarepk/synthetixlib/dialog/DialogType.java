@@ -131,6 +131,12 @@ public final class DialogType<C> {
         return requireHost().attach(this, Objects.requireNonNull(player, "player"), context);
     }
 
+    /** The error lines (plain text) shown by the last rendering of {@code view}. For self-tests. */
+    @ApiStatus.Internal
+    public java.util.List<String> errorLines(final DialogView<C> view) {
+        return ((DialogViewImpl<C>) view).errorTexts();
+    }
+
     /**
      * Fires the callback of the current showing of a button of {@code view}, the same object that Paper's dialog holds,
      * as if {@code audience} clicked it with {@code response}. For self-tests.

@@ -134,7 +134,7 @@ final class DialogSelfTests {
                 SelfTest.sync("dialog.fallback", () -> fallback(plugin, dialogs)),
                 SelfTest.sync("dialog.submit", () -> submit(plugin, dialogs, submitBed)),
                 SelfTest.async("dialog.submit-async", () -> submitAsync(submitBed)),
-                SelfTest.sync("dialog.number-field", () -> numberField(plugin, dialogs)),
+                SelfTest.sync("dialog.number-field", () -> numberField(plugin, configs, dialogs)),
                 SelfTest.sync("dialog.limits", () -> limits(plugin)),
                 SelfTest.sync("dialog.registry", () -> registry(plugin, dialogs)),
                 SelfTest.sync("dialog.link", () -> link(plugin, lib, configs, dialogs)));
@@ -266,8 +266,14 @@ final class DialogSelfTests {
      * set by code for a showing are the ones the answer is checked against, and a validator of the code refuses an
      * answer before the handler without touching the file limits.
      */
-    private static void numberField(final JavaPlugin plugin, final DialogService dialogs) throws Exception {
-        Files.deleteIfExists(plugin.getDataFolder().toPath().resolve("dialogs/selftest-number.yml"));
+    private static void numberField(final JavaPlugin plugin, final Configs configs, final DialogService dialogs)
+            throws Exception {
+        final Path data = plugin.getDataFolder().toPath();
+        Files.deleteIfExists(data.resolve("dialogs/selftest-number.yml"));
+        deleteTree(data.resolve("selftest-number-lang"));
+        final LocaleHandle<NumberTexts> lang = configs.locale("selftest-number-lang", NumberTexts.class,
+                NumberTexts::defaults).defaultLocale(Locale.US).load();
+        dialogs.messages(lang, NumberTexts::dialog);
         final List<NumberForm> forms = new ArrayList<>();
         final AtomicInteger maxPrice = new AtomicInteger(2000);
         final DialogType<Void> type = dialogs.dialog("selftest-number")
@@ -275,7 +281,7 @@ final class DialogSelfTests {
                 .maxLength("note", view -> 5)
                 .submit("send", NumberForm.class, (form, click) -> forms.add(form))
                 .validate("send", NumberForm.class, (form, click) -> form.money().compareTo(new java.math.BigDecimal(50)) > 0
-                        ? Optional.of(FieldError.of("money", "<red>At most <limit>", Placeholder.unparsed("limit", "50")))
+                        ? Optional.of(FieldError.of("money", "<lang:tagged>", Placeholder.unparsed("limit", "50")))
                         : Optional.empty())
                 .build();
         require(!type.isInert("buttons.yes"), "a long, a BigDecimal and a String fit the inputs");
@@ -294,9 +300,14 @@ final class DialogSelfTests {
             final FakePlayer refused = new FakePlayer("Refused", Locale.US);
             final Map<String, Object> answers = new java.util.HashMap<>(good);
             answers.put("price", price);
-            type.click(type.attach(refused.player, null), "buttons.yes", new Fake(answers), refused.player);
+            final DialogView<Void> refusedView = type.attach(refused.player, null);
+            type.click(refusedView, "buttons.yes", new Fake(answers), refused.player);
             require(forms.size() == 1 && refused.shown == 1 && refused.closed == 0,
                     "price '" + price + "' reached the handler or the dialog was not shown again: " + forms);
+            // a <lang:key> in the error line gets the real values, not the raw <min> <max> <value>
+            final var lines = type.errorLines(refusedView);
+            require(lines.size() == 1 && lines.get(0).equals("between 10 and 2000, not " + price),
+                    "the error line of price '" + price + "': " + lines);
         }
         // decimals: 2 in the file; 12.345 never reaches the handler, 12.34 does
         final FakePlayer decimals = new FakePlayer("Decimals", Locale.US);
@@ -324,6 +335,8 @@ final class DialogSelfTests {
                 validated.player);
         require(forms.size() == 1 && validated.shown == 1 && validated.closed == 0,
                 "the validator must refuse money above 50: " + forms);
+        require(type.errorLines(validatedView).equals(List.of("At most 50")),
+                "the validator's <limit> must reach the <lang> line: " + type.errorLines(validatedView));
         type.click(validatedView, "buttons.yes", new Fake(Map.of("price", "50", "money", "49.99", "note", "x")),
                 validated.player);
         require(forms.size() == 2 && validated.closed == 1, "after the error the corrected form works: " + forms);
@@ -585,6 +598,14 @@ final class DialogSelfTests {
                         case "toString" -> "FakePlayer " + name;
                         default -> throw new UnsupportedOperationException("Player." + method.getName());
                     });
+        }
+    }
+
+    /** The language files of dialog.number-field: error lines that use the values of the error. */
+    public record NumberTexts(Map<String, String> dialog) {
+
+        static NumberTexts defaults() {
+            return new NumberTexts(Map.of("err", "between <min> and <max>, not <value>", "tagged", "At most <limit>"));
         }
     }
 

@@ -134,9 +134,13 @@ final class DialogRenderer<C> {
         inside.add(type.id());
 
         final List<io.papermc.paper.registry.data.dialog.body.DialogBody> body = new ArrayList<>();
+        final List<String> errorTexts = new ArrayList<>();
         for (final FormSubmit.Failure failure : view.failures()) {
-            body.add(io.papermc.paper.registry.data.dialog.body.DialogBody.plainMessage(errorLine(failure)));
+            final Component line = errorLine(failure);
+            errorTexts.add(net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(line));
+            body.add(io.papermc.paper.registry.data.dialog.body.DialogBody.plainMessage(line));
         }
+        view.errorTexts(errorTexts);
         for (final DialogBody entry : file.body()) {
             body.add(body(entry));
         }
@@ -170,7 +174,8 @@ final class DialogRenderer<C> {
                 Placeholder.unparsed("max", failure.max()), Placeholder.unparsed("value", failure.value()),
                 Placeholder.unparsed("decimals", failure.decimals()));
         if (failure.markup() != null) {
-            return env.text().parse(failure.markup(), values, pass.resolver(), failure.extra());
+            return env.text().parse(failure.markup(), values, pass.withExtra(TagResolver.resolver(values, failure.extra())),
+                    failure.extra());
         }
         final DialogMessages source = env.messages().get();
         final TagResolver nested = TagResolver.resolver(values, pass.placeholders());
@@ -554,23 +559,29 @@ final class DialogRenderer<C> {
             }
         };
         /** The placeholders and {@code <lang:key>}, which reads the viewer's language file. */
-        private final TagResolver resolver = TagResolver.resolver(placeholders, new TagResolver() {
-            @Override
-            public @Nullable Tag resolve(final String name, final ArgumentQueue arguments, final Context ctx) {
-                final DialogMessages source = env.messages().get();
-                if (source == null || !name.equals("lang") || !arguments.hasNext()) {
-                    return null; // no language files: MiniMessage's own <lang> (a translatable) stays
-                }
-                final String key = arguments.pop().value();
-                final Component message = source.get(view.playerOrNull(), key, placeholders);
-                return Tag.selfClosingInserting(message != null ? message : translatable(key, arguments));
-            }
+        private final TagResolver resolver = withExtra(TagResolver.empty());
 
-            @Override
-            public boolean has(final String name) {
-                return name.equals("lang") && env.messages().get() != null;
-            }
-        });
+        /** Like {@link #resolver()}, but a {@code <lang:key>} message may also use {@code extra} (an error line's values). */
+        TagResolver withExtra(final TagResolver extra) {
+            final TagResolver inner = TagResolver.resolver(placeholders, extra);
+            return TagResolver.resolver(placeholders, new TagResolver() {
+                @Override
+                public @Nullable Tag resolve(final String name, final ArgumentQueue arguments, final Context ctx) {
+                    final DialogMessages source = env.messages().get();
+                    if (source == null || !name.equals("lang") || !arguments.hasNext()) {
+                        return null; // no language files: MiniMessage's own <lang> (a translatable) stays
+                    }
+                    final String key = arguments.pop().value();
+                    final Component message = source.get(view.playerOrNull(), key, inner);
+                    return Tag.selfClosingInserting(message != null ? message : translatable(key, arguments));
+                }
+
+                @Override
+                public boolean has(final String name) {
+                    return name.equals("lang") && env.messages().get() != null;
+                }
+            });
+        }
 
         TagResolver placeholders() {
             return placeholders;
