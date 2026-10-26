@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import org.bukkit.Bukkit;
 import org.bukkit.inventory.ItemStack;
 import org.jspecify.annotations.Nullable;
 
@@ -47,6 +48,13 @@ final class Params {
         return List.of(converted);
     }
 
+    /** @throws IllegalStateException without a running server (plain JUnit): item serialization needs one */
+    static void requireServer() {
+        if (Bukkit.getServer() == null) {
+            throw new IllegalStateException("ItemStack columns need a running Paper server: test them in a self-test");
+        }
+    }
+
     private static @Nullable Object convert(final int position, final @Nullable Object value) {
         return switch (value) {
             case null -> null;
@@ -60,7 +68,10 @@ final class Params {
             case Instant instant -> instant.toEpochMilli();
             case Duration duration -> duration.toMillis();
             case Enum<?> constant -> constant.name();
-            case ItemStack item -> item.serializeAsBytes();
+            case ItemStack item -> {
+                requireServer();
+                yield item.serializeAsBytes();
+            }
             default -> throw new IllegalArgumentException("Parameter " + position + " is a "
                     + value.getClass().getName() + ", which cannot be bound. Supported: String, int, long, double, "
                     + "boolean, byte[], UUID, Instant, Duration, Enum, ItemStack and null");

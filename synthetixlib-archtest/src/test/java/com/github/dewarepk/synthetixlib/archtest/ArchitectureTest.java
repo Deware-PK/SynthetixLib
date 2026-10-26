@@ -108,6 +108,16 @@ class ArchitectureTest {
         assertTrue(error.getMessage().contains("HikariConfig"), error.getMessage());
     }
 
+    /** Database.standalone is for tests and tools: library code uses create/open. */
+    @Test
+    void libraryCodeDoesNotUseStandaloneDatabases() {
+        noClasses().should().callMethodWhere(target(nameMatching("standalone"))
+                        .and(target(owner(DescribedPredicate.describe("Database",
+                                owner -> owner.getName().equals(LIB + ".database.Database"))))))
+                .because("Database.standalone is for unit tests and command-line tools; a plugin uses create")
+                .check(classes);
+    }
+
     /** ADR 0014: HikariCP only in the database module's pool class. */
     @Test
     void hikariOnlyInTheDatabasePool() {

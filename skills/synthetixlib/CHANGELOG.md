@@ -5,6 +5,9 @@ Releases are git tags `v<x.y.z>` (0.1.0 and 0.2.0 were never tagged). JitPack wo
 (`com.github.Deware-PK.SynthetixLib:synthetixlib-<module>:v<x.y.z>`); older tags have no `jitpack.yml` and do not build there.
 
 ## 0.9.0
+- database: `Database.standalone(name, directory, logger, settings)`: a database without a plugin or server, for plain JUnit
+  tests of your stores and for command-line tools. Needs HikariCP and a JDBC driver as `testImplementation`. `ItemStack`
+  parameters/columns throw a clear `IllegalStateException` without a server. Recipe 4 shows a store test.
 - gui: `MenuBuilder#actionAsync(name, handler)` and `actionAsync(name, Duration, handler)`: like `action`, but the view stays
   busy until the returned `CompletableFuture` completes (default timeout 30 s), so a double click cannot start the work twice.
   Later click steps of the same item wait for it and are skipped if it fails. A failure is logged and the player gets

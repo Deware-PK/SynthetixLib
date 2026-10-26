@@ -18,4 +18,8 @@ dependencies {
 
     // Loaded at runtime by ExampleLoader (paper-plugin.yml), never shaded.
     compileOnly(libs.hikaricp)
+
+    // Only for StoreTestExample (recipe 4): a plain JUnit test needs the pool and a driver itself.
+    testImplementation(libs.hikaricp)
+    testImplementation(libs.sqlite.jdbc)
 }

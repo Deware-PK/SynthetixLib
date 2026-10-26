@@ -90,6 +90,33 @@ public interface Database extends AutoCloseable {
         return database;
     }
 
+    /**
+     * Opens a database that belongs to nothing: no plugin, no {@code SynthetixLib}, no server. For unit tests and
+     * command-line tools; in a plugin use {@link #create}. You close it (try-with-resources). Statements, migrations and
+     * shutdown behave as with {@link #open}. {@code ItemStack} parameters and columns need a running Paper server and
+     * throw an {@link IllegalStateException} without one.
+     *
+     * <pre>{@code
+     * try (Database db = Database.standalone("store-test", tempDir, Logger.getLogger("test"),
+     *         DatabaseSettings.sqlite("test.db"))) {
+     *     db.migrate(Migrations.fromResources("db/migrations")).join();
+     * }
+     * }</pre>
+     *
+     * @param name      used for the worker thread names ({@code <name>-db-<n>})
+     * @param directory where a relative SQLite file goes
+     * @throws IllegalStateException if HikariCP or the JDBC driver is not on the class path (add them as
+     *                               {@code testImplementation}) or the database cannot be reached
+     */
+    static Database standalone(final String name, final java.nio.file.Path directory, final java.util.logging.Logger logger,
+                               final DatabaseSettings settings) {
+        Objects.requireNonNull(name, "name");
+        Objects.requireNonNull(directory, "directory");
+        Objects.requireNonNull(logger, "logger");
+        Objects.requireNonNull(settings, "settings");
+        return DatabaseImpl.openStandalone(name, directory, logger, settings);
+    }
+
     /** @return the SQL dialect of this database */
     Dialect dialect();
 

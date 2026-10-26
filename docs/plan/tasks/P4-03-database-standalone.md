@@ -1,5 +1,5 @@
 # P4-03 database: `Database.standalone` for unit tests and tools
-Status: todo · Approved: yes · Model: sonnet · Effort: medium
+Status: review · Approved: yes · Model: sonnet · Effort: medium
 Module: synthetixlib-database · Depends on: — · Design: database.md §3, §10
 Requested by: InteractiveAuction 2.0 (IA2-03 store tests), lib gap L-5 part 1
 
@@ -41,13 +41,18 @@ package-private `DatabaseImpl.open(name, dir, logger, settings)`.
 - `docs/design/database.md`: §13 "0.9.0 additions". CHANGELOG "0.9.0".
 
 ## Acceptance criteria
-- [ ] a JUnit test with only `@TempDir` + `Database.standalone` migrates and queries SQLite (unit)
-- [ ] clear errors for a missing driver and for ItemStack without a server (unit)
-- [ ] recipe 4 compiles from its snippet source; `checkSnippets` green
-- [ ] `gradlew.bat check smokeTest` green
+- [x] a JUnit test with only `@TempDir` + `Database.standalone` migrates and queries SQLite (unit)
+- [x] clear errors for a missing driver and for ItemStack without a server (unit)
+- [x] recipe 4 compiles from its snippet source; `checkSnippets` green
+- [x] `gradlew.bat check smokeTest` green
 
 ## Verify
 gradlew.bat check smokeTest
 
 ## Result
-(agent fills in)
+`Database.standalone` added (via `DatabaseImpl.openStandalone`; own missing-HikariCP / missing-driver messages naming the testImplementation deps).
+`Params.requireServer()` guards ItemStack parameters and `row.itemStack` (`Bukkit.getServer() == null`). The guard is already off
+(`ServerThreadGuard.disabled()`). ArchUnit rule `libraryCodeDoesNotUseStandaloneDatabases` added. Tests: `StandaloneDatabaseTest`,
+`SqliteDatabaseTest#standaloneWithoutHikariCp...`. An `ItemStack` cannot be constructed without a server, so the parameter check is
+tested through `Params.requireServer()`; the read side through a `x'00'` blob. Recipe 4 snippet comes from
+`synthetixlib-example/src/test/.../StoreTestExample` (example got test deps HikariCP + sqlite-jdbc). Docs: reference, design §13, CHANGELOG.

@@ -12,14 +12,26 @@ public final class HiddenHikariProbe implements Supplier<String> {
 
     private final Path folder;
 
+    private final boolean standalone;
+
     public HiddenHikariProbe(final Path folder) {
+        this(folder, false);
+    }
+
+    public HiddenHikariProbe(final Path folder, final boolean standalone) {
         this.folder = folder;
+        this.standalone = standalone;
     }
 
     @Override
     public String get() {
         try {
-            DatabaseImpl.open("Probe", folder, Logger.getLogger("probe"), DatabaseSettings.sqlite("probe.db")).close();
+            final DatabaseSettings settings = DatabaseSettings.sqlite("probe.db");
+            if (standalone) {
+                Database.standalone("Probe", folder, Logger.getLogger("probe"), settings).close();
+            } else {
+                DatabaseImpl.open("Probe", folder, Logger.getLogger("probe"), settings).close();
+            }
             return "opened without HikariCP";
         } catch (final IllegalStateException e) {
             return e.getMessage();

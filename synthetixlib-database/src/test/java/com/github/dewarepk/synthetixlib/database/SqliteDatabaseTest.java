@@ -217,6 +217,30 @@ class SqliteDatabaseTest {
         }
     }
 
+    @Test
+    void standaloneWithoutHikariCpSaysWhichTestDependenciesToAdd() throws Exception {
+        final List<URL> urls;
+        try (Stream<String> entries = Stream.of(System.getProperty("java.class.path").split(java.io.File.pathSeparator))) {
+            urls = entries.map(entry -> {
+                try {
+                    return Path.of(entry).toUri().toURL();
+                } catch (final java.net.MalformedURLException e) {
+                    throw new IllegalStateException(e);
+                }
+            }).toList();
+        }
+        try (URLClassLoader hidden = new HidesHikari(urls.toArray(new URL[0]))) {
+            @SuppressWarnings("unchecked")
+            final Supplier<String> probe = (Supplier<String>) hidden.loadClass(HiddenHikariProbe.class.getName())
+                    .getDeclaredConstructor(Path.class, boolean.class).newInstance(dir, true);
+
+            final String message = probe.get();
+
+            assertTrue(message.contains("add com.zaxxer:HikariCP and org.xerial:sqlite-jdbc"), message);
+            assertTrue(message.contains("testImplementation"), message);
+        }
+    }
+
     /** A class loader that has every class of the test class path except HikariCP; the JDBC drivers stay shared. */
     private static final class HidesHikari extends URLClassLoader {
 

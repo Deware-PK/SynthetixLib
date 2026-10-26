@@ -203,7 +203,7 @@ Copy.tables(old, current, List.of("lots", "mail")).batchSize(500).run()
 
 | Type | For | Since |
 |---|---|---|
-| `Database` | `create`, `open`, `dialect`, `query`, `queryOne`, `update`, `batch`, `transaction`, `upsert`, `migrate`, `close` | 0.5.0 |
+| `Database` | `create`, `open`, `standalone` (0.9.0, tests and tools), `dialect`, `query`, `queryOne`, `update`, `batch`, `transaction`, `upsert`, `migrate`, `close` | 0.5.0 |
 | `DatabaseSettings` (+ `Sqlite`, `Mysql`, `Pool`) | the YAML shape; `sqlite(file)`, `mysql(...)`, `withTablePrefix`, `register(codecs)` | 0.5.0 |
 | `Dialect` | `SQLITE`, `MYSQL` | 0.5.0 |
 | `Row`, `RowMapper<T>` | typed getters; `T map(Row)` | 0.5.0 |
@@ -212,6 +212,18 @@ Copy.tables(old, current, List.of("lots", "mail")).batchSize(500).run()
 | `Copy`, `Copy.Report` | `tables`, `batchSize`, `run`; `rows`, `total` | 0.5.0 |
 | `SynthetixLibraries` | `database(PluginClasspathBuilder)` for the `PluginLoader` | 0.5.0 |
 | `DatabaseException`, `DatabaseClosedException`, `MigrationException` | unchecked failures | 0.5.0 |
+
+## Testing
+
+Test your store in plain JUnit, no server: `Database.standalone(name, directory, logger, settings)` (since 0.9.0) is a
+database that belongs to nothing; you close it. `name` gives the worker threads (`<name>-db-<n>`), `directory` holds a
+relative SQLite file (use `@TempDir`). Add the pool and a driver as test dependencies; a missing one fails with a message
+saying so. Versions match what the library tests with: HikariCP `7.1.0`, sqlite-jdbc `3.49.1.0` (the catalog,
+`gradle/libs.versions.toml`, is the source). `join()` on the test thread is fine. See recipe 4.
+
+- `ItemStack` parameters and `row.itemStack` need a running server: without one they throw
+  `IllegalStateException("ItemStack columns need a running Paper server: test them in a self-test")`.
+- Library code never uses `standalone`; a plugin uses `create`.
 
 ## Pitfalls
 

@@ -1,6 +1,6 @@
 # Recipes
 
-Three end-to-end recipes, each built from code that compiles and runs in the example plugin's `recipes.build`
+Four end-to-end recipes, each built from code that compiles and runs in the example plugin's `recipes.build`
 self-test (`synthetixlib-example/.../demo/recipes`). Copy the shape, not the names. Every recipe uses the same wiring:
 one `Configs`, one `LocaleHandle<RecipeMessages>` (all text in `recipes-lang/<tag>.yml`), a `GuiService` and a
 `DialogService` that link to each other.
@@ -240,3 +240,40 @@ public List<String> reload() {
 - Open views redraw on the next refresh; a dialog that was opened before a reload which changed its file stops working (an
   unchanged reload keeps it working).
 - Commands are not re-registered by a reload (Paper has no runtime registration).
+
+## Recipe 4: unit-test your store
+
+A store that takes a `Database` is tested in plain JUnit with `Database.standalone`: a temp folder, real SQLite, the real
+migrations from your resources, no server. (`ItemStack` columns need a server: test those in a self-test.)
+
+```kotlin
+dependencies {
+    testImplementation(platform("org.junit:junit-bom:5.13.4"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation("com.zaxxer:HikariCP:7.1.0")
+    testImplementation("org.xerial:sqlite-jdbc:3.49.1.0")
+}
+tasks.test { useJUnitPlatform() }
+```
+
+```java snippet=recipe-store-test
+@TempDir
+Path dir;
+
+@Test
+void claimsAreCounted() {
+    try (Database db = Database.standalone("store-test", dir, Logger.getLogger("test"),
+            DatabaseSettings.sqlite("test.db").withTablePrefix("t_"))) {
+        final ClaimStore store = ClaimStore.open(db);   // runs the migrations from the resources
+
+        store.claim("daily", UUID.randomUUID()).join();
+        store.claim("daily", UUID.randomUUID()).join();
+
+        assertEquals(2, store.stats("daily", 10).join().count());
+    }
+}
+```
+
+- Close the database (try-with-resources) so its worker thread stops; `close` waits for accepted writes.
+- Call `join()` freely in tests; the server-thread warning does not exist here.

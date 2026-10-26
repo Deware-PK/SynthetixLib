@@ -73,20 +73,36 @@ final class DatabaseImpl implements Database {
         return open(pluginName, dataFolder, logger, settings, ServerThreadGuard.disabled());
     }
 
+    /** {@link Database#standalone}: no server, no plugin; a missing library is reported for a test class path. */
+    static DatabaseImpl openStandalone(final String name, final Path directory, final Logger logger,
+                                       final DatabaseSettings settings) {
+        return open(name, directory, logger, settings, ServerThreadGuard.disabled(), true);
+    }
+
     /** @param guard warns when a server thread waits for one of the futures */
     static DatabaseImpl open(final String pluginName, final Path dataFolder, final Logger logger,
                              final DatabaseSettings settings, final ServerThreadGuard guard) {
+        return open(pluginName, dataFolder, logger, settings, guard, false);
+    }
+
+    private static DatabaseImpl open(final String pluginName, final Path dataFolder, final Logger logger,
+                                     final DatabaseSettings settings, final ServerThreadGuard guard,
+                                     final boolean standalone) {
         final ConnectionPlan plan = ConnectionPlan.of(settings, dataFolder);
         if (plan.file() != null) {
             createParentFolder(plan.file());
         }
-        requireDriver(plan.url(), plan.driverJar());
+        if (standalone) {
+            requireStandaloneDriver(plan.url(), plan.driverJar());
+        } else {
+            requireDriver(plan.url(), plan.driverJar());
+        }
 
         final ConnectionSource source;
         try {
             source = HikariConnectionSource.open(pluginName + "-db", plan);
         } catch (final NoClassDefFoundError e) {
-            throw missingHikari(e);
+            throw standalone ? missingStandaloneHikari(e) : missingHikari(e);
         }
         try {
             final Object owner = new Object();
@@ -454,6 +470,26 @@ final class DatabaseImpl implements Database {
             throw new IllegalStateException("No JDBC driver accepts " + url + ". Paper ships it; if this server does not, "
                     + "add " + jar + " to its class path", e);
         }
+    }
+
+    private static void requireStandaloneDriver(final String url, final String jar) {
+        try {
+            DriverManager.getDriver(url);
+        } catch (final SQLException e) {
+            throw new IllegalStateException("No JDBC driver accepts " + url + ". " + TEST_LIBRARIES + " (driver: "
+                    + jar + ")", e);
+        }
+    }
+
+    private static final String TEST_LIBRARIES = "add com.zaxxer:HikariCP and org.xerial:sqlite-jdbc (or "
+            + "mysql-connector-j) as testImplementation, versions in references/database.md";
+
+    private static IllegalStateException missingStandaloneHikari(final NoClassDefFoundError error) {
+        final String message = error.getMessage();
+        if (message == null || !message.contains("com/zaxxer/hikari")) {
+            throw error;
+        }
+        return new IllegalStateException("HikariCP is not on the class path: " + TEST_LIBRARIES, error);
     }
 
     private static IllegalStateException missingHikari(final NoClassDefFoundError error) {

@@ -172,6 +172,13 @@ caching (products keep their own in-memory state and write through).
 8. **MySQL tests via Gradle properties** from the owner's user `gradle.properties` + a Docker MySQL kept running (chosen
    2026-10-20, owner) vs Testcontainers (extra test dependency).
 
+## 13. 0.9.0 additions
+- `Database.standalone(name, directory, logger, settings)`: a database tied to no plugin or `SynthetixLib`, for unit tests
+  and command-line tools (P4-03). Same pool, worker, migrations and shutdown as `open`; the server-thread wait guard is off.
+  Missing HikariCP or driver: the error says to add them as `testImplementation`.
+- `ItemStack` parameters and columns throw a clear `IllegalStateException` when there is no server (`Bukkit.getServer() == null`).
+- ArchUnit: library main code must not call `Database.standalone`.
+
 ## 12. Deviations from the design (as built, 0.5.0)
 - `Database.open` / `create` pick HikariCP up through one package-private class (`HikariConnectionSource`); a missing HikariCP is
   reported with the `PluginLoader` hint. SQLite PRAGMAs are driver connection properties (sqlite-jdbc runs only the first

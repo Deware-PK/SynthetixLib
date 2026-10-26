@@ -7,7 +7,7 @@ Status: **complete, 0.5.0** (P2-24 module + loader + settings, P2-25 queries, P2
 P2-28 demo + MySQL suite). Demo: `synthetixlib-example` (`ClaimStore`, `/example airdrop claim|stats`, `/example db copy-to-mysql`).
 
 Types
-- `Database` (public interface): `create(lib, settings)` (attached to `lib`), `open(lib, settings)` (not attached),
+- `Database` (public interface): `create(lib, settings)` (attached to `lib`), `open(lib, settings)` (not attached), `standalone(name, dir, logger, settings)` (0.9.0: no plugin/server, for tests and tools; main code must not call it),
   `dialect()`, `close()`, and the statements `query`, `queryOne`, `update`, `batch`, `transaction`, `upsert` (all return
   `CompletableFuture`, completed on the worker). Implemented by package-private `DatabaseImpl`, which owns the pool and
   the worker (`ThreadPoolExecutor`, threads `<plugin>-db-<n>`, non-daemon, size = pool size).

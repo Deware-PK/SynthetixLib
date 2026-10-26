@@ -176,6 +176,9 @@ final class ResultRow implements Row {
 
     @Override
     public @Nullable ItemStack itemStackOrNull(final String column) {
+        if (value(column) instanceof byte[]) {
+            Params.requireServer();   // outside read(): it would turn the exception into "cannot be read"
+        }
         return read(column, "an ItemStack", value -> {
             if (value instanceof byte[] bytes) {
                 return ItemStack.deserializeBytes(bytes);
