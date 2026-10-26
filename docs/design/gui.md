@@ -203,3 +203,34 @@ or title swaps through `update-every`; text input → anvil is not in this modul
   `ClickAction.Linked(prefix, id)` (so a typo with an argument is no longer a parse error; it is reported when the menu loads: item
   inert, "no module is linked to it"). Link before building the menus (or `reload()` after). `dialogs.link("menu", gui.opener())` is the
   other direction. Built-in names cannot be prefixes.
+
+## 14. 0.9.0 additions
+
+### `actionAsync` — the view stays busy until the work is done (P4-01)
+Requested by InteractiveAuction 2.0 (mailbox claim, cancel listing, blacklist edit). `ClickGate` covers only the synchronous
+handler, so an `action` that starts a future let the next click in at once.
+
+```java
+public MenuBuilder<C> actionAsync(String name, Function<MenuClick<C>, CompletableFuture<?>> handler)
+public MenuBuilder<C> actionAsync(String name, Duration timeout, Function<MenuClick<C>, CompletableFuture<?>> handler)
+```
+- Same name rules and the same `action:<name>` in the file. A name is either sync or async; registering it twice (in either
+  form) is an `IllegalArgumentException`, like every duplicate name. The timeout is at least one tick (50 ms), default 30 s.
+- The handler runs on the player's thread. `null` counts as a finished future (warning once per name).
+- The gate is entered as before; for an async step it is left when the future completes (normally or not), timed out, or the
+  view is gone. While busy every click in the view is ignored, including other slots, page buttons and `close`; Esc is never
+  blocked.
+- Steps of one item run in order (`AsyncSteps`); an async step makes the later steps wait for its future, then run on the
+  player's thread. A failed or timed-out future skips them.
+- `busy:` (optional, an item like `loading:`): shown in the slot the click came from while an async step waits; afterwards
+  `refresh(char)` of that slot. A render in between redraws it. Not allowed on a list or input item.
+- Timeout: a warning once (menu id + action), the gate is released, the future is **not** cancelled. A late answer never
+  releases a gate that a newer click holds (each wait settles exactly once).
+- Failure: logged like a failing sync handler; the lang key `action-failed` of the `gui` map (`Messages::gui`) is sent to the
+  player if present.
+- View gone (closed, replaced, quit): the completion only releases that view's gate; no refresh, no message.
+- Threads: the completion hops with `lib.scheduler().entity(player)` and a `retired` that does nothing; the future is never
+  joined. `lib.close()` with work in flight: views close as before, the future is left alone.
+
+Not covered: a lock across two views. One view per viewer is the design; the product's own state must be atomic
+(`... WHERE claimed_at IS NULL`).

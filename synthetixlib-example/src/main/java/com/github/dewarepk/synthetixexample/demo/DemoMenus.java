@@ -14,6 +14,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.Material;
@@ -30,6 +31,8 @@ public final class DemoMenus {
     public record Entry(String id, Airdrop airdrop) {
     }
 
+    /** The airdrop the claim button of the demo menu writes to. */
+    private static final String DEMO_AIRDROP = "demo";
     private static final DateTimeFormatter CLOCK = DateTimeFormatter.ofPattern("HH:mm:ss");
 
     private final MenuType<Void> demo;
@@ -70,6 +73,7 @@ public final class DemoMenus {
                     click.view().refresh();
                 })
                 .action("confirm", click -> confirm(click.player(), click.view().takeInputs('S'), lang))
+                .actionAsync("claim", click -> claim(claims, click))
                 .build();
         // @end
         return new DemoMenus(demo, gui.opener());
@@ -94,6 +98,16 @@ public final class DemoMenus {
                                 Placeholder.unparsed("count", String.valueOf(claims.count(entry.id()))))))
                 .build();
     }
+
+    // @snippet:gui-action-async
+    /**
+     * Registered with {@code actionAsync("claim", click -> claim(claims, click))}: the view ignores every click until the
+     * database answers, so a double click cannot claim twice (the insert itself must still be safe to repeat).
+     */
+    private static CompletableFuture<?> claim(final ClaimStore claims, final MenuClick<Void> click) {
+        return claims.claim(DEMO_AIRDROP, click.player().getUniqueId()).thenRun(() -> click.view().refresh());
+    }
+    // @end
 
     // @snippet:gui-take-inputs
     /** The items leave the slot at once (so a double click cannot pay twice), then go back to the player. */

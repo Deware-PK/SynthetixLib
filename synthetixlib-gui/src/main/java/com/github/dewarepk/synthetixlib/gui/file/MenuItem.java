@@ -40,6 +40,7 @@ import org.jspecify.annotations.Nullable;
  * @param list        id of a list that code fills; every slot with this character shows one entry
  * @param empty       shown in list slots that have no entry
  * @param loading     shown in list slots while an asynchronous list is loading
+ * @param busy        shown instead of the item while an {@code actionAsync} started from its slot runs
  * @param state       id of a state that code answers with the name of one of {@code states}
  * @param states      the items a {@code state} picks from, by state name; empty if none
  * @param hideWhen    leaves the item out on the first or last page
@@ -65,6 +66,7 @@ public record MenuItem(
         Optional<String> list,
         Optional<MenuItem> empty,
         Optional<MenuItem> loading,
+        Optional<MenuItem> busy,
         Optional<String> state,
         @Nullable Map<String, MenuItem> states,
         Optional<HideWhen> hideWhen,
@@ -87,6 +89,7 @@ public record MenuItem(
         Objects.requireNonNull(list, "list");
         Objects.requireNonNull(empty, "empty");
         Objects.requireNonNull(loading, "loading");
+        Objects.requireNonNull(busy, "busy");
         Objects.requireNonNull(state, "state");
         states = states == null ? Map.of() : Collections.unmodifiableMap(new LinkedHashMap<>(states));
         Objects.requireNonNull(hideWhen, "hideWhen");

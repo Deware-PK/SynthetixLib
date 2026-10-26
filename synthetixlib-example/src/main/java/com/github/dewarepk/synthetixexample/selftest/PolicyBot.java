@@ -1,9 +1,13 @@
 package com.github.dewarepk.synthetixexample.selftest;
 
+import com.github.dewarepk.synthetixlib.core.SynthetixLib;
+import com.github.dewarepk.synthetixlib.core.scheduler.SynthetixTask;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import java.lang.reflect.Proxy;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Consumer;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.HumanEntity;
@@ -39,6 +43,14 @@ final class PolicyBot {
     private Inventory top;
 
     PolicyBot() {
+        this(null);
+    }
+
+    /**
+     * @param lib if given, the bot's entity scheduler runs its tasks (later) on the global scheduler of {@code lib}, the way an
+     *            online player's would; else every task is retired at once
+     */
+    PolicyBot(final SynthetixLib lib) {
         final PlayerInventory inventory = (PlayerInventory) Proxy.newProxyInstance(
                 PolicyBot.class.getClassLoader(), new Class<?>[] {PlayerInventory.class}, (proxy, method, args) ->
                         switch (method.getName()) {
@@ -54,10 +66,16 @@ final class PolicyBot {
                             case "equals" -> proxy == args[0];
                             default -> throw new UnsupportedOperationException("PlayerInventory." + method.getName());
                         });
-        // The entity scheduler: every task is "retired" at once, as Paper does for an entity that is gone.
+        // The entity scheduler: every task is "retired" at once, as Paper does for an entity that is gone; with a lib the
+        // tasks run on its global scheduler instead.
         final Object scheduler = Proxy.newProxyInstance(PolicyBot.class.getClassLoader(),
                 new Class<?>[] {io.papermc.paper.threadedregions.scheduler.EntityScheduler.class},
-                (proxy, method, args) -> method.getReturnType() == boolean.class ? (Object) false : null);
+                (proxy, method, args) -> {
+                    if (lib != null && (method.getName().equals("run") || method.getName().equals("runDelayed"))) {
+                        return schedule(lib, args);
+                    }
+                    return method.getReturnType() == boolean.class ? (Object) false : null;
+                });
         this.player = (Player) Proxy.newProxyInstance(PolicyBot.class.getClassLoader(), new Class<?>[] {Player.class},
                 (proxy, method, args) -> switch (method.getName()) {
                     case "getUniqueId" -> id;
@@ -77,6 +95,25 @@ final class PolicyBot {
                     case "toString" -> "PolicyBot";
                     default -> throw new UnsupportedOperationException("Player." + method.getName());
                 });
+    }
+
+    /** {@code run(plugin, task, retired)} or {@code runDelayed(plugin, task, retired, delay)} of the entity scheduler. */
+    @SuppressWarnings("unchecked")
+    private static ScheduledTask schedule(final SynthetixLib lib, final Object[] args) {
+        final Consumer<ScheduledTask> task = (Consumer<ScheduledTask>) args[1];
+        final ScheduledTask[] self = new ScheduledTask[1];
+        final Runnable body = () -> task.accept(self[0]);
+        final SynthetixTask started = args.length > 3
+                ? lib.scheduler().global().runLater((Long) args[3], body)
+                : lib.scheduler().global().run(body);
+        self[0] = (ScheduledTask) Proxy.newProxyInstance(PolicyBot.class.getClassLoader(),
+                new Class<?>[] {ScheduledTask.class}, (proxy, method, none) -> {
+                    if (method.getName().equals("cancel")) {
+                        started.cancel();
+                    }
+                    return null;
+                });
+        return self[0];
     }
 
     /** Puts the bot in front of {@code menu}: events built by the other methods click in it. */

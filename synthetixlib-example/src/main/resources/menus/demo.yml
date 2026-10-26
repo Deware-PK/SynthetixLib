@@ -11,7 +11,7 @@ layout:
   - "#LLLLLLL#"
   - "#LLLLLLL#"
   - "#LLLLLLL#"
-  - "#########"
+  - "####C####"
   - "<TBKSODX>"
 items:
   '#':
@@ -47,6 +47,12 @@ items:
         name: '<lang:demo-notify-off>'
         lore: ['<lang:demo-toggle-hint>']
         click: ['action:toggle-notify']
+  'C':
+    material: chest_minecart
+    name: '<lang:demo-claim>'
+    lore: ['<lang:demo-claim-hint>']
+    click: ['action:claim']
+    busy: { material: clock, name: '<lang:demo-claiming>' }   # shown while the database write runs
   'B':
     material: experience_bottle
     name: '<lang:demo-balance> <white><balance>'

@@ -247,6 +247,15 @@ final class MenuParser {
         }
         item.empty().ifPresent(inner -> checkItem(inner, path + ".empty", true, errors));
         item.loading().ifPresent(inner -> checkItem(inner, path + ".loading", true, errors));
+        if (item.busy().isPresent() && (item.isInput() || item.list().isPresent())) {
+            errors.add(new Problem(path, "busy belongs to an item with a click, not to a list or an input slot"));
+        }
+        item.busy().ifPresent(inner -> {
+            if (inner.busy().isPresent()) {
+                errors.add(new Problem(path + ".busy", "busy is not allowed here"));
+            }
+            checkItem(inner, path + ".busy", true, errors);
+        });
         item.states().forEach((name, inner) -> checkItem(inner, path + ".states." + name, true, errors));
     }
 

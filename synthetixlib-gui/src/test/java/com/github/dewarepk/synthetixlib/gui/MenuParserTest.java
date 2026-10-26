@@ -236,6 +236,46 @@ class MenuParserTest {
     }
 
     @Test
+    void aBusyItemIsReadAndOnlyAnItemWithAClickMayHaveOne() {
+        final MenuParser.Parsed parsed = parse("""
+                layout: ["#L       "]
+                items:
+                  '#':
+                    material: emerald
+                    click: ['action:claim']
+                    busy: { material: clock, name: '<gray>Working...' }
+                  'L':
+                    list: lots
+                    busy: { material: clock }
+                """);
+
+        final MenuItem claim = parsed.file().item('#');
+        assertEquals("<gray>Working...", claim.busy().orElseThrow().name().orElseThrow());
+        assertEquals(Material.CLOCK, claim.busy().orElseThrow().material().orElseThrow());
+        assertEquals(1, parsed.errors().size(), texts(parsed.errors()).toString());
+        assertTrue(mentions(parsed.errors(), "items.L", "busy belongs to an item with a click"),
+                texts(parsed.errors()).toString());
+    }
+
+    @Test
+    void aBusyItemNeedsAMaterialAndCannotHaveABusyItself() {
+        final MenuParser.Parsed parsed = parse("""
+                layout: ["#        "]
+                items:
+                  '#':
+                    material: emerald
+                    click: ['action:claim']
+                    busy:
+                      name: '<gray>Working...'
+                      busy: { material: clock }
+                """);
+
+        assertTrue(mentions(parsed.errors(), "items.#.busy", "material is required"), texts(parsed.errors()).toString());
+        assertTrue(mentions(parsed.errors(), "items.#.busy", "busy is not allowed here"),
+                texts(parsed.errors()).toString());
+    }
+
+    @Test
     void anUnknownClickTypeAndANonTextActionAreErrorsToo() {
         final MenuParser.Parsed parsed = parse("""
                 layout: ["#        "]

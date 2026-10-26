@@ -25,7 +25,7 @@ layout:
   - "#LLLLLLL#"
   - "#LLLLLLL#"
   - "#LLLLLLL#"
-  - "#########"
+  - "####C####"
   - "<TBKSODX>"
 items:
   '#':
@@ -61,6 +61,12 @@ items:
         name: '<lang:demo-notify-off>'
         lore: ['<lang:demo-toggle-hint>']
         click: ['action:toggle-notify']
+  'C':
+    material: chest_minecart
+    name: '<lang:demo-claim>'
+    lore: ['<lang:demo-claim-hint>']
+    click: ['action:claim']
+    busy: { material: clock, name: '<lang:demo-claiming>' }   # shown while the database write runs
   'B':
     material: experience_bottle
     name: '<lang:demo-balance> <white><balance>'
@@ -104,6 +110,7 @@ final MenuType<Void> demo = gui.menu("demo")
             click.view().refresh();
         })
         .action("confirm", click -> confirm(click.player(), click.view().takeInputs('S'), lang))
+        .actionAsync("claim", click -> claim(claims, click))
         .build();
 ```
 
@@ -146,6 +153,7 @@ only warns and shows as text. `menu.open(player)` is safe from any thread.
 | `sound` | sound key played on click |
 | `hide-when` | `first-page`, `last-page` |
 | `list` / `empty` / `loading` | the char fills with a registered list; `empty` for unused slots, `loading` while async |
+| `busy` | an item shown in place of this one while an `actionAsync` started from it runs (0.9.0) |
 | `state` + `states` | code returns a state name; each state is a full item. Quote `'on'` / `'off'` / `'yes'` / `'no'` keys |
 | `input: true`, `accept`, `max-amount` | the player may put items here (`accept`: `'*'`, materials, `'#minecraft:swords'`) |
 
@@ -209,6 +217,36 @@ Input items are handed back (inventory, overflow dropped at the player) on close
 `lib.close()`; on death they join the drops. `MenuBuilder#onInputChange(char, handler)` runs once per player change, on the
 viewer's thread, not for the library's own hand-back or `takeInputs`.
 
+## Async actions (since 0.9.0)
+
+`action` returns when the handler returns, so a handler that only *starts* database work lets the next click in at once.
+`actionAsync` keeps the view busy until the returned `CompletableFuture` completes:
+
+```java snippet=gui-action-async
+/**
+ * Registered with {@code actionAsync("claim", click -> claim(claims, click))}: the view ignores every click until the
+ * database answers, so a double click cannot claim twice (the insert itself must still be safe to repeat).
+ */
+private static CompletableFuture<?> claim(final ClaimStore claims, final MenuClick<Void> click) {
+    return claims.claim(DEMO_AIRDROP, click.player().getUniqueId()).thenRun(() -> click.view().refresh());
+}
+```
+
+- Same name rules and the same `action:<name>` in the file; a name is either `action` or `actionAsync`, never both.
+- The handler runs on the player's thread; `null` counts as a finished future (warned once per name).
+- While busy, every click in the view is ignored (other slots, page buttons, `close` of other items). Esc still closes it.
+- Several steps in one item (`[action:claim, sound:..., close]`): a step after the async one waits for the future, then runs.
+  If the future fails, the later steps are skipped.
+- `busy:` on the item (an item, like `loading:`) is shown in that slot while the work runs; the normal look comes back after.
+  Without `busy:` nothing changes visually. Not allowed on list or input items.
+- Timeout: 30 s, or `actionAsync(name, Duration, handler)`. On timeout the view is free again and a warning is logged once;
+  the future is **not** cancelled, so the work may still finish.
+- Failure: logged with menu id and action, and the player gets the `gui.action-failed` message if your `Messages::gui` map has
+  the key `action-failed` (nothing is sent otherwise).
+- The view was closed or the player left before the future completed: nothing is refreshed or sent.
+- **Atomic on your side:** the gate stops double clicks in *one view*. Two views, two servers or a command can still race, so
+  your database update must be safe on its own, e.g. `UPDATE mail SET claimed_at = ? WHERE id = ? AND claimed_at IS NULL`.
+
 ## Linking to dialogs
 
 ```java snippet=gui-links
@@ -234,7 +272,7 @@ placeholder or `lib.text().escape(...)`.
 | Type | For | Since |
 |---|---|---|
 | `GuiService` | `create(lib, configs)`, `messages(lang, keys)`, `menu(id)`, `link(prefix, ScreenOpener)`, `opener()`, `reload()`, `lib()`, `configs()`, `isClosed()`, `close()` | 0.4.0 (`link`, `opener` 0.6.0) |
-| `MenuBuilder<C>` | `withContext()`, `placeholder`, `list`, `listAsync`, `onListClick`, `state`, `action`, `onInputChange`, `build()` | 0.4.0 |
+| `MenuBuilder<C>` | `withContext()`, `placeholder`, `list`, `listAsync`, `onListClick`, `state`, `action`, `onInputChange`, `build()` | 0.4.0 (`actionAsync` since 0.9.0) |
 | `MenuType<C>` | `id()`, `file()`, `isInert(char)`, `open(player)`, `open(player, context)` | 0.4.0 |
 | `MenuView<C>` | `player`, `context`, `page()` / `page(int)`, `refresh()` / `refresh(char)`, `close`, `back`, `inputs(char)`, `takeInputs()` / `takeInputs(char)` | 0.4.0 |
 | `MenuClick<C>` | `player()`, `view()` | 0.4.0 |
@@ -247,7 +285,8 @@ Left out on purpose: `gui.file.*` (`MenuFile`, `MenuItem`, `ClickAction`, `Click
 ## Threads
 
 `open`, `refresh`, `close` may be called from any thread; they hop onto the player's entity scheduler. Click handlers run on
-the player's thread, one at a time per view (a second click while an `action` still runs is ignored). `listAsync` sources run
+the player's thread, one at a time per view (a second click while an `action` still runs is ignored; an `actionAsync` holds the
+view until its future completes). `listAsync` sources run
 on the async scheduler and the menu shows the item's `loading:` meanwhile; never call such a source yourself on the
 viewer's thread. `list` sources are asked on open / refresh / page change: keep them fast and read thread-safe snapshots.
 
@@ -264,6 +303,8 @@ viewer's thread. `list` sources are asked on open / refresh / page change: keep 
   `gui-item-model-not-custom-model-data`).
 - Wrong: reading input slots with `inventory.getItem(i)` then clearing -> right: `view.takeInputs('S')` (rule
   `gui-take-inputs-atomically`).
+- Wrong: `action` that starts a database call plus your own "in flight" set -> right: `actionAsync` (rule
+  `gui-async-action-for-io`).
 - Wrong: editing a menu file and expecting open views to change -> right: `gui.reload()`; views redraw on the next refresh.
 - Wrong: `<page>` in a title while a mouse pointer matters -> a changed title re-opens the inventory (see limits).
 

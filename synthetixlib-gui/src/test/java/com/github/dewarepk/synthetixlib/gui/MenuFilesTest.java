@@ -16,9 +16,12 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
@@ -277,6 +280,48 @@ class MenuFilesTest {
         assertThrows(IllegalArgumentException.class, () -> builder.state("notify", view -> "off"));
         assertThrows(IllegalArgumentException.class, () -> builder.list("lots", view -> List.<String>of(),
                 (entry, view) -> null));
+    }
+
+    @Test
+    void anActionNameIsEitherSyncOrAsyncAndTheTimeoutHasAFloor() {
+        jar.put("menus/shop.yml", BUNDLED);
+        final MenuBuilder<Void> builder = menu("shop");
+
+        builder.action("buy", click -> { }).actionAsync("claim", click -> CompletableFuture.completedFuture(null));
+        assertThrows(IllegalArgumentException.class, () -> builder.actionAsync("buy",
+                click -> CompletableFuture.completedFuture(null)));
+        assertThrows(IllegalArgumentException.class, () -> builder.action("claim", click -> { }));
+        assertThrows(IllegalArgumentException.class, () -> builder.actionAsync("claim",
+                click -> CompletableFuture.completedFuture(null)));
+        assertThrows(IllegalArgumentException.class, () -> builder.actionAsync("Bad Name",
+                click -> CompletableFuture.completedFuture(null)));
+        assertThrows(IllegalArgumentException.class, () -> builder.actionAsync("quick", Duration.ofMillis(10),
+                click -> CompletableFuture.completedFuture(null)));
+
+        final Registrations<Void> registrations = builder.actionAsync("slow", Duration.ofSeconds(5),
+                click -> CompletableFuture.completedFuture(null)).build().registrations();
+        assertEquals(List.of("buy"), List.copyOf(registrations.actions().keySet()));
+        assertEquals(Set.of("claim", "slow"), registrations.asyncActions().keySet());
+        assertEquals(Duration.ofSeconds(30), registrations.asyncActions().get("claim").timeout());
+        assertEquals(Duration.ofSeconds(5), registrations.asyncActions().get("slow").timeout());
+    }
+
+    @Test
+    void anAsyncActionIsRegisteredForTheFileLikeAnyOther() {
+        jar.put("menus/shop.yml", BUNDLED);
+
+        final MenuType<Void> shop = menu("shop")
+                .actionAsync("buy", click -> CompletableFuture.completedFuture(null)).build();
+
+        assertFalse(shop.isInert('B'));
+        assertTrue(logged.isEmpty(), logged.toString());
+    }
+
+    @Test
+    void withContextAfterAnAsyncActionIsRejected() {
+        final MenuBuilder<Void> builder = menu("bid").actionAsync("claim", click -> CompletableFuture.completedFuture(null));
+
+        assertThrows(IllegalStateException.class, () -> builder.<String>withContext());
     }
 
     @Test

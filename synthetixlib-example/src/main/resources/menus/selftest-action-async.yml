@@ -1,0 +1,12 @@
+# Menu used by the gui.action-async self-test: one button that starts asynchronous work and looks busy while it runs.
+title: '<white>Action async'
+type: hopper
+layout:
+  - "C####"
+items:
+  'C':
+    material: emerald
+    click: ['action:claim']
+    busy: { material: clock, name: '<gray>Working...' }
+  '#':
+    material: stone

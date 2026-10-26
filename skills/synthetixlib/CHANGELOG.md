@@ -4,6 +4,14 @@ SynthetixLib release notes for people (and agents) using the library. Newest fir
 Releases are git tags `v<x.y.z>` (0.1.0 and 0.2.0 were never tagged). JitPack works from **v0.7.0** on
 (`com.github.Deware-PK.SynthetixLib:synthetixlib-<module>:v<x.y.z>`); older tags have no `jitpack.yml` and do not build there.
 
+## 0.9.0
+- gui: `MenuBuilder#actionAsync(name, handler)` and `actionAsync(name, Duration, handler)`: like `action`, but the view stays
+  busy until the returned `CompletableFuture` completes (default timeout 30 s), so a double click cannot start the work twice.
+  Later click steps of the same item wait for it and are skipped if it fails. A failure is logged and the player gets
+  `gui.action-failed` if the lang `gui` map has the key `action-failed`. Your update must still be atomic.
+- gui: menu items may set `busy:` (an item, shown in the slot while an `actionAsync` started from it runs).
+- docs: rule `gui-async-action-for-io`; the template's `Messages` gains the `action-failed` gui key.
+
 ## 0.8.0
 - command: `cooldown(Function<CommandSender, Duration>)` and `cooldown(fn, bypassPermission)`: the length is asked at every
   successful run, so a config reload applies; `Duration.ZERO` = no cooldown this time. The `Duration` overloads stay.

@@ -1,7 +1,9 @@
 package com.github.dewarepk.synthetixlib.gui;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -18,12 +20,23 @@ import org.jspecify.annotations.Nullable;
  * @param states       state id to the function that answers with the name of a state
  * @param actions      action name to handler
  * @param inputs       layout character of an input slot to the handler that is told when its items change
+ * @param asyncActions action name to the handler whose future the view waits for ({@link MenuBuilder#actionAsync})
  */
 record Registrations<C>(Map<String, Function<MenuView<C>, Component>> placeholders,
                         Map<String, ListBinding<C>> lists,
                         Map<String, Function<MenuView<C>, String>> states,
                         Map<String, Consumer<MenuClick<C>>> actions,
-                        Map<Character, BiConsumer<MenuView<C>, List<ItemStack>>> inputs) {
+                        Map<Character, BiConsumer<MenuView<C>, List<ItemStack>>> inputs,
+                        Map<String, AsyncAction<C>> asyncActions) {
+
+    /** Registrations without asynchronous actions. */
+    Registrations(final Map<String, Function<MenuView<C>, Component>> placeholders,
+                  final Map<String, ListBinding<C>> lists,
+                  final Map<String, Function<MenuView<C>, String>> states,
+                  final Map<String, Consumer<MenuClick<C>>> actions,
+                  final Map<Character, BiConsumer<MenuView<C>, List<ItemStack>>> inputs) {
+        this(placeholders, lists, states, actions, inputs, Map.of());
+    }
 
     /** Registrations without input handlers. */
     Registrations(final Map<String, Function<MenuView<C>, Component>> placeholders,
@@ -31,6 +44,13 @@ record Registrations<C>(Map<String, Function<MenuView<C>, Component>> placeholde
                   final Map<String, Function<MenuView<C>, String>> states,
                   final Map<String, Consumer<MenuClick<C>>> actions) {
         this(placeholders, lists, states, actions, Map.of());
+    }
+
+    /**
+     * An action whose work outlives the click: the view stays busy until the future of {@code handler} completes or
+     * {@code timeout} passes.
+     */
+    record AsyncAction<C>(Function<MenuClick<C>, CompletableFuture<?>> handler, Duration timeout) {
     }
 
     /** Tags every text has without registering them. */

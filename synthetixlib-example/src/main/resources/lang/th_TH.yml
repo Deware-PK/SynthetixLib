@@ -38,6 +38,10 @@ gui:
   demo-close: <red>ปิด
   demo-back: <yellow>กลับ
   demo-dialog: <yellow>ฟอร์มขาย (dialog)
+  demo-claim: <green>รับรางวัล
+  demo-claim-hint: <gray>บันทึกการรับ 1 ครั้งลงฐานข้อมูล
+  demo-claiming: <gray>กำลังบันทึก...
+  action-failed: <red>ทำรายการไม่สำเร็จ ลองใหม่อีกครั้งในอีกสักครู่
   airdrop-title: <dark_gray>Airdrop <name>
   airdrop-interval: <gray>ทุก <interval>
   airdrop-players: <gray>ต้องมีผู้เล่นออนไลน์ <players> คน

@@ -1,10 +1,12 @@
 package com.github.dewarepk.synthetixlib.gui;
 
 import com.github.dewarepk.synthetixlib.gui.file.ClickAction;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -34,6 +36,7 @@ import org.bukkit.inventory.ItemStack;
  */
 public final class MenuBuilder<C> {
 
+    private static final Duration DEFAULT_ASYNC_TIMEOUT = Duration.ofSeconds(30);
     private static final Pattern NAME = Pattern.compile(ClickAction.NAME_PATTERN);
 
     private final MenuRegistry registry;
@@ -43,6 +46,7 @@ public final class MenuBuilder<C> {
     private final Map<String, BiConsumer<Object, MenuClick<C>>> listClicks = new LinkedHashMap<>();
     private final Map<String, Function<MenuView<C>, String>> states = new LinkedHashMap<>();
     private final Map<String, Consumer<MenuClick<C>>> actions = new LinkedHashMap<>();
+    private final Map<String, Registrations.AsyncAction<C>> asyncActions = new LinkedHashMap<>();
     private final Map<Character, BiConsumer<MenuView<C>, List<ItemStack>>> inputChanges = new LinkedHashMap<>();
     private boolean built;
 
@@ -68,7 +72,7 @@ public final class MenuBuilder<C> {
     public <N> MenuBuilder<N> withContext() {
         ensureOpen();
         if (!placeholders.isEmpty() || !lists.isEmpty() || !listClicks.isEmpty() || !states.isEmpty()
-                || !actions.isEmpty() || !inputChanges.isEmpty()) {
+                || !actions.isEmpty() || !asyncActions.isEmpty() || !inputChanges.isEmpty()) {
             throw new IllegalStateException("withContext() must come before the first registration of menu '" + id
                     + "'");
         }
@@ -197,7 +201,62 @@ public final class MenuBuilder<C> {
     public MenuBuilder<C> action(final String name, final Consumer<MenuClick<C>> handler) {
         ensureOpen();
         checkName("action", name);
+        if (asyncActions.containsKey(name)) {
+            throw new IllegalArgumentException("action '" + name + "' is registered already");
+        }
         putNew(actions, "action", name, Objects.requireNonNull(handler, "handler"));
+        return this;
+    }
+
+    /**
+     * Like {@link #action}, but the view stays busy until the returned future completes: every other click in this view is
+     * ignored meanwhile (Esc still closes it). Use it for work that outlives the click, like a database update, so a
+     * double click cannot run it twice. Waits at most 30 seconds.
+     *
+     * <pre>{@code
+     * .actionAsync("claim", click -> mail.claim(click.player()))   // returns a CompletableFuture
+     * }</pre>
+     *
+     * <p>The gate only stops double clicks in one view. Your own update must still be atomic, e.g.
+     * {@code ... WHERE claimed_at IS NULL}. A menu item may set {@code busy:} to look different while the action runs.
+     * If the future fails, the failure is logged and the player gets {@code gui.action-failed} if the language file has it;
+     * the later steps of the same click are skipped.
+     *
+     * @param name    the name used in the file, as {@code action:<name>}
+     * @param handler runs on the viewer's thread and starts the work; {@code null} counts as done
+     * @return this
+     * @throws IllegalArgumentException if the name is not valid, or an action of this name is registered already
+     * @since 0.9.0
+     */
+    public MenuBuilder<C> actionAsync(final String name, final Function<MenuClick<C>, CompletableFuture<?>> handler) {
+        return actionAsync(name, DEFAULT_ASYNC_TIMEOUT, handler);
+    }
+
+    /**
+     * Like {@link #actionAsync(String, Function)} with another timeout. When it passes, the view is free again and a
+     * warning is logged; the future is not cancelled, so the work may still finish.
+     *
+     * @param name    the name used in the file, as {@code action:<name>}
+     * @param timeout how long the view stays busy at most; at least one tick (50 ms)
+     * @param handler runs on the viewer's thread and starts the work; {@code null} counts as done
+     * @return this
+     * @throws IllegalArgumentException if the name is not valid, the timeout is shorter than a tick, or an action of
+     *                                  this name is registered already
+     * @since 0.9.0
+     */
+    public MenuBuilder<C> actionAsync(final String name, final Duration timeout,
+                                      final Function<MenuClick<C>, CompletableFuture<?>> handler) {
+        ensureOpen();
+        checkName("action", name);
+        Objects.requireNonNull(timeout, "timeout");
+        Objects.requireNonNull(handler, "handler");
+        if (timeout.compareTo(Duration.ofMillis(50)) < 0) {
+            throw new IllegalArgumentException("the timeout of action '" + name + "' must be at least one tick (50 ms)");
+        }
+        if (actions.containsKey(name)) {
+            throw new IllegalArgumentException("action '" + name + "' is registered already");
+        }
+        putNew(asyncActions, "action", name, new Registrations.AsyncAction<>(handler, timeout));
         return this;
     }
 
@@ -253,7 +312,7 @@ public final class MenuBuilder<C> {
         lists.forEach((listId, list) -> bound.put(listId,
                 new Registrations.ListBinding<>(list.source(), list.render(), listClicks.get(listId), list.async())));
         final Registrations<C> registrations = new Registrations<>(Map.copyOf(placeholders), Map.copyOf(bound),
-                Map.copyOf(states), Map.copyOf(actions), Map.copyOf(inputChanges));
+                Map.copyOf(states), Map.copyOf(actions), Map.copyOf(inputChanges), Map.copyOf(asyncActions));
         built = true;
         return registry.register(id, registrations);
     }

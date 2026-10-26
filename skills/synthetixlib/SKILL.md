@@ -101,7 +101,7 @@ Each file in `rules/` has the why and a wrong -> right pair.
 - `config-no-resave-on-reload`
 - `command-use-brigadier`, `command-messages-through-locale`, `command-register-in-onenable`
 - `threads-no-blocking-server-thread`
-- `gui-take-inputs-atomically`, `gui-item-model-not-custom-model-data`
+- `gui-take-inputs-atomically`, `gui-item-model-not-custom-model-data`, `gui-async-action-for-io`
 - `dialog-instead-of-anvil`, `dialog-one-use-callbacks`, `dialog-money-is-a-number-field`
 - `files-bump-config-version`
 - `db-migrations-are-append-only`

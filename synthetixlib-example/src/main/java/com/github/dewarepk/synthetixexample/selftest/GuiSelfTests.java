@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 import net.kyori.adventure.text.Component;
@@ -245,8 +246,61 @@ final class GuiSelfTests {
                     bot.close(); // the view ends before the answer: it is dropped and nothing is drawn afterwards
                     return offThread.thenAccept(off -> require(off, "the source ran off the server threads"));
                 }),
+                SelfTest.async("gui.action-async", () -> actionAsync(plugin, lib, gui)),
                 SelfTest.sync("gui.policy", () -> policy(plugin, gui))
         );
+    }
+
+    /**
+     * An {@code actionAsync} that completes after 10 ticks: two clicks 2 ticks apart run the handler once and show the busy
+     * item; a click after the completion runs it again and the normal item is back.
+     */
+    private static CompletableFuture<Void> actionAsync(final JavaPlugin plugin, final SynthetixLib lib,
+                                                       final GuiService gui) {
+        final CompletableFuture<Void> result = new CompletableFuture<>();
+        try {
+            Files.deleteIfExists(plugin.getDataFolder().toPath().resolve("menus/selftest-action-async.yml"));
+            final AtomicInteger runs = new AtomicInteger();
+            final MenuType<Void> menu = gui.menu("selftest-action-async")
+                    .actionAsync("claim", click -> {
+                        runs.incrementAndGet();
+                        final CompletableFuture<Void> work = new CompletableFuture<>();
+                        lib.scheduler().global().runLater(10, () -> work.complete(null));
+                        return work;
+                    })
+                    .build();
+            final PolicyBot bot = new PolicyBot(lib);
+            final Inventory top = menu.attach(bot.player, null);
+            bot.show(top);
+            require(type(top, 0) == Material.EMERALD, "the normal item before the click");
+
+            bot.click(0, ClickType.LEFT, InventoryAction.PICKUP_ALL);
+            require(runs.get() == 1, "the first click starts the work");
+            require(type(top, 0) == Material.CLOCK, "the busy item shows while the work runs");
+            lib.scheduler().global().runLater(2, () -> {
+                try {
+                    bot.click(0, ClickType.LEFT, InventoryAction.PICKUP_ALL);
+                    require(runs.get() == 1, "a click while the work runs is ignored");
+                } catch (final Throwable e) {
+                    result.completeExceptionally(e);
+                }
+            });
+            lib.scheduler().global().runLater(20, () -> {
+                try {
+                    require(runs.get() == 1, "still one run after the work completed");
+                    require(type(top, 0) == Material.EMERALD, "the normal item is back after the work");
+                    bot.click(0, ClickType.LEFT, InventoryAction.PICKUP_ALL);
+                    require(runs.get() == 2, "a click after the completion runs the handler again");
+                    bot.close();
+                    result.complete(null);
+                } catch (final Throwable e) {
+                    result.completeExceptionally(e);
+                }
+            });
+        } catch (final Throwable e) {
+            result.completeExceptionally(e);
+        }
+        return result;
     }
 
     private static ItemStack stack(final Material material, final int amount) {

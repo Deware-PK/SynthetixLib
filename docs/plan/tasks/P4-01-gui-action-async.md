@@ -1,5 +1,5 @@
 # P4-01 gui: `actionAsync` — the view stays busy until the work is done
-Status: todo · Approved: yes · Model: sonnet · Effort: high
+Status: review · Approved: yes · Model: sonnet · Effort: high
 Module: synthetixlib-gui · Depends on: — · Design: gui.md §2, §4, §5 (+ this task, §14 of gui.md once added)
 Requested by: InteractiveAuction 2.0 (mailbox claim, cancel listing, blacklist edit), lib gap L-1
 
@@ -70,14 +70,30 @@ Document this in the reference: "the gate stops double clicks in one view; your 
 - `docs/design/gui.md`: new §14 "0.9.0 additions" with the API and behaviour above. CHANGELOG "0.9.0".
 
 ## Acceptance criteria
-- [ ] double click on an async claim runs the handler once (unit + self-test)
-- [ ] timeout and failure paths release the gate (unit)
-- [ ] no static state, no `Bukkit.getScheduler()` (archtest green)
-- [ ] reference, rule, snippet, design §14, CHANGELOG updated; `checkSnippets` green
-- [ ] `gradlew.bat check smokeTest` green on 1.21.11 and 26.x
+- [x] double click on an async claim runs the handler once (unit + self-test)
+- [x] timeout and failure paths release the gate (unit)
+- [x] no static state, no `Bukkit.getScheduler()` (archtest green)
+- [x] reference, rule, snippet, design §14, CHANGELOG updated; `checkSnippets` green
+- [x] `gradlew.bat check smokeTest` green on 1.21.11 and 26.x (smokeTest PASS on both; `check` green except the database module tests, which need a MySQL server that is not running here)
 
 ## Verify
 gradlew.bat check smokeTest
 
 ## Result
-(agent fills in)
+Done. Verify run on Windows:
+- `gradlew.bat check --continue -x :synthetixlib-database:test`: green (compile, gui unit tests, ArchUnit, forbidden patterns, checkSnippets, shaded-jar relocation).
+  `:synthetixlib-database:test` was NOT green: 81 of 189 tests fail with `ConnectException` to MySQL (no MySQL server on this machine); untouched by this task.
+- `gradlew.bat smokeTest`: PASS on 1.21.11 and 26.3, `gui.action-async` passes on both (handler ran once for two clicks, busy item shown, restored, third click ran it again).
+
+What was built:
+- `MenuBuilder#actionAsync(name, handler)` / `(name, Duration, handler)`; `Registrations#asyncActions`; `MenuItem#busy` (parsed, checked, rendered).
+- `AsyncSteps` (pure, unit-tested in `AsyncStepsTest`): ordered steps, one settle per wait (complete / fail / timeout), so a late answer never opens a newer click gate. `MenuViewImpl` wires it (`ClickStep`, `Flow`); gate opens only in `finished()` for async clicks.
+- Failure: log + `action-failed` key of the gui map (example Messages EN + th_TH.yml, template Messages EN).
+- Example: claim button in `menus/demo.yml` (`actionAsync` + `busy:`), snippet `gui-action-async`; self-test `gui.action-async` (PolicyBot got an optional live scheduler).
+- Docs: reference, rule `gui-async-action-for-io`, design §14, CHANGELOG 0.9.0, gui AGENTS.md.
+
+Notes / deviations:
+- A name registered as both `action` and `actionAsync` throws `IllegalArgumentException` (like every other duplicate name in the builder), not `IllegalStateException` as the spec text says.
+- `busy:` is drawn in the clicked slot only (not every slot of that layout character).
+- The timeout minimum is one tick (50 ms); shorter durations are rejected.
+- Not committed (no `Ship: yes`).

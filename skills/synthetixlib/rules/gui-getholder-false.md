@@ -38,5 +38,6 @@ final MenuType<Void> demo = gui.menu("demo")
             click.view().refresh();
         })
         .action("confirm", click -> confirm(click.player(), click.view().takeInputs('S'), lang))
+        .actionAsync("claim", click -> claim(claims, click))
         .build();
 ```

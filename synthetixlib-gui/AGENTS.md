@@ -87,6 +87,11 @@ Rules specific to gui
     have no `AsyncLoads`: their async source runs inline. Never call the source of an async list on the viewer's thread.
   - Resource-pack strings need no code: ItemsAdder `:x:` is text and unknown tags (`<glyph:x>`) stay literal in MiniMessage.
     `LangAndPassthroughTest` and the `gui.title-passthrough` self-test guard that; do not switch the parser to strict mode.
+- `actionAsync` (P4-01, 0.9.0): `Registrations#asyncActions` (`AsyncAction(handler, timeout)`); `MenuViewImpl#click` builds
+  `ClickStep`s when any step is async and runs them with the pure `AsyncSteps` (ports: hop, timer, disposed, waiting/busy,
+  failed, timedOut, finished); `finished()` is the only place the gate opens for such a click. Each wait settles once
+  (complete / fail / timeout), so a late answer cannot open a newer click's gate. `MenuItem#busy` is drawn by
+  `MenuViewImpl.Flow#showBusy` and re-applied at the end of every render while the flow waits. Never `join()` the future.
 - Links (P2-32): `ClickAction.Linked(prefix, id)` for any `name:argument` that is not built in; `GuiService#link(prefix, ScreenOpener)` /
   `#opener()`; `MenuChecker` makes an item inert when its prefix is not linked (`MenuLoader` gets `links::containsKey`);
   `ViewManager#openLinked` calls the opener (the client replaces the inventory screen, no explicit close).

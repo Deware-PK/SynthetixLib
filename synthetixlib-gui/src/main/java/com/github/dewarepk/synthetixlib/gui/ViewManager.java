@@ -12,6 +12,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventPriority;
@@ -487,6 +488,45 @@ final class ViewManager implements ViewHost {
             lib.scheduler().entity(player).run(task);
         } catch (final IllegalStateException e) {
             // the library closed meanwhile
+        }
+    }
+
+    /** Runs {@code task} on the player's thread on the next tick; nothing happens if the player is gone or the library closed. */
+    void hop(final Player player, final Runnable task) {
+        try {
+            lib.scheduler().entity(player).run(task, () -> { });
+        } catch (final IllegalStateException e) {
+            // the library closed meanwhile
+        }
+    }
+
+    /** @return cancels the task, which runs on the player's thread after {@code ticks}; a no-op if it cannot be scheduled */
+    Runnable laterOn(final Player player, final long ticks, final Runnable task) {
+        try {
+            return lib.scheduler().entity(player).runLater(ticks, task, () -> { })::cancel;
+        } catch (final IllegalStateException e) {
+            return () -> { };
+        }
+    }
+
+    /**
+     * Logs the failure of an asynchronous action and tells the player, if the language file has {@code action-failed}.
+     *
+     * @param player who to tell; {@code null} if the view is gone and nobody is
+     */
+    void actionFailed(final MenuType<?> type, final @Nullable Player player, final String what, final Throwable cause) {
+        lib.plugin().getLogger().log(Level.SEVERE, "[menus/" + type.id() + ".yml] " + what + " failed", cause);
+        final GuiMessages source = messages;
+        if (source == null || player == null) {
+            return;
+        }
+        try {
+            final Component text = source.get(player, "action-failed", TagResolver.empty());
+            if (text != null) {
+                player.sendMessage(text);
+            }
+        } catch (final RuntimeException e) {
+            warnOnce("[menus/" + type.id() + ".yml] could not send gui.action-failed: " + e);
         }
     }
 

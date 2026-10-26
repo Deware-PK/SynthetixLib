@@ -23,7 +23,8 @@ public record Messages(@Comment("Messages of the command module itself") Command
                 Map.ofEntries(
                         Map.entry("main-title", "<dark_gray>MyPlugin"),
                         Map.entry("main-greet", "<yellow>Say hello (dialog)"),
-                        Map.entry("main-close", "<red>Close")),
+                        Map.entry("main-close", "<red>Close"),
+                        Map.entry("action-failed", "<red>That did not work, try again in a moment.")),
                 Map.ofEntries(
                         Map.entry("greet-title", "<gold>Say hello"),
                         Map.entry("greet-name", "Your name"),

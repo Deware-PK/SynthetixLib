@@ -13,6 +13,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.text.Component;
 import org.bukkit.NamespacedKey;
@@ -56,6 +57,7 @@ final class MenuViewImpl<C> implements MenuView<C> {
     private int builtSize;
     private @Nullable SynthetixTask timer;
     private int timerTicks;
+    private @Nullable Flow busyFlow; // the click that shows its busy: look now; viewer's thread only
 
     // input change notifications; only touched on the viewer's thread
     private final Set<Character> changed = new LinkedHashSet<>();
@@ -353,6 +355,10 @@ final class MenuViewImpl<C> implements MenuView<C> {
         } else {
             renderer.fill(current, frame, shown, single != null ? Set.of(single) : renderer.dynamicChars());
         }
+        final Flow busy = busyFlow;
+        if (busy != null) {
+            busy.showBusy(); // a render must not wipe the look of a slot that is still working
+        }
         syncTimer(file.updateTicks());
     }
 
@@ -436,6 +442,7 @@ final class MenuViewImpl<C> implements MenuView<C> {
         if (!gate.tryEnter()) {
             return;
         }
+        boolean handedOver = false; // an async flow opens the gate itself when its steps are over
         try {
             item.sound().ifPresent(this::playSound);
             final ClickKind kind = kindOf(clickType);
@@ -452,11 +459,146 @@ final class MenuViewImpl<C> implements MenuView<C> {
                 }
                 return;
             }
-            for (final ClickAction action : item.clicks().actions(kind)) {
+            final List<ClickAction> actions = item.clicks().actions(kind);
+            if (actions.stream().anyMatch(this::isAsync)) {
+                handedOver = true;
+                final List<ClickStep> steps = new ArrayList<>(actions.size());
+                for (final ClickAction action : actions) {
+                    steps.add(new ClickStep(action, click));
+                }
+                AsyncSteps.run(steps, new Flow(slot, resolved.file().charAt(slot), item));
+                return;
+            }
+            for (final ClickAction action : actions) {
                 manager.guarded(type, action.format(), () -> run(action, click));
             }
         } finally {
+            if (!handedOver) {
+                gate.leave();
+            }
+        }
+    }
+
+    private boolean isAsync(final ClickAction action) {
+        return action instanceof ClickAction.Run run && type.registrations().asyncActions().containsKey(run.name());
+    }
+
+    /** One click step: a synchronous one runs and is over, an {@code actionAsync} returns the work to wait for. */
+    private final class ClickStep implements AsyncSteps.Step {
+
+        private final ClickAction action;
+        private final MenuClick<C> click;
+
+        ClickStep(final ClickAction action, final MenuClick<C> click) {
+            this.action = action;
+            this.click = click;
+        }
+
+        @Override
+        public String name() {
+            return action.format();
+        }
+
+        @Override
+        public long timeoutTicks() {
+            final var async = async();
+            return async == null ? 0 : Math.max(1, (async.timeout().toMillis() + 49) / 50);
+        }
+
+        @Override
+        public @Nullable CompletableFuture<?> run() {
+            final var async = async();
+            if (async == null) {
+                manager.guarded(type, action.format(), () -> MenuViewImpl.this.run(action, click));
+                return null;
+            }
+            if (disposed) {
+                return null; // an earlier step closed the menu: the work is not started for nobody
+            }
+            final CompletableFuture<?> work = async.handler().apply(click);
+            if (work == null) {
+                manager.warnOnce("[menus/" + type.id() + ".yml] actionAsync handler returned null: " + action.format());
+            }
+            return work;
+        }
+
+        private Registrations.@Nullable AsyncAction<C> async() {
+            return action instanceof ClickAction.Run run ? type.registrations().asyncActions().get(run.name()) : null;
+        }
+    }
+
+    /** The threads, the busy look and the gate of one click that has an asynchronous step. Viewer's thread only. */
+    private final class Flow implements AsyncSteps.Ports {
+
+        private final int slot;
+        private final char slotChar;
+        private final MenuItem item;
+        private boolean waiting;
+
+        Flow(final int slot, final char slotChar, final MenuItem item) {
+            this.slot = slot;
+            this.slotChar = slotChar;
+            this.item = item;
+        }
+
+        @Override
+        public void hop(final Runnable task) {
+            manager.hop(player, task);
+        }
+
+        @Override
+        public Runnable later(final long ticks, final Runnable task) {
+            return manager.laterOn(player, ticks, task);
+        }
+
+        @Override
+        public boolean disposed() {
+            return disposed;
+        }
+
+        @Override
+        public void waiting(final AsyncSteps.Step step, final boolean on) {
+            if (item.busy().isEmpty()) {
+                return;
+            }
+            waiting = on;
+            if (on) {
+                showBusy();
+            } else {
+                busyFlow = null;
+                render(false, slotChar);
+            }
+        }
+
+        @Override
+        public void failed(final AsyncSteps.Step step, final Throwable cause) {
+            manager.actionFailed(type, disposed ? null : player, step.name(), cause);
+        }
+
+        @Override
+        public void timedOut(final AsyncSteps.Step step) {
+            manager.warnOnce("[menus/" + type.id() + ".yml] " + step.name() + " did not finish in time, the menu is free"
+                    + " again (the work is not cancelled)");
+        }
+
+        @Override
+        public void finished() {
+            if (busyFlow == this) {
+                busyFlow = null;
+            }
             gate.leave();
+        }
+
+        /** Draws the item's {@code busy:} look in its slot, if the item has one and the slot is still the same item. */
+        void showBusy() {
+            final MenuItem busy = item.busy().orElse(null);
+            final Renderer<C> drawing = renderer;
+            if (busy == null || !waiting || disposed || drawing == null || slot >= shown.size()
+                    || shown.item(slot) != item) {
+                return;
+            }
+            busyFlow = this;
+            inventory.setItem(slot, drawing.build(busy, drawing.pass(frame.page(), frame.pages())));
         }
     }
 

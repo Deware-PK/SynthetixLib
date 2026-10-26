@@ -106,7 +106,8 @@ final class MenuChecker {
         for (final ClickAction action : item.clicks().all()) {
             switch (action) {
                 case ClickAction.Run run -> {
-                    if (!registered.actions().containsKey(run.name())) {
+                    if (!registered.actions().containsKey(run.name())
+                            && !registered.asyncActions().containsKey(run.name())) {
                         problems.add("action '" + run.name() + "' is not registered in code");
                     }
                 }
@@ -124,6 +125,7 @@ final class MenuChecker {
         item.lore().forEach(line -> placeholders(line, registered, tags, warnings));
         item.empty().ifPresent(inner -> item(inner, registered, tags, linked, problems, warnings));
         item.loading().ifPresent(inner -> item(inner, registered, tags, linked, problems, warnings));
+        item.busy().ifPresent(inner -> item(inner, registered, tags, linked, problems, warnings));
         item.states().values().forEach(inner -> item(inner, registered, tags, linked, problems, warnings));
     }
 
