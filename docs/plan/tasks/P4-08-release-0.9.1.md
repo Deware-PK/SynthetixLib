@@ -20,7 +20,7 @@ workarounds (IA2-03b).
 
 ## Acceptance criteria
 - [x] full check + smokeTest green, MySQL tests not skipped
-- [ ] tag `v0.9.1` pushed; JitPack build green (owner)
+- [x] tag `v0.9.1` pushed; JitPack build green (owner, checked 2026-10-26: all 7 modules)
 
 ## Result
 syncSnippets check smokeTest publishToMavenLocal green (1.21.11 + 26.x); MySQL tests ran, 0 skipped. Versions bumped to 0.9.1-SNAPSHOT (root, template), README 0.9.1.
