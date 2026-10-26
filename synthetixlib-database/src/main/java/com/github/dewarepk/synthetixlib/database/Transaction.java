@@ -40,6 +40,32 @@ public interface Transaction {
      */
     long insert(String sql, Object... params);
 
+    /**
+     * Marks this transaction to roll back when the body returns instead of committing; the future still completes
+     * normally with the body's result and nothing is logged. Use it for an expected outcome such as a lost race,
+     * returning a result type that says so. If the body throws afterwards, the exception wins.
+     *
+     * <pre>{@code
+     * db.transaction(tx -> {
+     *     if (tx.update("UPDATE {prefix}lots SET state = 'SOLD' WHERE id = ? AND state = 'RUNNING'", id) == 0) {
+     *         tx.rollbackOnly();
+     *         return Outcome.STALE;
+     *     }
+     *     return Outcome.SOLD;
+     * });
+     * }</pre>
+     *
+     * @throws IllegalStateException after the body has returned
+     * @since 0.9.1
+     */
+    void rollbackOnly();
+
+    /**
+     * @return true after {@link #rollbackOnly()} was called
+     * @since 0.9.1
+     */
+    boolean isRollbackOnly();
+
     /** Like {@link Database#batch}. */
     int[] batch(String sql, List<Object[]> rows);
 

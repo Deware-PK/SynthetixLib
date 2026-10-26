@@ -40,6 +40,7 @@
 - [core-package-not-lib-prefix](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/core-package-not-lib-prefix.md): Do not name your package after the library
 - [core-paper-only-java21](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/core-paper-only-java21.md): Target Paper only, Java 21, paper-api 1.21.11
 - [db-close-waits-for-writes](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/db-close-waits-for-writes.md): Shutdown waits for pending writes before the pool closes
+- [db-expected-race-no-severe](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/db-expected-race-no-severe.md): An expected race rolls back on purpose, it does not throw
 - [db-hikari-via-loader](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/db-hikari-via-loader.md): HikariCP comes from a PluginLoader, never shaded
 - [db-migrations-are-append-only](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/db-migrations-are-append-only.md): Shipped migration files are never edited
 - [db-never-block-server-thread](https://github.com/Deware-PK/SynthetixLib/blob/main/skills/synthetixlib/rules/db-never-block-server-thread.md): Database results are futures; never join on a server thread

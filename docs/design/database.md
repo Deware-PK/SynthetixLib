@@ -201,3 +201,8 @@ caching (products keep their own in-memory state and write through).
   return the key directly, so the fallback is only a safety net.
 - Not exactly one row, or no key: `DatabaseException` ("insert must create exactly one row with a generated key", SQL only).
   `Database.insert` runs in its own transaction so a wrong row count commits nothing. Not for `upsert` / `batch`.
+- Aborting a transaction on purpose (P4-07): `Transaction.rollbackOnly()` / `isRollbackOnly()` roll back when the body returns
+  and complete the future with its value (nothing logged); a body that throws after it fails normally. After the body is over
+  `rollbackOnly()` throws `IllegalStateException`. `TransactionAbortedException` (public, not final, no stack trace for the
+  plain constructor) thrown by a body rolls back and fails the future; `DatabaseImpl.logFailure` logs it at `FINE` as one line
+  "transaction aborted: <message>", never `SEVERE`. Other exceptions: unchanged. Same in `Database.standalone`.

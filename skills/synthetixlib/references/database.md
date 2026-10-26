@@ -185,6 +185,38 @@ final RowMapper<String> mapper = row -> row.string("name") + " " + row.intValueO
 - A mapper or handler exception completes the future exceptionally; one log line with the SQL, **never the parameters**.
   The exception is `DatabaseException` (unchecked, `sql()`).
 
+## Stale data: roll back on purpose
+
+Another player bid first, the lot just ended: that is a normal outcome, not a bug. Two ways to roll back and tell the caller
+(since 0.9.1):
+
+```java snippet=db-rollback-only
+final CompletableFuture<Sale> sale = db.transaction(tx -> {
+    final int changed = tx.update("UPDATE {prefix}lots SET state = 'SOLD' WHERE id = ? AND state = 'RUNNING'", lotId);
+    if (changed == 0) {
+        tx.rollbackOnly();                       // expected race: roll back, no exception, nothing logged
+        return Sale.STALE;
+    }
+    tx.insert("INSERT INTO {prefix}mail (player, note) VALUES (?, ?)", UUID.randomUUID(), "sold");
+    return Sale.SOLD;
+});
+
+// or, when the caller prefers an exception (logged at FINE, never SEVERE):
+db.transaction(tx -> {
+    if (tx.update("UPDATE {prefix}lots SET state = 'ENDED' WHERE id = ? AND state = 'RUNNING'", lotId) == 0) {
+        throw new TransactionAbortedException("lot " + lotId + " is no longer running");
+    }
+    return null;
+});
+```
+
+- `tx.rollbackOnly()` (+ a result type such as a sealed `Outcome`): the body returns normally, the library rolls back instead
+  of committing, the future completes with your value, nothing is logged. **Prefer this for expected races.** If the body throws
+  after calling it, the exception wins. Calling it after the body returned throws `IllegalStateException`.
+- `throw new TransactionAbortedException(message)` (not final, subclass it): rolls back, the future fails with it, one `FINE`
+  line "transaction aborted: ...", never `SEVERE`. The plain constructor fills no stack trace.
+- Any other exception in a body is a bug: `SEVERE` with its stack.
+
 ## Threads and shutdown
 
 - One `Database` = one pool + one worker owned by it (SQLite: pool 1, WAL; MySQL: `pool.size`). It does not use
@@ -221,7 +253,8 @@ Copy.tables(old, current, List.of("lots", "mail")).batchSize(500).run()
 | `DatabaseSettings` (+ `Sqlite`, `Mysql`, `Pool`) | the YAML shape; `sqlite(file)`, `mysql(...)`, `withTablePrefix`, `register(codecs)` | 0.5.0 |
 | `Dialect` | `SQLITE`, `MYSQL` | 0.5.0 |
 | `Row`, `RowMapper<T>` | typed getters; `T map(Row)` | 0.5.0 |
-| `Transaction`, `TransactionBody<T>` | the same statements, synchronous, inside `transaction` | 0.5.0 |
+| `Transaction`, `TransactionBody<T>` | the same statements, synchronous, inside `transaction`; `insert`, `rollbackOnly`, `isRollbackOnly` (0.9.1) | 0.5.0 |
+| `TransactionAbortedException` | thrown by a body to roll back on purpose; logged at `FINE` | 0.9.1 |
 | `Migrations`, `CodeMigration` | `fromResources(path)`, `fromResources(loader, path)`, `withCode(version, name, tx -> ...)` | 0.5.0 |
 | `Copy`, `Copy.Report` | `tables`, `batchSize`, `run`; `rows`, `total` | 0.5.0 |
 | `SynthetixLibraries` | `database(PluginClasspathBuilder)` for the `PluginLoader` | 0.5.0 |
@@ -250,6 +283,8 @@ saying so. Versions match what the library tests with: HikariCP `7.1.0`, sqlite-
 - Wrong: `"... WHERE name = '" + name + "'"` -> right: `?` parameters (rule `db-parameters-not-concatenation`).
 - Wrong: editing `V1__init.sql` after release -> right: a new `V2__...sql` (rule `db-migrations-are-append-only`).
 - Wrong: running `last_insert_rowid()` / `LAST_INSERT_ID()` yourself -> right: `insert` returns the key.
+- Wrong: throwing `RuntimeException` for an expected race (stale lot, lost bid) -> right: `tx.rollbackOnly()` and a result
+  type, or `TransactionAbortedException`; a plain exception logs `SEVERE` with a stack (rule `db-expected-race-no-severe`).
 - Wrong: a table prefix typed into the SQL -> right: `{prefix}`.
 - Wrong: reading a nullable column with `longValue` -> right: `longValueOrNull`.
 

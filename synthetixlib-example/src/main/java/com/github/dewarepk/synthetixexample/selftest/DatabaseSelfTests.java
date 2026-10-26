@@ -9,6 +9,7 @@ import com.github.dewarepk.synthetixlib.database.DatabaseException;
 import com.github.dewarepk.synthetixlib.database.DatabaseSettings;
 import com.github.dewarepk.synthetixlib.database.Dialect;
 import com.github.dewarepk.synthetixlib.database.Migrations;
+import com.github.dewarepk.synthetixlib.database.TransactionAbortedException;
 import com.github.dewarepk.synthetixlib.selftest.SelfTest;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
@@ -89,6 +90,7 @@ final class DatabaseSelfTests {
                 }),
                 SelfTest.async("database.query", () -> query(plugin, lib)),
                 SelfTest.async("database.insert-key", () -> insertKey(plugin, lib)),
+                SelfTest.async("database.rollback-only", () -> rollbackOnly(plugin, lib)),
                 SelfTest.async("database.join-guard", () -> joinGuard(plugin, lib)),
                 SelfTest.async("database.migrate", () -> migrate(plugin, lib)),
                 SelfTest.async("database.shutdown", () -> shutdown(plugin, lib)),
@@ -318,6 +320,46 @@ final class DatabaseSelfTests {
                 }))
                 .thenCompose(ignored -> db.query("SELECT COUNT(*) AS c FROM {prefix}k", row -> row.intValue("c")))
                 .thenAccept(count -> require(count.get(0) == 3, "a failed insert kept rows: " + count));
+
+        // Closing waits for the worker, so it must not happen on it: hop to the global thread first.
+        final CompletableFuture<Void> done = new CompletableFuture<>();
+        result.whenComplete((ignored, error) -> lib.scheduler().global().run(() -> {
+            own.close();
+            if (error == null) {
+                done.complete(null);
+            } else {
+                done.completeExceptionally(error);
+            }
+        }));
+        return done;
+    }
+
+    /** {@code rollbackOnly} and {@code TransactionAbortedException} roll back through the server's sqlite-jdbc. */
+    private static CompletableFuture<Void> rollbackOnly(final JavaPlugin plugin, final SynthetixLib lib) {
+        freshQuietly(plugin, "selftest/rollback-only.db");
+        final SynthetixLib own = SynthetixLib.init(plugin);
+        final Database db = Database.create(own, DatabaseSettings.sqlite("selftest/rollback-only.db").withTablePrefix("ro_"));
+        final String insert = "INSERT INTO {prefix}r (name) VALUES (?)";
+
+        final CompletableFuture<Void> result = db
+                .update("CREATE TABLE {prefix}r (id INTEGER PRIMARY KEY, name VARCHAR(20))")
+                .thenCompose(ignored -> db.transaction(tx -> {
+                    tx.insert(insert, "a");
+                    tx.rollbackOnly();
+                    return "STALE";
+                }))
+                .thenCompose(outcome -> {
+                    require("STALE".equals(outcome), "rollbackOnly completed with " + outcome);
+                    return db.transaction(tx -> {
+                        tx.insert(insert, "b");
+                        throw new TransactionAbortedException("lost the race");
+                    }).handle((value, error) -> {
+                        require(error instanceof TransactionAbortedException, "aborted transaction failed with " + error);
+                        return null;
+                    });
+                })
+                .thenCompose(ignored -> db.query("SELECT COUNT(*) AS c FROM {prefix}r", row -> row.intValue("c")))
+                .thenAccept(count -> require(count.get(0) == 0, "a rolled back transaction kept rows: " + count));
 
         // Closing waits for the worker, so it must not happen on it: hop to the global thread first.
         final CompletableFuture<Void> done = new CompletableFuture<>();

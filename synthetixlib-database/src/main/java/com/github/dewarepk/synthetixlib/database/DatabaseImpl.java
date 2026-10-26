@@ -22,6 +22,8 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BooleanSupplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.jspecify.annotations.Nullable;
@@ -179,14 +181,18 @@ final class DatabaseImpl implements Database {
     @Override
     public <T> CompletableFuture<T> transaction(final TransactionBody<T> body) {
         Objects.requireNonNull(body, "body");
-        return submit(null, () -> inTransaction("BEGIN", connection -> {
-            final TransactionImpl tx = new TransactionImpl(new Statements(connection, dialect), dialect, prefix);
-            try {
-                return body.run(tx);
-            } finally {
-                tx.finish();
-            }
-        }));
+        return submit(null, () -> {
+            final AtomicReference<TransactionImpl> opened = new AtomicReference<>();
+            return inTransaction("BEGIN", connection -> {
+                final TransactionImpl tx = new TransactionImpl(new Statements(connection, dialect), dialect, prefix);
+                opened.set(tx);
+                try {
+                    return body.run(tx);
+                } finally {
+                    tx.finish();
+                }
+            }, () -> opened.get() != null && opened.get().isRollbackOnly());
+        });
     }
 
     @Override
@@ -299,6 +305,12 @@ final class DatabaseImpl implements Database {
 
     /** One connection, one transaction: commit when {@code work} returns, roll back when it throws. */
     <T> T inTransaction(final String sqlForErrors, final Work<T> work) throws Exception {
+        return inTransaction(sqlForErrors, work, () -> false);
+    }
+
+    /** As above, but when {@code rollbackOnly} is true after {@code work} returned, rolls back and returns the result. */
+    private <T> T inTransaction(final String sqlForErrors, final Work<T> work, final BooleanSupplier rollbackOnly)
+            throws Exception {
         try (Connection connection = connection(sqlForErrors)) {
             try {
                 connection.setAutoCommit(false);
@@ -311,6 +323,14 @@ final class DatabaseImpl implements Database {
             } catch (final Throwable error) {
                 rollback(connection, error);
                 throw error;
+            }
+            if (rollbackOnly.getAsBoolean()) {
+                try {
+                    connection.rollback();
+                } catch (final SQLException e) {
+                    throw DatabaseException.of("ROLLBACK", e, dialect);
+                }
+                return result;
             }
             try {
                 connection.commit();
@@ -346,7 +366,9 @@ final class DatabaseImpl implements Database {
      * code (a mapper, a transaction body) and is logged with its stack.
      */
     private void logFailure(final @Nullable String sql, final Throwable error) {
-        if (error instanceof DatabaseException failure) {
+        if (error instanceof TransactionAbortedException aborted) {
+            logger.log(Level.FINE, "transaction aborted: " + aborted.getMessage());
+        } else if (error instanceof DatabaseException failure) {
             logger.log(Level.SEVERE, failure.getMessage());
         } else if (error instanceof MigrationException failure
                 && (failure.getCause() == null || failure.getCause() instanceof DatabaseException)) {

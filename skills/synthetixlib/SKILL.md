@@ -107,6 +107,7 @@ Each file in `rules/` has the why and a wrong -> right pair.
 - `db-migrations-are-append-only`
 
 **MEDIUM**
+- `db-expected-race-no-severe`
 - `config-keep-comments`, `config-public-records`
 - `command-report-alias-used`, `command-cooldown-not-on-failure`
 - `test-in-server-for-bukkit-state`

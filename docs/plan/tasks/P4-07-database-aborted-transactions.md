@@ -1,5 +1,5 @@
 # P4-07 database: abort a transaction on purpose, without a SEVERE log
-Status: todo · Approved: yes · Model: sonnet · Effort: medium
+Status: review · Approved: yes · Model: sonnet · Effort: medium
 Module: synthetixlib-database · Depends on: — (can run in parallel with P4-06, same module: run them one after the other) · Design: database.md §3, §6 (+ §14 "0.9.1 additions")
 Requested by: InteractiveAuction 2.0 (stale writes: lot no longer RUNNING, bid no longer HELD), lib gap L-7
 
@@ -56,16 +56,30 @@ Savepoints / partial rollback, retry helpers.
 - reference `database.md`: "Stale data: roll back on purpose" section with the two styles and when to use which
   (prefer `rollbackOnly()` + a result type for expected races); API table "since 0.9.1"; pitfall "do not throw
   RuntimeException for an expected race: it logs SEVERE".
-- New rule `skills/synthetixlib/rules/database-expected-race-no-severe.md` (MEDIUM) with a ❌/✅ pair.
+- New rule `skills/synthetixlib/rules/db-expected-race-no-severe.md` (MEDIUM) with a ❌/✅ pair.
 - design §14, CHANGELOG "0.9.1".
 
 ## Acceptance criteria
-- [ ] both styles roll back on SQLite and MySQL (contract tests ran on both)
-- [ ] aborted transactions never log SEVERE; other failures still do
-- [ ] self-test PASS on 1.21.11 and 26.3
-- [ ] reference, rule, design §14, CHANGELOG updated; `checkSnippets` green
+- [x] both styles roll back on SQLite and MySQL (contract tests ran on both)
+- [x] aborted transactions never log SEVERE; other failures still do
+- [x] self-test PASS on 1.21.11 and 26.3
+- [x] reference, rule, design §14, CHANGELOG updated; `checkSnippets` green
 
 ## Verify
 gradlew.bat check smokeTest
 
 ## Result
+
+`Transaction.rollbackOnly()` / `isRollbackOnly()` and public `TransactionAbortedException` (not final; the plain constructor
+fills no stack trace, the one with a cause does) added.
+- `DatabaseImpl.transaction` passes a "rollback only?" check into a private `inTransaction` overload: after the body returns it
+  rolls back instead of committing and returns the body's value. A throw after `rollbackOnly()` takes the normal failure path.
+  `rollbackOnly()` after the body is over throws `IllegalStateException` (same guard as the other `tx` methods).
+- `logFailure`: `TransactionAbortedException` and subclasses -> one `FINE` line "transaction aborted: <message>"; the rest unchanged.
+- Tests (`DatabaseQueryContract`, SQLite + MySQL, 28 each, 0 skipped; all `Mysql*Test` ran, 0 skipped): rollbackOnly returns the value
+  and writes no row; exception after rollbackOnly wins; rollbackOnly late throws; aborted exception + subclass fail the future,
+  no row, no SEVERE, two FINE records, no stack; a plain `IllegalStateException` still logs one SEVERE with its stack.
+  Self-test `database.rollback-only` PASS on 1.21.11 and 26.3.
+- Docs: reference section "Stale data: roll back on purpose" (snippet `db-rollback-only` from `DocExamples`), API table, pitfall;
+  rule `db-expected-race-no-severe` (MEDIUM; also in SKILL.md and llms.txt); design §14; CHANGELOG 0.9.1.
+- Ran: `gradlew.bat check smokeTest` green (includes `checkSnippets`). Not committed.

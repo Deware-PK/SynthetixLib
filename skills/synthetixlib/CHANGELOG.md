@@ -9,6 +9,10 @@ Releases are git tags `v<x.y.z>` (0.1.0 and 0.2.0 were never tagged). JitPack wo
   return its generated key (`CompletableFuture<Long>` / `long`), the same on SQLite and MySQL: no more
   `last_insert_rowid()` / `LAST_INSERT_ID()` by hand. Another row count, or no key, fails with `DatabaseException`
   ("insert must create exactly one row with a generated key") and `Database#insert` keeps nothing. Not for `upsert` / `batch`.
+- database: `Transaction#rollbackOnly()` / `isRollbackOnly()`: roll back when the body returns and complete the future with
+  its value, nothing logged (for expected races: stale lot, lost bid). `TransactionAbortedException` (not final): thrown by a
+  body to roll back and fail the future; logged at `FINE`, never `SEVERE`. Other body exceptions still log `SEVERE`.
+  New rule `db-expected-race-no-severe`.
 
 ## 0.9.0
 - dialog: `number-field` has `decimals: 0..10` (with `format: decimal`): the server refuses more digits after the dot

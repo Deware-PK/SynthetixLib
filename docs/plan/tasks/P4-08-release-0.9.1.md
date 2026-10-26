@@ -15,7 +15,7 @@ workarounds (IA2-03b).
 ## Steps
 - Version `0.9.1-SNAPSHOT` in root `gradle.properties` and the template's `synthetixLocalVersion`.
 - CHANGELOG **0.9.1** (patch: additions only, no breaking change), README status `0.9.1`, `llms.txt` (new APIs + the new
-  rule), SKILL.md "Rules by impact" lists `database-expected-race-no-severe`.
+  rule), SKILL.md "Rules by impact" lists `db-expected-race-no-severe`.
 - After the push: tell me to check `https://jitpack.io/#Deware-PK/SynthetixLib/v0.9.1` (all modules built).
 
 ## Acceptance criteria

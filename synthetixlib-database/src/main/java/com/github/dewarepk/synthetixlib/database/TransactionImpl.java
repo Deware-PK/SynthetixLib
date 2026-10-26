@@ -13,6 +13,7 @@ final class TransactionImpl implements Transaction {
     private final String prefix;
     private final Thread owner = Thread.currentThread();
     private volatile boolean finished;
+    private volatile boolean rollbackOnly;
 
     TransactionImpl(final Statements statements, final Dialect dialect, final String prefix) {
         this.statements = statements;
@@ -55,6 +56,17 @@ final class TransactionImpl implements Transaction {
     @Override
     public long insert(final String sql, final Object... params) {
         return active().insert(DatabaseImpl.resolve(prefix, sql), Params.convert(params));
+    }
+
+    @Override
+    public void rollbackOnly() {
+        active();
+        rollbackOnly = true;
+    }
+
+    @Override
+    public boolean isRollbackOnly() {
+        return rollbackOnly;
     }
 
     @Override

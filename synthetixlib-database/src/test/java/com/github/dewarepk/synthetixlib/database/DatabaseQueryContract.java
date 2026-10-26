@@ -417,6 +417,99 @@ abstract class DatabaseQueryContract {
         assertEquals(0, count(db, "ir"));
     }
 
+    // --- aborted transactions ---------------------------------------------------------------------------------------
+
+    static final class StaleException extends TransactionAbortedException {
+        StaleException(final String message) {
+            super(message);
+        }
+    }
+
+    @Test
+    void rollbackOnlyRollsBackAndCompletesWithTheBodysValue() {
+        final DatabaseImpl db = open("QueryRollbackOnly");
+        createKeyed(db, "ro");
+        final AtomicBoolean flag = new AtomicBoolean();
+
+        final String outcome = db.transaction(tx -> {
+            tx.insert("INSERT INTO {prefix}ro (name) VALUES (?)", "x");
+            assertFalse(tx.isRollbackOnly());
+            tx.rollbackOnly();
+            flag.set(tx.isRollbackOnly());
+            return "STALE";
+        }).join();
+
+        assertEquals("STALE", outcome);
+        assertTrue(flag.get());
+        assertEquals(0, count(db, "ro"));
+        assertTrue(capture.severe().isEmpty(), capture.everything());
+        db.insert("INSERT INTO {prefix}ro (name) VALUES (?)", "y").join();
+        assertEquals(1, count(db, "ro"));
+    }
+
+    @Test
+    void anExceptionAfterRollbackOnlyWins() {
+        final DatabaseImpl db = open("QueryRollbackThenThrow");
+        createKeyed(db, "rt");
+
+        final Throwable failure = failureOf(db.transaction(tx -> {
+            tx.rollbackOnly();
+            throw new IllegalStateException("boom");
+        }));
+
+        assertInstanceOf(IllegalStateException.class, failure);
+        assertEquals(1, capture.severe().size());
+    }
+
+    @Test
+    void rollbackOnlyAfterTheBodyIsOverThrows() {
+        final DatabaseImpl db = open("QueryRollbackLate");
+        final AtomicReference<Transaction> kept = new AtomicReference<>();
+        db.transaction(tx -> {
+            kept.set(tx);
+            return null;
+        }).join();
+
+        assertThrows(IllegalStateException.class, () -> kept.get().rollbackOnly());
+    }
+
+    @Test
+    void anAbortedTransactionFailsWithItsExceptionRollsBackAndLogsOnlyFine() {
+        final DatabaseImpl db = open("QueryAborted");
+        createKeyed(db, "ab");
+
+        final Throwable plain = failureOf(db.transaction(tx -> {
+            tx.insert("INSERT INTO {prefix}ab (name) VALUES (?)", "x");
+            throw new TransactionAbortedException("lot 7 is no longer running");
+        }));
+        final Throwable subclass = failureOf(db.transaction(tx -> {
+            tx.insert("INSERT INTO {prefix}ab (name) VALUES (?)", "y");
+            throw new StaleException("bid 3 is no longer held");
+        }));
+
+        assertEquals(TransactionAbortedException.class, plain.getClass());
+        assertEquals(StaleException.class, subclass.getClass());
+        assertEquals(0, plain.getStackTrace().length, "the plain constructor fills no stack trace");
+        assertEquals(0, count(db, "ab"));
+        assertTrue(capture.severe().isEmpty(), capture.everything());
+        final List<LogRecord> fine = capture.records.stream().filter(record -> record.getLevel().equals(Level.FINE)).toList();
+        assertEquals(2, fine.size());
+        assertEquals("transaction aborted: lot 7 is no longer running", fine.get(0).getMessage());
+        assertNull(fine.get(0).getThrown());
+    }
+
+    @Test
+    void aPlainRuntimeExceptionStillLogsSevereWithItsStack() {
+        final DatabaseImpl db = open("QueryStillSevere");
+
+        failureOf(db.transaction(tx -> {
+            throw new IllegalStateException("a bug");
+        }));
+
+        assertEquals(1, capture.severe().size());
+        assertInstanceOf(IllegalStateException.class, capture.severe().get(0).getThrown());
+    }
+
     // --- batch and upsert -------------------------------------------------------------------------------------------
 
     @Test

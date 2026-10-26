@@ -35,6 +35,7 @@ import com.github.dewarepk.synthetixlib.database.Migrations;
 import com.github.dewarepk.synthetixlib.database.Dialect;
 import com.github.dewarepk.synthetixlib.database.DatabaseSettings;
 import com.github.dewarepk.synthetixlib.database.Database;
+import com.github.dewarepk.synthetixlib.database.TransactionAbortedException;
 import com.github.dewarepk.synthetixlib.database.Copy;
 import com.github.dewarepk.synthetixlib.core.item.ItemBuilder;
 import com.github.dewarepk.synthetixlib.core.pdc.PdcKey;
@@ -396,6 +397,33 @@ final class DocExamples {
         // @end
         if (one.isDone() && changed.isDone()) {
             lib.plugin().getLogger().info(db.dialect().name());
+        }
+    }
+
+    enum Sale { SOLD, STALE }
+
+    void databaseStale(final Database db, final long lotId) {
+        // @snippet:db-rollback-only
+        final CompletableFuture<Sale> sale = db.transaction(tx -> {
+            final int changed = tx.update("UPDATE {prefix}lots SET state = 'SOLD' WHERE id = ? AND state = 'RUNNING'", lotId);
+            if (changed == 0) {
+                tx.rollbackOnly();                       // expected race: roll back, no exception, nothing logged
+                return Sale.STALE;
+            }
+            tx.insert("INSERT INTO {prefix}mail (player, note) VALUES (?, ?)", UUID.randomUUID(), "sold");
+            return Sale.SOLD;
+        });
+
+        // or, when the caller prefers an exception (logged at FINE, never SEVERE):
+        db.transaction(tx -> {
+            if (tx.update("UPDATE {prefix}lots SET state = 'ENDED' WHERE id = ? AND state = 'RUNNING'", lotId) == 0) {
+                throw new TransactionAbortedException("lot " + lotId + " is no longer running");
+            }
+            return null;
+        });
+        // @end
+        if (sale.isDone()) {
+            lib.plugin().getLogger().info("done");
         }
     }
 
