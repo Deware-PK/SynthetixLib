@@ -20,6 +20,16 @@ public final class DatabaseException extends RuntimeException {
         this.sql = sql;
     }
 
+    private DatabaseException(final String message, final String sql) {
+        super(message);
+        this.sql = sql;
+    }
+
+    /** A failure of the library's own check (not the driver's): the message and the statement, no parameters. */
+    static DatabaseException of(final String sql, final String reason) {
+        return new DatabaseException(reason + " in: " + sql, sql);
+    }
+
     /**
      * @param sql     the statement as written by the caller (with {@code {prefix}} replaced)
      * @param cause   the driver's exception

@@ -356,6 +356,67 @@ abstract class DatabaseQueryContract {
         assertThrows(IllegalStateException.class, () -> kept.get().update("INSERT INTO {prefix}txd VALUES (1)"));
     }
 
+    // --- insert keys ------------------------------------------------------------------------------------------------
+
+    private static void createKeyed(final DatabaseImpl db, final String table) {
+        final String key = db.dialect() == Dialect.MYSQL ? "BIGINT PRIMARY KEY AUTO_INCREMENT" : "INTEGER PRIMARY KEY";
+        db.update("CREATE TABLE {prefix}" + table + " (id " + key + ", name VARCHAR(20))").join();
+    }
+
+    private static long count(final DatabaseImpl db, final String table) {
+        return db.queryOne("SELECT COUNT(*) AS c FROM {prefix}" + table, row -> row.longValue("c")).join().orElseThrow();
+    }
+
+    @Test
+    void insertReturnsIncreasingKeysInATransactionAndOutsideOne() {
+        final DatabaseImpl db = open("QueryInsertKeys");
+        createKeyed(db, "ik");
+
+        final List<Long> inTx = db.transaction(tx -> List.of(
+                tx.insert("INSERT INTO {prefix}ik (name) VALUES (?)", "a"),
+                tx.insert("INSERT INTO {prefix}ik (name) VALUES (?)", "b"))).join();
+        final long outside = db.insert("INSERT INTO {prefix}ik (name) VALUES (?)", "c").join();
+
+        assertTrue(inTx.get(0) < inTx.get(1) && inTx.get(1) < outside, inTx + " then " + outside);
+        final List<Long> ids = db.query("SELECT id FROM {prefix}ik ORDER BY id", row -> row.longValue("id")).join();
+        assertEquals(List.of(inTx.get(0), inTx.get(1), outside), ids);
+        assertEquals("b", db.queryOne("SELECT name FROM {prefix}ik WHERE id = ?", row -> row.string("name"), inTx.get(1))
+                .join().orElseThrow());
+    }
+
+    @Test
+    void insertThatCreatesZeroOrTwoRowsFailsAndKeepsNothing() {
+        final DatabaseImpl db = open("QueryInsertCount");
+        createKeyed(db, "ic");
+        db.insert("INSERT INTO {prefix}ic (name) VALUES (?)", "seed").join();
+        final String zero = "INSERT INTO {prefix}ic (name) SELECT name FROM {prefix}ic WHERE name = 'none'";
+        final String two = "INSERT INTO {prefix}ic (name) SELECT name FROM {prefix}ic UNION ALL SELECT name FROM {prefix}ic";
+
+        final Throwable none = failureOf(db.insert(zero));
+        final Throwable many = failureOf(db.insert(two));
+        final Throwable inTx = failureOf(db.transaction(tx -> tx.insert(two)));
+
+        for (final Throwable failure : List.of(none, many, inTx)) {
+            final DatabaseException error = assertInstanceOf(DatabaseException.class, failure);
+            assertTrue(error.getMessage().contains("insert must create exactly one row with a generated key"));
+            assertTrue(error.sql().startsWith("INSERT INTO"));
+        }
+        assertEquals(1, count(db, "ic"));
+    }
+
+    @Test
+    void insertInARolledBackTransactionLeavesNoRow() {
+        final DatabaseImpl db = open("QueryInsertRollback");
+        createKeyed(db, "ir");
+
+        failureOf(db.transaction(tx -> {
+            tx.insert("INSERT INTO {prefix}ir (name) VALUES (?)", "x");
+            throw new IllegalStateException("roll back");
+        }));
+
+        assertEquals(0, count(db, "ir"));
+    }
+
     // --- batch and upsert -------------------------------------------------------------------------------------------
 
     @Test

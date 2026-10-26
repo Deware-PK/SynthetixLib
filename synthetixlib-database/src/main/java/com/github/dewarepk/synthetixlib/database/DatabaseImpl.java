@@ -160,6 +160,15 @@ final class DatabaseImpl implements Database {
     }
 
     @Override
+    public CompletableFuture<Long> insert(final String sql, final Object... params) {
+        final String resolved = resolve(prefix, sql);
+        final Object[] values = Params.convert(params);
+        // a transaction, so an INSERT ... SELECT that created the wrong number of rows is rolled back
+        return submit(resolved, () -> inTransaction(resolved,
+                connection -> new Statements(connection, dialect).insert(resolved, values)));
+    }
+
+    @Override
     public CompletableFuture<int[]> batch(final String sql, final List<Object[]> rows) {
         final String resolved = resolve(prefix, sql);
         final List<Object[]> converted = Params.convertRows(rows);

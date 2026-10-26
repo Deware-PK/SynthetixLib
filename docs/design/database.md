@@ -192,3 +192,12 @@ caching (products keep their own in-memory state and write through).
 - Demo (`synthetixlib-example`): `ClaimStore` keeps the claim counts in memory (written through) for the menu icons;
   `/example airdrop claim|stats <id>`, `/example db copy-to-mysql` (async handler, `Database.open` on the `database.mysql` section).
 - Not covered by self-tests: MySQL in the smoke servers (the MySQL suite runs in `check` when the Gradle properties exist).
+
+## 14. 0.9.1 additions
+- `Database.insert(sql, params...)` -> `CompletableFuture<Long>` and `Transaction.insert(...)` -> `long` (P4-06): one INSERT that
+  creates exactly one row, returns its generated key. Same binding, `{prefix}`, logging and failure rules as `update`.
+- Built with `prepareStatement(sql, RETURN_GENERATED_KEYS)` + `getGeneratedKeys()`; if a driver gave no key, the dialect
+  query (`last_insert_rowid()` / `LAST_INSERT_ID()`) runs on the same connection. Both bundled drivers (sqlite-jdbc, mysql-connector-j)
+  return the key directly, so the fallback is only a safety net.
+- Not exactly one row, or no key: `DatabaseException` ("insert must create exactly one row with a generated key", SQL only).
+  `Database.insert` runs in its own transaction so a wrong row count commits nothing. Not for `upsert` / `batch`.

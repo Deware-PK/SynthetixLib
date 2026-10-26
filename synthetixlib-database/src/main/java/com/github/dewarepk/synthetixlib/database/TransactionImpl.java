@@ -53,6 +53,11 @@ final class TransactionImpl implements Transaction {
     }
 
     @Override
+    public long insert(final String sql, final Object... params) {
+        return active().insert(DatabaseImpl.resolve(prefix, sql), Params.convert(params));
+    }
+
+    @Override
     public int[] batch(final String sql, final List<Object[]> rows) {
         return active().batch(DatabaseImpl.resolve(prefix, sql), Params.convertRows(rows));
     }

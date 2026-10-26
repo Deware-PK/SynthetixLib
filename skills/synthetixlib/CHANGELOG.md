@@ -4,6 +4,12 @@ SynthetixLib release notes for people (and agents) using the library. Newest fir
 Releases are git tags `v<x.y.z>` (0.1.0 and 0.2.0 were never tagged). JitPack works from **v0.7.0** on
 (`com.github.Deware-PK.SynthetixLib:synthetixlib-<module>:v<x.y.z>`); older tags have no `jitpack.yml` and do not build there.
 
+## 0.9.1
+- database: `Database#insert(sql, params...)` and `Transaction#insert(...)` run one INSERT that creates exactly one row and
+  return its generated key (`CompletableFuture<Long>` / `long`), the same on SQLite and MySQL: no more
+  `last_insert_rowid()` / `LAST_INSERT_ID()` by hand. Another row count, or no key, fails with `DatabaseException`
+  ("insert must create exactly one row with a generated key") and `Database#insert` keeps nothing. Not for `upsert` / `batch`.
+
 ## 0.9.0
 - dialog: `number-field` has `decimals: 0..10` (with `format: decimal`): the server refuses more digits after the dot
   (`12.505` with 2), `12.50` is fine. `DialogBuilder#inputDecimals(key, view -> n)` sets it from code per showing (your

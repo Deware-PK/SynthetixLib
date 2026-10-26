@@ -43,6 +43,44 @@ final class Statements {
         }
     }
 
+    /** One INSERT that must create exactly one row; returns its generated key (driver key, else the dialect's query). */
+    long insert(final String sql, final @Nullable Object[] values) {
+        final long key;
+        try (PreparedStatement statement = connection.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)) {
+            Params.bind(statement, values);
+            if (statement.executeUpdate() != 1) {
+                throw DatabaseException.of(sql, INSERT_RULE);
+            }
+            long found = -1;
+            boolean hasKey = false;
+            try (ResultSet keys = statement.getGeneratedKeys()) {
+                if (keys != null && keys.next()) {
+                    found = keys.getLong(1);
+                    hasKey = !keys.wasNull();
+                }
+            }
+            if (!hasKey) {
+                final String query = dialect == Dialect.SQLITE ? "SELECT last_insert_rowid()" : "SELECT LAST_INSERT_ID()";
+                try (PreparedStatement fallback = connection.prepareStatement(query);
+                     ResultSet rows = fallback.executeQuery()) {
+                    if (rows.next()) {
+                        found = rows.getLong(1);
+                        hasKey = !rows.wasNull() && found != 0;
+                    }
+                }
+            }
+            if (!hasKey) {
+                throw DatabaseException.of(sql, INSERT_RULE);
+            }
+            key = found;
+        } catch (final SQLException e) {
+            throw DatabaseException.of(sql, e, dialect);
+        }
+        return key;
+    }
+
+    private static final String INSERT_RULE = "insert must create exactly one row with a generated key";
+
     int[] batch(final String sql, final List<Object[]> rows) {
         if (rows.isEmpty()) {
             return new int[0];

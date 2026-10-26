@@ -152,6 +152,20 @@ public CompletableFuture<Stats> stats(final String airdrop, final int limit) {
 }
 ```
 
+- `insert` (since 0.9.1) runs one INSERT that creates exactly one row and returns its generated key (an auto-increment /
+  `INTEGER PRIMARY KEY` id), the same on SQLite and MySQL. Another row count or no key: `DatabaseException`, nothing kept.
+  Not for `upsert` or `batch` (no keys there).
+
+```java snippet=db-insert-key
+db.insert("INSERT INTO {prefix}lots (seller, price) VALUES (?, ?)", seller, 100L)
+        .thenAccept(id -> lib.plugin().getLogger().info("lot " + id));
+
+db.transaction(tx -> {
+    final long lotId = tx.insert("INSERT INTO {prefix}lots (seller, price) VALUES (?, ?)", seller, 100L);
+    return tx.insert("INSERT INTO {prefix}bids (lot, amount) VALUES (?, ?)", lotId, 150L);   // the bid's own id
+});
+```
+
 - `?` parameters are bound by type: `String, int, long, double, boolean, byte[], UUID, Instant, Duration, Enum, ItemStack,
   null`. Anything else throws `IllegalArgumentException` **at the call**. UUIDs are stored as `CHAR(36)`, Instants as epoch
   millis `BIGINT`.
@@ -203,7 +217,7 @@ Copy.tables(old, current, List.of("lots", "mail")).batchSize(500).run()
 
 | Type | For | Since |
 |---|---|---|
-| `Database` | `create`, `open`, `standalone` (0.9.0, tests and tools), `dialect`, `query`, `queryOne`, `update`, `batch`, `transaction`, `upsert`, `migrate`, `close` | 0.5.0 |
+| `Database` | `create`, `open`, `standalone` (0.9.0, tests and tools), `dialect`, `query`, `queryOne`, `update`, `insert` (0.9.1), `batch`, `transaction`, `upsert`, `migrate`, `close` | 0.5.0 |
 | `DatabaseSettings` (+ `Sqlite`, `Mysql`, `Pool`) | the YAML shape; `sqlite(file)`, `mysql(...)`, `withTablePrefix`, `register(codecs)` | 0.5.0 |
 | `Dialect` | `SQLITE`, `MYSQL` | 0.5.0 |
 | `Row`, `RowMapper<T>` | typed getters; `T map(Row)` | 0.5.0 |
@@ -235,6 +249,7 @@ saying so. Versions match what the library tests with: HikariCP `7.1.0`, sqlite-
   `db-never-block-server-thread`).
 - Wrong: `"... WHERE name = '" + name + "'"` -> right: `?` parameters (rule `db-parameters-not-concatenation`).
 - Wrong: editing `V1__init.sql` after release -> right: a new `V2__...sql` (rule `db-migrations-are-append-only`).
+- Wrong: running `last_insert_rowid()` / `LAST_INSERT_ID()` yourself -> right: `insert` returns the key.
 - Wrong: a table prefix typed into the SQL -> right: `{prefix}`.
 - Wrong: reading a nullable column with `longValue` -> right: `longValueOrNull`.
 

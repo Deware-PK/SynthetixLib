@@ -5,6 +5,7 @@ import static com.github.dewarepk.synthetixlib.selftest.SelfTest.require;
 import com.github.dewarepk.synthetixlib.core.SynthetixLib;
 import com.github.dewarepk.synthetixlib.database.Copy;
 import com.github.dewarepk.synthetixlib.database.Database;
+import com.github.dewarepk.synthetixlib.database.DatabaseException;
 import com.github.dewarepk.synthetixlib.database.DatabaseSettings;
 import com.github.dewarepk.synthetixlib.database.Dialect;
 import com.github.dewarepk.synthetixlib.database.Migrations;
@@ -87,6 +88,7 @@ final class DatabaseSelfTests {
                     }
                 }),
                 SelfTest.async("database.query", () -> query(plugin, lib)),
+                SelfTest.async("database.insert-key", () -> insertKey(plugin, lib)),
                 SelfTest.async("database.join-guard", () -> joinGuard(plugin, lib)),
                 SelfTest.async("database.migrate", () -> migrate(plugin, lib)),
                 SelfTest.async("database.shutdown", () -> shutdown(plugin, lib)),
@@ -276,6 +278,46 @@ final class DatabaseSelfTests {
                 })
                 .thenCompose(ignored -> db.query("SELECT kind FROM {prefix}st", row -> row.string("kind")))
                 .thenAccept(kinds -> require(kinds.size() == 2, "rollback kept a row: " + kinds));
+
+        // Closing waits for the worker, so it must not happen on it: hop to the global thread first.
+        final CompletableFuture<Void> done = new CompletableFuture<>();
+        result.whenComplete((ignored, error) -> lib.scheduler().global().run(() -> {
+            own.close();
+            if (error == null) {
+                done.complete(null);
+            } else {
+                done.completeExceptionally(error);
+            }
+        }));
+        return done;
+    }
+
+    /** {@code insert} hands back the generated key through the server's bundled sqlite-jdbc; a wrong row count rolls back. */
+    private static CompletableFuture<Void> insertKey(final JavaPlugin plugin, final SynthetixLib lib) {
+        freshQuietly(plugin, "selftest/insert-key.db");
+        final SynthetixLib own = SynthetixLib.init(plugin);
+        final Database db = Database.create(own, DatabaseSettings.sqlite("selftest/insert-key.db").withTablePrefix("ik_"));
+        final String insert = "INSERT INTO {prefix}k (name) VALUES (?)";
+
+        final CompletableFuture<Void> result = db
+                .update("CREATE TABLE {prefix}k (id INTEGER PRIMARY KEY, name VARCHAR(20))")
+                .thenCompose(ignored -> db.transaction(tx -> List.of(tx.insert(insert, "a"), tx.insert(insert, "b"))))
+                .thenCompose(keys -> {
+                    require(keys.get(0) < keys.get(1), "keys not increasing: " + keys);
+                    return db.insert(insert, "c").thenCompose(third -> {
+                        require(third > keys.get(1), "third key " + third + " after " + keys);
+                        return db.query("SELECT id FROM {prefix}k ORDER BY id", row -> row.longValue("id"))
+                                .thenAccept(ids -> require(ids.equals(List.of(keys.get(0), keys.get(1), third)),
+                                        "ids " + ids + " keys " + keys + " third " + third));
+                    });
+                })
+                .thenCompose(ignored -> db.insert("INSERT INTO {prefix}k (name) SELECT name FROM {prefix}k").handle((key, error) -> {
+                    require(error instanceof DatabaseException,
+                            "a 3-row insert must fail with DatabaseException, got " + key + " / " + error);
+                    return null;
+                }))
+                .thenCompose(ignored -> db.query("SELECT COUNT(*) AS c FROM {prefix}k", row -> row.intValue("c")))
+                .thenAccept(count -> require(count.get(0) == 3, "a failed insert kept rows: " + count));
 
         // Closing waits for the worker, so it must not happen on it: hop to the global thread first.
         final CompletableFuture<Void> done = new CompletableFuture<>();

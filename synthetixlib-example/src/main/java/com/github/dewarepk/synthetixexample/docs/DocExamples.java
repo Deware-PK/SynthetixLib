@@ -399,6 +399,18 @@ final class DocExamples {
         }
     }
 
+    void databaseInsertKey(final Database db, final UUID seller) {
+        // @snippet:db-insert-key
+        db.insert("INSERT INTO {prefix}lots (seller, price) VALUES (?, ?)", seller, 100L)
+                .thenAccept(id -> lib.plugin().getLogger().info("lot " + id));
+
+        db.transaction(tx -> {
+            final long lotId = tx.insert("INSERT INTO {prefix}lots (seller, price) VALUES (?, ?)", seller, 100L);
+            return tx.insert("INSERT INTO {prefix}bids (lot, amount) VALUES (?, ?)", lotId, 150L);   // the bid's own id
+        });
+        // @end
+    }
+
     void migrations(final Database db) {
         // @snippet:db-migrations
         final Migrations migrations = Migrations.fromResources("db/migrations")      // V1__init.sql, V2__mail.sql, ...

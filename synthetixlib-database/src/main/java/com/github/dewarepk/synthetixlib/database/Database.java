@@ -147,6 +147,22 @@ public interface Database extends AutoCloseable {
     CompletableFuture<Integer> update(String sql, Object... params);
 
     /**
+     * Like {@link Transaction#insert}, as its own statement: runs one INSERT that creates exactly one row and completes
+     * with its generated key. If it changed another number of rows nothing is kept. Not for {@code upsert} or
+     * {@code batch}, which give no keys.
+     *
+     * <pre>{@code
+     * db.insert("INSERT INTO {prefix}lots (seller, price) VALUES (?, ?)", seller, 100L)
+     *         .thenAccept(id -> ...);
+     * }</pre>
+     *
+     * @return the generated key; fails with {@link DatabaseException} if no single row with a key was created
+     * @throws IllegalArgumentException if a parameter has an unsupported type
+     * @since 0.9.1
+     */
+    CompletableFuture<Long> insert(String sql, Object... params);
+
+    /**
      * Runs one statement once per row of parameters, in one transaction (all rows or none). On MySQL the driver
      * rewrites it into few multi-row statements.
      *
