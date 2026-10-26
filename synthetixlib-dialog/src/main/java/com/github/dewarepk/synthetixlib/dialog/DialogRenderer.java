@@ -141,8 +141,8 @@ final class DialogRenderer<C> {
             body.add(body(entry));
         }
         final InputLimits limits = statics != null ? InputLimits.file()
-                : InputLimits.resolve(type.id(), file.inputs(), registered.ranges(), registered.maxLengths(), view,
-                env.warn());
+                : InputLimits.resolve(type.id(), file.inputs(), registered.ranges(), registered.maxLengths(),
+                registered.decimals(), view, env.warn());
         view.limits(limits);
         final List<io.papermc.paper.registry.data.dialog.input.DialogInput> inputs = new ArrayList<>();
         file.inputs().forEach((key, input) -> inputs.add(input(key, input, limits)));
@@ -162,19 +162,30 @@ final class DialogRenderer<C> {
 
     /**
      * The line above the body for a refused input: the {@code errors.<key>} line of the file, else the language message
-     * {@code invalid-input}, else English. {@code <min> <max> <value>} are plain text, never parsed.
+     * {@code invalid-decimals} (too many decimals only) or {@code invalid-input}, else English.
+     * {@code <min> <max> <value> <decimals>} are plain text, never parsed.
      */
     private Component errorLine(final FormSubmit.Failure failure) {
         final TagResolver values = TagResolver.resolver(Placeholder.unparsed("min", failure.min()),
-                Placeholder.unparsed("max", failure.max()), Placeholder.unparsed("value", failure.value()));
+                Placeholder.unparsed("max", failure.max()), Placeholder.unparsed("value", failure.value()),
+                Placeholder.unparsed("decimals", failure.decimals()));
         if (failure.markup() != null) {
             return env.text().parse(failure.markup(), values, pass.resolver(), failure.extra());
         }
         final DialogMessages source = env.messages().get();
-        final Component message = source == null ? null
-                : source.get(view.playerOrNull(), "invalid-input", TagResolver.resolver(values, pass.placeholders()));
+        final TagResolver nested = TagResolver.resolver(values, pass.placeholders());
+        Component message = null;
+        if (source != null && failure.tooManyDecimals()) {
+            message = source.get(view.playerOrNull(), "invalid-decimals", nested);
+        }
+        if (message == null && source != null) {
+            message = source.get(view.playerOrNull(), "invalid-input", nested);
+        }
         if (message != null) {
             return message;
+        }
+        if (failure.tooManyDecimals()) {
+            return Component.text("At most " + failure.decimals() + " decimals: " + failure.key(), NamedTextColor.RED);
         }
         return Component.text(failure.key().isEmpty() ? "Invalid value" : "Invalid value: " + failure.key(),
                 NamedTextColor.RED);

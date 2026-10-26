@@ -1,10 +1,10 @@
 # Bundled with the example plugin: the dialog.number-field self-test copies it and answers it with fake clients.
-config-version: 1
+config-version: 2
 title: '<gold>Number-field self-test'
 type: confirmation
 inputs:
   price: { type: number-field, label: 'Price', min: 1, max: 1000000, initial: 100 }
-  money: { type: number-field, label: 'Money', format: decimal, min: 0.01, max: 1000, max-length: 12 }
+  money: { type: number-field, label: 'Money', format: decimal, decimals: 2, min: 0.01, max: 1000, max-length: 12 }
   note: { type: text, label: 'Note', max-length: 20 }
 buttons:
   yes: { label: '<green>Send', click: ['action:send'] }

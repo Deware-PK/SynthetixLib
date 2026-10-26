@@ -6,6 +6,7 @@ import com.github.dewarepk.synthetixlib.dialog.DialogService;
 import com.github.dewarepk.synthetixlib.dialog.DialogType;
 import com.github.dewarepk.synthetixlib.dialog.FieldError;
 import com.github.dewarepk.synthetixlib.dialog.Range;
+import java.math.BigDecimal;
 import java.util.Optional;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
@@ -21,8 +22,8 @@ public final class DemoDialogs {
     private static final long BASE_VALUE = 100;
 
     // @snippet:dialog-form-record
-    /** The answers of {@code sell.yml}; public so the config codecs can fill it. The price is a typed whole number. */
-    public record SellForm(long price, String duration, String note, boolean anonymous) {
+    /** The answers of {@code sell.yml}; public so the config codecs can fill it. The price is a typed decimal with at most 2 decimals. */
+    public record SellForm(BigDecimal price, String duration, String note, boolean anonymous) {
     }
     // @end
 
@@ -48,7 +49,7 @@ public final class DemoDialogs {
                     final Player player = click.player();
                     lang.send(player, Messages::dialogSold,
                             Placeholder.component("item", itemName(click.view().context())),
-                            Placeholder.unparsed("price", String.valueOf(form.price())),
+                            Placeholder.unparsed("price", form.price().toPlainString()),
                             Placeholder.unparsed("duration", form.duration()),
                             Placeholder.unparsed("note", form.note().isBlank() ? "-" : form.note()),
                             Placeholder.unparsed("who", form.anonymous() ? "anonymous" : player.getName()));
@@ -56,7 +57,7 @@ public final class DemoDialogs {
                 // a check that needs code: not more than 10 x the base value of the stack (a demo rule)
                 .validate("sell", SellForm.class, (form, click) -> {
                     final long limit = maxPrice(click.view().context());
-                    return form.price() > limit
+                    return form.price().compareTo(BigDecimal.valueOf(limit)) > 0
                             ? Optional.of(FieldError.of("price", "<lang:sell-error-too-high>",
                                     Placeholder.unparsed("limit", String.valueOf(limit))))
                             : Optional.empty();

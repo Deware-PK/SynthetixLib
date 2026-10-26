@@ -116,11 +116,12 @@ public sealed interface DialogInput {
      * @param max       largest value; none if absent
      * @param initial   start value
      * @param maxLength most characters typed, at least 1; 18 if absent
+     * @param decimals  most digits after the dot, 0 to 10, only with {@code format: decimal}; no limit if absent
      */
     @TypeName("number-field")
     record NumberFieldInput(String label, Optional<Integer> width, Optional<NumberFormat> format, Optional<Double> min,
-                            Optional<Double> max, Optional<Double> initial, Optional<Integer> maxLength)
-            implements DialogInput {
+                            Optional<Double> max, Optional<Double> initial, Optional<Integer> maxLength,
+                            Optional<Integer> decimals) implements DialogInput {
         public NumberFieldInput {
             Objects.requireNonNull(label, "label");
             Objects.requireNonNull(width, "width");
@@ -129,6 +130,7 @@ public sealed interface DialogInput {
             Objects.requireNonNull(max, "max");
             Objects.requireNonNull(initial, "initial");
             Objects.requireNonNull(maxLength, "maxLength");
+            Objects.requireNonNull(decimals, "decimals");
         }
 
         /** @return {@code true} unless the file says {@code format: decimal} */

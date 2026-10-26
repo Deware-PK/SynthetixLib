@@ -6,7 +6,7 @@ tags: dialog, input, number
 
 ## Money and wide numbers are a number-field, not a slider
 
-A `type: number` input is a slider. It suits a small range (about 100 steps or fewer: 1-64 items, a duration). A price, a bid or any range with thousands of values cannot be set with a slider, so the player must type it: use `type: number-field`. The server reads the text (`1,000` and `1_000` are fine, no exponent, no `NaN`), checks `min` / `max` and gives the record a `long`, `int`, `double` or `BigDecimal`. Limits that come from `config.yml` go in `inputRange(key, view -> Range.of(min, max))`; a check that needs code goes in `validate(...)`. Do not build "show the dialog again with an error" by hand.
+A `type: number` input is a slider. It suits a small range (about 100 steps or fewer: 1-64 items, a duration). A price, a bid or any range with thousands of values cannot be set with a slider, so the player must type it: use `type: number-field`. The server reads the text (`1,000` and `1_000` are fine, no exponent, no `NaN`), checks `min` / `max` and gives the record a `long`, `int`, `double` or `BigDecimal`. Use `format: decimal` for money with cents and set `decimals` (in the file, or `inputDecimals(key, view -> n)` from your currency settings) so `12.345` is refused when the currency has 2 decimals. Limits that come from `config.yml` go in `inputRange(key, view -> Range.of(min, max))`; a check that needs code goes in `validate(...)`. Do not build "show the dialog again with an error" by hand.
 
 **❌ Incorrect**
 
@@ -22,7 +22,7 @@ priceDialog.open(player, new PriceAsk(typed, "Price must be 1-" + maxPrice));   
 **✅ Correct**
 
 ```yaml snippet=dialog-sell-yml
-config-version: 2
+config-version: 3
 title: '<lang:sell-title>'
 external-title: '<lang:sell-external>'
 type: confirmation
@@ -33,9 +33,10 @@ body:
     description: '<lang:sell-item>'
 inputs:
   price:
-    type: number-field          # typed, for money; min / max here are the fallback of DemoDialogs.inputRange
+    type: number-field          # typed, for money (2 decimals); min / max here are the fallback of DemoDialogs.inputRange
     label: '<lang:sell-price>'
-    format: integer
+    format: decimal
+    decimals: 2                 # most digits after the dot; code can set it from the currency (inputDecimals)
     min: 1
     max: 1000000
     initial: 100
@@ -69,7 +70,7 @@ final DialogType<ItemStack> sell = dialogs.dialog("sell").<ItemStack>withContext
             final Player player = click.player();
             lang.send(player, Messages::dialogSold,
                     Placeholder.component("item", itemName(click.view().context())),
-                    Placeholder.unparsed("price", String.valueOf(form.price())),
+                    Placeholder.unparsed("price", form.price().toPlainString()),
                     Placeholder.unparsed("duration", form.duration()),
                     Placeholder.unparsed("note", form.note().isBlank() ? "-" : form.note()),
                     Placeholder.unparsed("who", form.anonymous() ? "anonymous" : player.getName()));
@@ -77,7 +78,7 @@ final DialogType<ItemStack> sell = dialogs.dialog("sell").<ItemStack>withContext
         // a check that needs code: not more than 10 x the base value of the stack (a demo rule)
         .validate("sell", SellForm.class, (form, click) -> {
             final long limit = maxPrice(click.view().context());
-            return form.price() > limit
+            return form.price().compareTo(BigDecimal.valueOf(limit)) > 0
                     ? Optional.of(FieldError.of("price", "<lang:sell-error-too-high>",
                             Placeholder.unparsed("limit", String.valueOf(limit))))
                     : Optional.empty();

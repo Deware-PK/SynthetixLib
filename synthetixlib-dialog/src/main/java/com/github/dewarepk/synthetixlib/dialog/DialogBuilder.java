@@ -48,6 +48,7 @@ public final class DialogBuilder<C> {
     private final Map<String, Function<DialogView<C>, ?>> inputs = new LinkedHashMap<>();
     private final Map<String, Function<DialogView<C>, Range>> ranges = new LinkedHashMap<>();
     private final Map<String, Function<DialogView<C>, Integer>> maxLengths = new LinkedHashMap<>();
+    private final Map<String, Function<DialogView<C>, Integer>> decimalLimits = new LinkedHashMap<>();
     private final Map<String, Registrations.Validator<C>> validators = new LinkedHashMap<>();
     private @Nullable Consumer<DialogView<C>> onClose;
     private boolean built;
@@ -79,7 +80,7 @@ public final class DialogBuilder<C> {
     public <N> DialogBuilder<N> withContext() {
         ensureOpen();
         if (!placeholders.isEmpty() || !items.isEmpty() || !actions.isEmpty() || !submits.isEmpty() || !inputs.isEmpty()
-                || !ranges.isEmpty() || !maxLengths.isEmpty() || !validators.isEmpty() || onClose != null) {
+                || !ranges.isEmpty() || !maxLengths.isEmpty() || !decimalLimits.isEmpty() || !validators.isEmpty() || onClose != null) {
             throw new IllegalStateException("withContext() must come before the first registration of dialog '" + id
                     + "'");
         }
@@ -236,6 +237,30 @@ public final class DialogBuilder<C> {
     }
 
     /**
+     * Sets the most digits after the dot of a {@code format: decimal} {@code number-field} from code for every showing,
+     * e.g. the decimals of the server's currency. Asked when the dialog is rendered and the answer is checked against the
+     * same value (it is kept in the view). {@code 12.50} is fine with 2, {@code 12.505} is refused; {@code 0} means
+     * whole numbers that are still a {@code BigDecimal}. The file's {@code decimals} is the fallback if the function
+     * throws or answers outside 0..10. {@code <decimals>} of an error line is this value.
+     *
+     * <pre>{@code
+     * dialogs.dialog("sell").inputDecimals("price", view -> settings.get().currencyDecimals())
+     * }</pre>
+     *
+     * @param key      the key of a decimal {@code number-field} input
+     * @param decimals called whenever the dialog is shown; 0 to 10
+     * @return this
+     * @throws IllegalArgumentException if the key is not valid or registered already
+     */
+    public DialogBuilder<C> inputDecimals(final String key, final Function<DialogView<C>, Integer> decimals) {
+        ensureOpen();
+        checkName("inputDecimals", key);
+        Objects.requireNonNull(decimals, "decimals");
+        putNew(decimalLimits, "inputDecimals", key, decimals);
+        return this;
+    }
+
+    /**
      * Sets the {@code max-length} of a {@code text} (or {@code number-field}) input from code for every showing. Asked
      * when the dialog is rendered and the answer is checked against the same value. The file is the fallback.
      *
@@ -341,7 +366,7 @@ public final class DialogBuilder<C> {
         built = true;
         return registry.register(id, new Registrations<>(Map.copyOf(placeholders), Map.copyOf(items), Map.copyOf(actions),
                 Map.copyOf(submits), Map.copyOf(inputs), onClose, Map.copyOf(ranges), Map.copyOf(maxLengths),
-                Map.copyOf(validators)));
+                Map.copyOf(decimalLimits), Map.copyOf(validators)));
     }
 
     private void ensureOpen() {

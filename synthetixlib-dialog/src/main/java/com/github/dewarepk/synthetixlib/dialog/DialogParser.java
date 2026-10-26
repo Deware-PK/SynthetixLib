@@ -15,6 +15,8 @@ import com.github.dewarepk.synthetixlib.dialog.file.DialogFile;
 import com.github.dewarepk.synthetixlib.dialog.file.DialogInput;
 import com.github.dewarepk.synthetixlib.dialog.file.DialogKind;
 import com.github.dewarepk.synthetixlib.dialog.file.ItemSpec;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -49,6 +51,9 @@ final class DialogParser {
     static final int MAX_ITEM_SIZE = 256;
     /** What the client uses when a text input has no {@code max-length}. */
     static final int DEFAULT_TEXT_LENGTH = 32;
+    /** Most digits after the dot a {@code number-field} may be limited to. */
+    static final int MAX_DECIMALS = 10;
+
     /** Most characters a {@code number-field} takes when the file gives no {@code max-length}. */
     static final int DEFAULT_NUMBER_LENGTH = 18;
 
@@ -359,8 +364,26 @@ final class DialogParser {
                 initial = Optional.of(clamped);
             }
         }
+        Optional<Integer> decimals = field.decimals();
+        if (decimals.isPresent() && field.isInteger()) {
+            errors.add(new Problem(path + ".decimals", "decimals is only used with format: decimal, ignored"));
+            decimals = Optional.empty();
+        } else if (decimals.isPresent() && (decimals.get() < 0 || decimals.get() > MAX_DECIMALS)) {
+            errors.add(new Problem(path + ".decimals", "must be between 0 and " + MAX_DECIMALS + " (was "
+                    + decimals.get() + "), ignored"));
+            decimals = Optional.empty();
+        }
+        if (decimals.isPresent() && initial.isPresent()) {
+            final double rounded = new BigDecimal(Double.toString(initial.get()))
+                    .setScale(decimals.get(), RoundingMode.HALF_UP).doubleValue();
+            if (rounded != initial.get()) {
+                errors.add(new Problem(path + ".initial", "has more than " + decimals.get() + " decimals (was "
+                        + initial.get() + "), using " + rounded));
+                initial = Optional.of(rounded);
+            }
+        }
         return new DialogInput.NumberFieldInput(field.label(), range(field.width(), 1, MAX_WIDTH, path + ".width",
-                errors), field.format(), min, max, initial, maxLength);
+                errors), field.format(), min, max, initial, maxLength, decimals);
     }
 
     /** @return {@code value}, or empty (with an error) if it is NaN or infinite */

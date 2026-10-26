@@ -105,7 +105,8 @@ final class DialogChecker {
             final boolean errorLine = text.getKey().startsWith("errors.");
             for (final String name : new LinkedHashSet<>(placeholderNames(text.getValue(), tags))) {
                 final boolean known = Registrations.isBuiltInPlaceholder(name)
-                        || (errorLine && (name.equals("min") || name.equals("max") || name.equals("value")))
+                        || (errorLine && (name.equals("min") || name.equals("max") || name.equals("value")
+                                || name.equals("decimals")))
                         || registered.placeholders().containsKey(name);
                 if (!known) {
                     warnings.add(new Problem(text.getKey(), "placeholder <" + name
@@ -131,6 +132,13 @@ final class DialogChecker {
             if (!(input instanceof DialogInput.TextInput || input instanceof DialogInput.NumberFieldInput)) {
                 warnings.add(new Problem("inputs." + key, "maxLength('" + key + "') is registered but the file has no"
                         + " text or number-field input with this key, the length is never used"));
+            }
+        }
+        for (final String key : registered.decimals().keySet()) {
+            final DialogInput input = file.inputs().get(key);
+            if (!(input instanceof DialogInput.NumberFieldInput field && !field.isInteger())) {
+                warnings.add(new Problem("inputs." + key, "inputDecimals('" + key + "') is registered but the file has no"
+                        + " number-field input with format: decimal and this key, the limit is never used"));
             }
         }
         return new Checked(inert, warnings);

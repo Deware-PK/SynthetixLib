@@ -297,6 +297,19 @@ final class DialogSelfTests {
             require(forms.size() == 1 && refused.shown == 1 && refused.closed == 0,
                     "price '" + price + "' reached the handler or the dialog was not shown again: " + forms);
         }
+        // decimals: 2 in the file; 12.345 never reaches the handler, 12.34 does
+        final FakePlayer decimals = new FakePlayer("Decimals", Locale.US);
+        final DialogView<Void> decimalsView = type.attach(decimals.player, null);
+        type.click(decimalsView, "buttons.yes", new Fake(Map.of("price", "50", "money", "12.345", "note", "x")),
+                decimals.player);
+        require(forms.size() == 1 && decimals.shown == 1 && decimals.closed == 0,
+                "12.345 with 2 decimals reached the handler: " + forms);
+        type.click(decimalsView, "buttons.yes", new Fake(Map.of("price", "50", "money", "12.34", "note", "x")),
+                decimals.player);
+        require(forms.size() == 2 && forms.get(1).money().equals(new java.math.BigDecimal("12.34")),
+                "12.34 must reach the handler as a BigDecimal: " + forms);
+        forms.remove(1);
+
         // the max-length of the note comes from code too (file: 20)
         final FakePlayer longNote = new FakePlayer("LongNote", Locale.US);
         type.click(type.attach(longNote.player, null), "buttons.yes",

@@ -1,5 +1,5 @@
 # P4-02 dialog: `decimals` limit on a decimal number-field
-Status: todo · Approved: yes · Model: sonnet · Effort: medium
+Status: review · Approved: yes · Model: sonnet · Effort: medium
 Module: synthetixlib-dialog · Depends on: — · Design: dialog.md §1, §2 (limits from code), §3 (number-field), §4
 Requested by: InteractiveAuction 2.0 (money with 2 decimals), lib gap L-4
 
@@ -41,13 +41,19 @@ record gets `BigDecimal("12.34")`.
   `config-version` (rule `files-bump-config-version`). CHANGELOG "0.9.0".
 
 ## Acceptance criteria
-- [ ] too many decimals never reach the handler (unit + self-test)
-- [ ] no change for files without `decimals` (existing tests green)
-- [ ] docs + CHANGELOG + snippet check green
-- [ ] `gradlew.bat check smokeTest` green
+- [x] too many decimals never reach the handler (unit + self-test)
+- [x] no change for files without `decimals` (existing tests green)
+- [x] docs + CHANGELOG + snippet check green
+- [x] `gradlew.bat check smokeTest` green
 
 ## Verify
 gradlew.bat check smokeTest
 
 ## Result
-(agent fills in)
+`decimals` on `NumberFieldInput` (parser: load errors for integer / out of 0..10, initial rounded HALF_UP); `InputLimits.decimals`
+(third component, 2-arg constructor kept); `FormValidator.field` refuses `stripTrailingZeros().scale() > decimals`;
+`DialogBuilder#inputDecimals` (+ `Registrations`, checker warning, `<decimals>` allowed in `errors.*`). Error line: `Failure` has
+`decimals` + `tooManyDecimals`; no `errors.<key>` -> lang `invalid-decimals` -> `invalid-input` -> English. Unit tests:
+`NumberFieldDecimalsTest`; self-test numberField extended (12.345 refused, 12.34 -> BigDecimal). Demo `sell.yml` price is now
+decimal, `decimals: 2`, `config-version: 3` (`SellForm.price` BigDecimal, upgrade self-test updated); `invalid-decimals` in en + th.
+Out-of-range `inputDecimals` warns per showing (not once). Docs: reference, rule, design §14, CHANGELOG.

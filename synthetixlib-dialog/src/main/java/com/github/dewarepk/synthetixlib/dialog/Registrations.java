@@ -21,6 +21,7 @@ import org.jspecify.annotations.Nullable;
  * @param onClose      called when the viewer leaves with an exit button, {@code null} if none
  * @param ranges       number input key to the range of the showing ({@link DialogBuilder#inputRange})
  * @param maxLengths   text input key to its length limit of the showing ({@link DialogBuilder#maxLength})
+ * @param decimals     decimal number-field key to its decimals limit of the showing ({@link DialogBuilder#inputDecimals})
  * @param validators   submit name to the code check that runs before its handler ({@link DialogBuilder#validate})
  */
 record Registrations<C>(Map<String, Function<DialogView<C>, Component>> placeholders,
@@ -31,6 +32,7 @@ record Registrations<C>(Map<String, Function<DialogView<C>, Component>> placehol
                         @Nullable Consumer<DialogView<C>> onClose,
                         Map<String, Function<DialogView<C>, Range>> ranges,
                         Map<String, Function<DialogView<C>, Integer>> maxLengths,
+                        Map<String, Function<DialogView<C>, Integer>> decimals,
                         Map<String, Validator<C>> validators) {
 
     /** The check of a submit: the errors found in the record, empty if it is fine. The type is erased on purpose. */
@@ -50,7 +52,7 @@ record Registrations<C>(Map<String, Function<DialogView<C>, Component>> placehol
 
     /** Nothing registered: what a registry dialog has until code calls {@code registered(key)}. */
     static <C> Registrations<C> none() {
-        return new Registrations<>(Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), null, Map.of(), Map.of(), Map.of());
+        return new Registrations<>(Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), null, Map.of(), Map.of(), Map.of(), Map.of());
     }
 
     /** Tags every text has without registering them. */

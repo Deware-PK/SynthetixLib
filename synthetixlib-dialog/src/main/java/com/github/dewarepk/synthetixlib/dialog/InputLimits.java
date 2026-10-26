@@ -16,12 +16,18 @@ import org.jspecify.annotations.Nullable;
  *
  * @param bounds  number and number-field inputs by key
  * @param lengths text and number-field inputs by key
+ * @param decimals decimal number-field inputs by key, only those code set (the file's value is read from the input)
  */
-record InputLimits(Map<String, Bounds> bounds, Map<String, Integer> lengths) {
+record InputLimits(Map<String, Bounds> bounds, Map<String, Integer> lengths, Map<String, Integer> decimals) {
+
+    InputLimits(final Map<String, Bounds> bounds, final Map<String, Integer> lengths) {
+        this(bounds, lengths, Map.of());
+    }
+
 
     /** @return no limits of its own: what the file says, for a view that was never rendered (a registry dialog, a test) */
     static InputLimits file() {
-        return new InputLimits(Map.of(), Map.of());
+        return new InputLimits(Map.of(), Map.of(), Map.of());
     }
 
     /**
@@ -38,6 +44,15 @@ record InputLimits(Map<String, Bounds> bounds, Map<String, Integer> lengths) {
     Bounds bounds(final String key, final DialogInput input) {
         final Bounds found = bounds.get(key);
         return found != null ? found : fromFile(input);
+    }
+
+    /** @return the effective {@code decimals} of a number-field input, {@code -1} if there is no limit */
+    int decimals(final String key, final DialogInput input) {
+        final Integer found = decimals.get(key);
+        if (found != null) {
+            return found;
+        }
+        return input instanceof DialogInput.NumberFieldInput field ? field.decimals().orElse(-1) : -1;
     }
 
     /** @return the effective {@code max-length} of a text or number-field input */
@@ -74,6 +89,16 @@ record InputLimits(Map<String, Bounds> bounds, Map<String, Integer> lengths) {
                                    final Map<String, Function<DialogView<C>, Range>> ranges,
                                    final Map<String, Function<DialogView<C>, Integer>> lengths,
                                    final DialogView<C> view, final Consumer<String> warn) {
+        return resolve(dialog, inputs, ranges, lengths, Map.of(), view, warn);
+    }
+
+    /** @param decimalLimits {@link DialogBuilder#inputDecimals} by key */
+    static <C> InputLimits resolve(final String dialog, final Map<String, DialogInput> inputs,
+                                   final Map<String, Function<DialogView<C>, Range>> ranges,
+                                   final Map<String, Function<DialogView<C>, Integer>> lengths,
+                                   final Map<String, Function<DialogView<C>, Integer>> decimalLimits,
+                                   final DialogView<C> view, final Consumer<String> warn) {
+        final var decimals = new LinkedHashMap<String, Integer>();
         final var bounds = new LinkedHashMap<String, Bounds>();
         final var maxLengths = new LinkedHashMap<String, Integer>();
         inputs.forEach((key, input) -> {
@@ -95,6 +120,17 @@ record InputLimits(Map<String, Bounds> bounds, Map<String, Integer> lengths) {
                     }
                 }
             }
+            final var places = input instanceof DialogInput.NumberFieldInput field && !field.isInteger()
+                    ? decimalLimits.get(key) : null;
+            if (places != null) {
+                final Integer value = call(dialog, "inputDecimals", key, places, view, warn);
+                if (value != null && (value < 0 || value > DialogParser.MAX_DECIMALS)) {
+                    warn.accept("[dialogs/" + dialog + ".yml] inputDecimals('" + key + "') gave " + value
+                            + ": it must be between 0 and " + DialogParser.MAX_DECIMALS + ", the file's value is used");
+                } else if (value != null) {
+                    decimals.put(key, value);
+                }
+            }
             final var length = text ? lengths.get(key) : null;
             if (length != null) {
                 final Integer value = call(dialog, "maxLength", key, length, view, warn);
@@ -106,7 +142,7 @@ record InputLimits(Map<String, Bounds> bounds, Map<String, Integer> lengths) {
                 }
             }
         });
-        return new InputLimits(Map.copyOf(bounds), Map.copyOf(maxLengths));
+        return new InputLimits(Map.copyOf(bounds), Map.copyOf(maxLengths), Map.copyOf(decimals));
     }
 
     private static <C, V> @Nullable V call(final String dialog, final String what, final String key,

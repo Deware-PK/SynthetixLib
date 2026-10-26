@@ -1,7 +1,7 @@
 # The /example dialog sell form: number, option, text and bool inputs; the item in hand is the context.
 # Texts are <lang:key> from lang/<locale>.yml (section "dialog"). The behaviour (action:sell) is registered in DemoDialogs.java.
 # @snippet:dialog-sell-yml
-config-version: 2
+config-version: 3
 title: '<lang:sell-title>'
 external-title: '<lang:sell-external>'
 type: confirmation
@@ -12,9 +12,10 @@ body:
     description: '<lang:sell-item>'
 inputs:
   price:
-    type: number-field          # typed, for money; min / max here are the fallback of DemoDialogs.inputRange
+    type: number-field          # typed, for money (2 decimals); min / max here are the fallback of DemoDialogs.inputRange
     label: '<lang:sell-price>'
-    format: integer
+    format: decimal
+    decimals: 2                 # most digits after the dot; code can set it from the currency (inputDecimals)
     min: 1
     max: 1000000
     initial: 100

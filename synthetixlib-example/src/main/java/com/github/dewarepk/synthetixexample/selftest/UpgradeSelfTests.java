@@ -146,7 +146,7 @@ final class UpgradeSelfTests {
         final DialogService dialogs = DialogService.create(lib, configs);
         final DialogType<Void> type = dialogs.dialog("sell").build();
 
-        require(logged.stream().anyMatch(line -> line.equals("[dialogs/sell.yml] the plugin ships config-version 2,"
+        require(logged.stream().anyMatch(line -> line.equals("[dialogs/sell.yml] the plugin ships config-version 3,"
                         + " this file is 1: delete it to get the new default or update it by hand (old copy kept)")),
                 "no config-version warning was logged: " + logged);
         require(Arrays.equals(old, Files.readAllBytes(sell)), "the old dialog file was changed");

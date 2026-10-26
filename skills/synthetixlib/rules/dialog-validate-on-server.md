@@ -19,7 +19,7 @@ A modified client can send any text, number or option. The library re-checks `ma
 Put `@Range` / `@NotEmpty` on the record components and re-check game state in the handler (`if (!stillHolding(click.player(), click.view().context())) { ... }`):
 
 ```java snippet=dialog-form-record
-/** The answers of {@code sell.yml}; public so the config codecs can fill it. The price is a typed whole number. */
-public record SellForm(long price, String duration, String note, boolean anonymous) {
+/** The answers of {@code sell.yml}; public so the config codecs can fill it. The price is a typed decimal with at most 2 decimals. */
+public record SellForm(BigDecimal price, String duration, String note, boolean anonymous) {
 }
 ```

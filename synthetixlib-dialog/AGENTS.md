@@ -8,7 +8,7 @@ Status: **complete, 0.6.0** (P2-29..P2-33); 0.8.0 adds number-field, limits from
 Types
 - `DialogService` - one per `SynthetixLib`; `dialog(id)` -> `DialogBuilder<Void>`; `reload()` re-reads every dialog file.
   Registers the `click:` codec (`ClickActions`) in `configs.codecs()`.
-- `DialogBuilder<C>` - stores `placeholder`, `action`, `submit`, `submitAsync`, `input`, `onClose`, `inputRange`, `maxLength`,
+- `DialogBuilder<C>` - stores `placeholder`, `action`, `submit`, `submitAsync`, `input`, `onClose`, `inputRange`, `maxLength`, `inputDecimals` (0.9.0),
   `validate`/`validateAll` (names a file may refer to) and `build()`s a `DialogType<C>`. `withContext()` must come first
   (it changes `C`). `Range` and `FieldError` are the public value types of `inputRange` / `validate`.
 - `DialogType<C>` - immutable apart from the swapped file contents; `file()` (parsed `DialogFile`), `isInert(buttonPath)`,

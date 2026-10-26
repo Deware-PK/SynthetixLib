@@ -255,6 +255,16 @@ Added in 0.8.0 (P2-34), with these differences from the task text:
   warn at `build()`; `maxLength` is also accepted for a `number-field` (it has `max-length`).
 - Money limits are doubles (`min` / `max` in the file and `Range`): exact up to 2^53; the typed value itself is exact.
 
+## 14. 0.9.0 additions
+- `number-field` gets `decimals: 0..10` (only `format: decimal`; on `integer` a load error, ignored). The server check is
+  `value.stripTrailingZeros().scale() <= decimals` (in `FormValidator`), so `12.50` passes and `12.505` does not.
+- `DialogBuilder#inputDecimals(key, view -> n)`: like `inputRange`, asked per showing, kept in the view (`InputLimits`) and
+  used again when the answer is checked; outside 0..10 warns and the file's value stays; warns at `build()` if the key is not
+  a decimal `number-field`.
+- Error line: `<decimals>` next to `<min> <max> <value>`; with no `errors.<key>` a decimals refusal uses lang `invalid-decimals`
+  before `invalid-input`. `initial` with too many decimals is rounded HALF_UP at load (error logged).
+- The demo `sell.yml` price is now a decimal with `decimals: 2` (`config-version: 3`, `SellForm.price` is a `BigDecimal`).
+
 ## Open questions (planner to check before tasks)
 - Thread Paper fires `ClickCallback` / `PlayerCustomClickEvent` on (main / region / netty) on 1.21.11 and 26.x.
 - Geyser 2.x dialog support level.

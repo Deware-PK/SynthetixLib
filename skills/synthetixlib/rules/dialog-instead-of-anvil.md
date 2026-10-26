@@ -26,7 +26,7 @@ final DialogType<ItemStack> sell = dialogs.dialog("sell").<ItemStack>withContext
             final Player player = click.player();
             lang.send(player, Messages::dialogSold,
                     Placeholder.component("item", itemName(click.view().context())),
-                    Placeholder.unparsed("price", String.valueOf(form.price())),
+                    Placeholder.unparsed("price", form.price().toPlainString()),
                     Placeholder.unparsed("duration", form.duration()),
                     Placeholder.unparsed("note", form.note().isBlank() ? "-" : form.note()),
                     Placeholder.unparsed("who", form.anonymous() ? "anonymous" : player.getName()));
@@ -34,7 +34,7 @@ final DialogType<ItemStack> sell = dialogs.dialog("sell").<ItemStack>withContext
         // a check that needs code: not more than 10 x the base value of the stack (a demo rule)
         .validate("sell", SellForm.class, (form, click) -> {
             final long limit = maxPrice(click.view().context());
-            return form.price() > limit
+            return form.price().compareTo(BigDecimal.valueOf(limit)) > 0
                     ? Optional.of(FieldError.of("price", "<lang:sell-error-too-high>",
                             Placeholder.unparsed("limit", String.valueOf(limit))))
                     : Optional.empty();

@@ -17,7 +17,7 @@ registers what happens by name**. Depends on core and config. Design: `docs/desi
 The file (`dialogs/<id>.yml`, copied from the jar on first start, never overwritten):
 
 ```yaml snippet=dialog-sell-yml
-config-version: 2
+config-version: 3
 title: '<lang:sell-title>'
 external-title: '<lang:sell-external>'
 type: confirmation
@@ -28,9 +28,10 @@ body:
     description: '<lang:sell-item>'
 inputs:
   price:
-    type: number-field          # typed, for money; min / max here are the fallback of DemoDialogs.inputRange
+    type: number-field          # typed, for money (2 decimals); min / max here are the fallback of DemoDialogs.inputRange
     label: '<lang:sell-price>'
-    format: integer
+    format: decimal
+    decimals: 2                 # most digits after the dot; code can set it from the currency (inputDecimals)
     min: 1
     max: 1000000
     initial: 100
@@ -63,8 +64,8 @@ The code: a record for the answers (public; components are the input keys in cam
 registration per name the file uses.
 
 ```java snippet=dialog-form-record
-/** The answers of {@code sell.yml}; public so the config codecs can fill it. The price is a typed whole number. */
-public record SellForm(long price, String duration, String note, boolean anonymous) {
+/** The answers of {@code sell.yml}; public so the config codecs can fill it. The price is a typed decimal with at most 2 decimals. */
+public record SellForm(BigDecimal price, String duration, String note, boolean anonymous) {
 }
 ```
 
@@ -77,7 +78,7 @@ final DialogType<ItemStack> sell = dialogs.dialog("sell").<ItemStack>withContext
             final Player player = click.player();
             lang.send(player, Messages::dialogSold,
                     Placeholder.component("item", itemName(click.view().context())),
-                    Placeholder.unparsed("price", String.valueOf(form.price())),
+                    Placeholder.unparsed("price", form.price().toPlainString()),
                     Placeholder.unparsed("duration", form.duration()),
                     Placeholder.unparsed("note", form.note().isBlank() ? "-" : form.note()),
                     Placeholder.unparsed("who", form.anonymous() ? "anonymous" : player.getName()));
@@ -85,7 +86,7 @@ final DialogType<ItemStack> sell = dialogs.dialog("sell").<ItemStack>withContext
         // a check that needs code: not more than 10 x the base value of the stack (a demo rule)
         .validate("sell", SellForm.class, (form, click) -> {
             final long limit = maxPrice(click.view().context());
-            return form.price() > limit
+            return form.price().compareTo(BigDecimal.valueOf(limit)) > 0
                     ? Optional.of(FieldError.of("price", "<lang:sell-error-too-high>",
                             Placeholder.unparsed("limit", String.valueOf(limit))))
                     : Optional.empty();
@@ -151,7 +152,7 @@ text, never parsed as MiniMessage.
 A `number` input is a **slider**: fine for a small range (about 100 steps or fewer), useless for a price. For money or any
 wide range use `type: number-field` (rule `dialog-money-is-a-number-field`): a text input that the server reads as a
 number. The sell dialog above has one (`price`); the keys are `label`, `format: integer | decimal` (default integer),
-`min`, `max` (both optional), `initial`, `max-length` (default 18) and `width`.
+`min`, `max` (both optional), `initial`, `max-length` (default 18), `decimals` (since 0.9.0) and `width`.
 
 - The text is trimmed; `1,000` and `1_000` are accepted (groups of exactly three digits, so `12,5` is **not** 12.5), a
   `decimal` also takes `12.50`. No exponent, no `NaN` / `Infinity`, a number that does not fit a `long` is refused.
@@ -160,6 +161,12 @@ number. The sell dialog above has one (`price`); the keys are `label`, `format: 
 - Wrong text, or a number outside `min..max`, is refused like any other limit: the dialog is shown again with the
   `errors.<key>` line and the typed text kept. In that line `<value>` is exactly what was typed (plain text, never
   parsed), `<min>` and `<max>` are the limits of that showing (empty if the field has none).
+- `decimals: <0..10>` (only with `format: decimal`; on `integer` it is a load error and ignored) limits the digits after the
+  dot: with `decimals: 2`, `12`, `12.5`, `12.50` and `1,000.25` pass, `12.505` does not (trailing zeros do not count).
+  `decimals: 0` is whole numbers that are still a `BigDecimal`. Absent = no limit. Money: set it to the decimals of your
+  currency. `<decimals>` is available in `errors.<key>`; without an `errors.<key>` line a refused-for-decimals answer uses the
+  lang message `invalid-decimals` (then `invalid-input`, then English). An `initial` with more decimals is rounded HALF_UP
+  with a load error.
 
 ### Limits that come from code
 
@@ -168,6 +175,8 @@ the dialog is about (the stock of a lot) is set in code, per showing:
 
 - `inputRange(key, view -> Range.of(min, max))` for a `number` (slider; `Range.of(min, max, step)` also sets the step) and
   for a `number-field`. `maxLength(key, view -> n)` for a `text` input (also a `number-field`).
+- `inputDecimals(key, view -> n)` (0..10, since 0.9.0) for a `format: decimal` `number-field`: the decimals of the server's
+  currency from `config.yml`. Outside 0..10 warns and the file's `decimals` is used.
 - The function is called when the dialog is shown **and its values are kept in the view**: the answer is checked against
   the same limits the player saw, even if the config changed meanwhile, and `<min>` / `<max>` of the error line are those
   values. The file value is the fallback (when the function throws or gives nothing). Do not write the same limit in the
@@ -308,6 +317,7 @@ these keys at any time, so a handler must check its own state. Clicks are limite
 | `DialogService` | `create(lib, configs)`, `messages`, `settings`, `fallback`, `bootstrapped`, `registered`, `link`, `opener`, `dialog(id)`, `reload`, `lib()`, `configs()`, `isClosed`, `close` | 0.6.0 |
 | `DialogBuilder<C>` | `withContext()`, `placeholder`, `item`, `action`, `submit`, `submitAsync`, `input`, `onClose`, `build()` | 0.6.0 |
 | `DialogBuilder<C>` | `inputRange`, `maxLength`, `validate`, `validateAll` | 0.8.0 |
+| `DialogBuilder<C>` | `inputDecimals` | 0.9.0 |
 | `Range`, `FieldError` | limits of one showing (`Range.of(min, max[, step])`); a problem found by code (`FieldError.of(key, markup, resolvers...)`, `FieldError.form(...)`) | 0.8.0 |
 | `DialogType<C>` | `id()`, `file()`, `isInert(path)`, `open(player)`, `open(player, context)` | 0.6.0 |
 | `DialogView<C>` | `player`, `context`, `reopen`, `close`, `next` | 0.6.0 |

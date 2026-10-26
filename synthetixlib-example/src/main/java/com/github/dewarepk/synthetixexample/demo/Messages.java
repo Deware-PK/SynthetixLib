@@ -101,6 +101,7 @@ public record Messages(@Comment("Messages of the command module itself") Command
                         Map.entry("sell-yes-tip", "<gray>Puts the lot on sale"),
                         Map.entry("sell-no", "<red>Cancel"),
                         Map.entry("sell-error-price", "<red>The price must be between <min> and <max>, not <value>"),
+                        Map.entry("invalid-decimals", "<red>At most <decimals> decimals, not <value>"),
                         Map.entry("sell-error-too-high", "<red>This stack cannot be sold for more than <limit> coins"),
                         Map.entry("confirm-title", "<gold>Are you sure?"),
                         Map.entry("confirm-text", "<gray>This is a plain yes/no question."),

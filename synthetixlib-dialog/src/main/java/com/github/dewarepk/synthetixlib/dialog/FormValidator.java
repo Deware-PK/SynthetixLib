@@ -72,7 +72,8 @@ final class FormValidator {
             case DialogInput.NumberInput number -> raw instanceof Number n ? number(limits.bounds(key, number), n)
                     : null;
             case DialogInput.NumberFieldInput field -> raw instanceof String s
-                    ? field(field, s, limits.bounds(key, field), limits.maxLength(key, field)) : null;
+                    ? field(field, s, limits.bounds(key, field), limits.maxLength(key, field),
+                    limits.decimals(key, field)) : null;
         };
     }
 
@@ -113,7 +114,8 @@ final class FormValidator {
      * integer, a number that does not fit a long, or one outside {@code bounds} gives {@code null}.
      */
     private static @Nullable Object field(final DialogInput.NumberFieldInput input, final String raw,
-                                          final InputLimits.Bounds bounds, final int maxLength) {
+                                          final InputLimits.Bounds bounds, final int maxLength,
+                                          final int decimals) {
         if (raw.length() > maxLength) {
             return null;
         }
@@ -133,11 +135,30 @@ final class FormValidator {
                 || Double.isFinite(bounds.max()) && value.compareTo(BigDecimal.valueOf(bounds.max())) > 0) {
             return null;
         }
+        if (!input.isInteger() && decimals >= 0 && value.stripTrailingZeros().scale() > decimals) {
+            return null;
+        }
         if (input.isInteger()) {
             final BigInteger whole = value.toBigInteger();
             return whole.bitLength() > 63 ? null : (Object) whole.longValue();
         }
         return value;
+    }
+
+    /**
+     * @return {@code true} if the answer is refused only because it has more decimals than allowed (it would pass with
+     *         no limit), so the error line can say so
+     */
+    static boolean tooManyDecimals(final String key, final @Nullable DialogInput input, final @Nullable Object raw,
+                                   final InputLimits limits) {
+        if (!(input instanceof DialogInput.NumberFieldInput field) || field.isInteger() || limits.decimals(key, input) < 0
+                || !(raw instanceof String)) {
+            return false;
+        }
+        final Map<String, Integer> unlimited = new LinkedHashMap<>(limits.decimals());
+        unlimited.put(key, Integer.MAX_VALUE);
+        return clean(key, input, raw, limits) == null
+                && clean(key, input, raw, new InputLimits(limits.bounds(), limits.lengths(), unlimited)) != null;
     }
 
     /** The double a player means: a float is read as its shortest decimal form. */

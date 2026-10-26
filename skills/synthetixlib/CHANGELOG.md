@@ -5,6 +5,9 @@ Releases are git tags `v<x.y.z>` (0.1.0 and 0.2.0 were never tagged). JitPack wo
 (`com.github.Deware-PK.SynthetixLib:synthetixlib-<module>:v<x.y.z>`); older tags have no `jitpack.yml` and do not build there.
 
 ## 0.9.0
+- dialog: `number-field` has `decimals: 0..10` (with `format: decimal`): the server refuses more digits after the dot
+  (`12.505` with 2), `12.50` is fine. `DialogBuilder#inputDecimals(key, view -> n)` sets it from code per showing (your
+  currency's decimals). `<decimals>` in `errors.<key>`; default lang line `invalid-decimals`. No change for files without it.
 - database: `Database.standalone(name, directory, logger, settings)`: a database without a plugin or server, for plain JUnit
   tests of your stores and for command-line tools. Needs HikariCP and a JDBC driver as `testImplementation`. `ItemStack`
   parameters/columns throw a clear `IllegalStateException` without a server. Recipe 4 shows a store test.

@@ -30,9 +30,12 @@ final class FormSubmit {
      * @param min    {@code <min>} of the line: the smallest value of a number input, else empty
      * @param max    {@code <max>} of the line
      * @param value  {@code <value>} of the line: what the player sent, as plain text
+     * @param decimals {@code <decimals>} of the line: the most decimals the input allows, else empty
+     * @param tooManyDecimals {@code true} if the answer was refused only for having more decimals than that
      * @param extra  more tags of the line, from the {@link FieldError} of a validator
      */
-    record Failure(String key, @Nullable String markup, String min, String max, String value, TagResolver extra) {
+    record Failure(String key, @Nullable String markup, String min, String max, String value, String decimals,
+                   boolean tooManyDecimals, TagResolver extra) {
     }
 
     /**
@@ -115,7 +118,9 @@ final class FormSubmit {
         }
         final Object sent = answers.get(key);
         final String value = sent instanceof Float f ? format(FormValidator.exact(f)) : sent == null ? "" : sent.toString();
-        return new Failure(key, markup, min, max, value, extra);
+        final int places = input == null ? -1 : limits.decimals(key, input);
+        return new Failure(key, markup, min, max, value, places >= 0 ? Integer.toString(places) : "",
+                FormValidator.tooManyDecimals(key, input, sent, limits), extra);
     }
 
     /** 5.0 as {@code 5}, 2.5 as {@code 2.5}, never with an exponent. */

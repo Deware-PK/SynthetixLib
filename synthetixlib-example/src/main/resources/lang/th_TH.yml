@@ -62,6 +62,7 @@ dialog:
   sell-yes: <green>ลงขาย
   sell-yes-tip: <gray>วางไอเท็มขาย
   sell-no: <red>ยกเลิก
+  invalid-decimals: <red>ทศนิยมได้ไม่เกิน <decimals> ตำแหน่ง ไม่ใช่ <value>
   sell-error-price: <red>ราคาต้องอยู่ระหว่าง <min> ถึง <max> ไม่ใช่ <value>
   sell-error-too-high: <red>ขายกองนี้ได้ไม่เกิน <limit> เหรียญ
   confirm-title: <gold>แน่ใจหรือไม่?
