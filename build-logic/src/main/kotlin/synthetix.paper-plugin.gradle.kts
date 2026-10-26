@@ -142,7 +142,7 @@ fun registerSmoke(name: String, mcVersion: String, javaVersion: Int, port: Int) 
                 throw GradleException("[$mcVersion] no self-test result: plugin failed to enable or server crashed. Check the log above.")
             }
             val json = result.readText()
-            if (!json.contains("\"status\":\"PASS\"")) {
+            if (!json.startsWith("{\"status\":\"PASS\"")) {
                 throw GradleException("[$mcVersion] self-test FAILED:\n$json")
             }
             logger.lifecycle("[$mcVersion] self-test PASS")

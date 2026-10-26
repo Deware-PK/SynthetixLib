@@ -10,7 +10,7 @@ import com.github.dewarepk.synthetixexample.demo.Messages;
 import com.github.dewarepk.synthetixexample.demo.Settings;
 import com.github.dewarepk.synthetixexample.demo.command.ExampleCommand;
 import com.github.dewarepk.synthetixlib.command.CommandService;
-import com.github.dewarepk.synthetixexample.selftest.SelfTestTrigger;
+import com.github.dewarepk.synthetixexample.selftest.ExampleSelfTests;
 import com.github.dewarepk.synthetixlib.config.ConfigCollection;
 import com.github.dewarepk.synthetixlib.config.ConfigHandle;
 import com.github.dewarepk.synthetixlib.config.Configs;
@@ -61,8 +61,7 @@ public final class SynthetixExamplePlugin extends JavaPlugin implements Listener
         // @end
 
         if (Boolean.getBoolean("synthetix.selftest")) {
-            getServer().getPluginManager().registerEvents(new SelfTestTrigger(this, lib), this);
-            getLogger().info("Self-test mode: tests run after server load, then the server stops.");
+            ExampleSelfTests.install(this, lib);
             return;
         }
 

@@ -1,11 +1,12 @@
 package com.github.dewarepk.synthetixexample.selftest;
 
-import static com.github.dewarepk.synthetixexample.selftest.SelfTest.require;
+import static com.github.dewarepk.synthetixlib.selftest.SelfTest.require;
 
 import com.github.dewarepk.synthetixlib.config.Configs;
 import com.github.dewarepk.synthetixlib.config.codec.Codecs;
 import com.github.dewarepk.synthetixlib.config.codec.DecodeException;
 import com.github.dewarepk.synthetixlib.core.SynthetixLib;
+import com.github.dewarepk.synthetixlib.selftest.SelfTest;
 import io.papermc.paper.registry.RegistryAccess;
 import io.papermc.paper.registry.RegistryKey;
 import java.util.List;

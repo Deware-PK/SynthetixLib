@@ -1,10 +1,11 @@
 package com.github.dewarepk.synthetixexample.selftest;
 
-import static com.github.dewarepk.synthetixexample.selftest.SelfTest.require;
+import static com.github.dewarepk.synthetixlib.selftest.SelfTest.require;
 
 import com.github.dewarepk.synthetixlib.core.SynthetixLib;
 import com.github.dewarepk.synthetixlib.core.scheduler.Scheduler;
 import com.github.dewarepk.synthetixlib.core.scheduler.SynthetixTask;
+import com.github.dewarepk.synthetixlib.selftest.SelfTest;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;

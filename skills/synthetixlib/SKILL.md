@@ -109,6 +109,7 @@ Each file in `rules/` has the why and a wrong -> right pair.
 **MEDIUM**
 - `config-keep-comments`, `config-public-records`
 - `command-report-alias-used`, `command-cooldown-not-on-failure`
+- `test-in-server-for-bukkit-state`
 
 ## Module map: problem → module → reference
 
@@ -121,6 +122,7 @@ Each file in `rules/` has the why and a wrong -> right pair.
 | Inventory menus (pages, lists, inputs, states), editable in YAML | `synthetixlib-gui` | `references/gui.md` |
 | Text input, confirmations, forms (player types a price/name) | `synthetixlib-dialog` (**not an anvil GUI**) | `references/dialog.md` |
 | SQLite / MySQL, migrations, async queries, safe shutdown | `synthetixlib-database` | `references/database.md` |
+| Test items, worlds, inventories in a real server (`smokeTest` on 1.21.11 + 26.x), dev servers | `synthetixlib-selftest` | `references/selftest.md` |
 | End-to-end: shop menu + buy dialog + SQLite; cooldown command; reloadable config | several | `references/recipes.md` |
 | An error or a symptom | any | `references/troubleshooting.md` |
 

@@ -1,6 +1,6 @@
 package com.github.dewarepk.synthetixexample.selftest;
 
-import static com.github.dewarepk.synthetixexample.selftest.SelfTest.require;
+import static com.github.dewarepk.synthetixlib.selftest.SelfTest.require;
 
 import com.github.dewarepk.synthetixlib.command.Arg;
 import com.github.dewarepk.synthetixlib.command.Args;
@@ -13,6 +13,7 @@ import com.github.dewarepk.synthetixlib.config.Configs;
 import com.github.dewarepk.synthetixlib.config.LocaleHandle;
 import com.github.dewarepk.synthetixlib.config.TimeFormat;
 import com.github.dewarepk.synthetixlib.core.SynthetixLib;
+import com.github.dewarepk.synthetixlib.selftest.SelfTest;
 import io.papermc.paper.registry.RegistryKey;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -38,8 +39,8 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 /**
  * Self-tests of the command module. Paper fires the COMMANDS event right after {@code onEnable}, long before the
- * self-tests run, so the commands are registered in {@link #install}, which {@link SelfTestTrigger} calls from its
- * constructor (inside {@code onEnable}).
+ * self-tests run, so the commands are registered in {@link #install}, which {@link ExampleSelfTests} calls from
+ * {@code onEnable}.
  */
 final class CommandSelfTests {
 

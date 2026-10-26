@@ -5,6 +5,10 @@ reference for each module you touch) before writing code; install it with `npx s
 
 ## Build
 - `./gradlew build` → `build/libs/myplugin-<version>.jar` (the shaded jar; `*-plain.jar` is not for servers).
+- `./gradlew runServer` (Paper 1.21.11, port 25565) / `runServer26` (26.x, port 25566, needs Java 25) start a dev server with
+  the jar; servers live in `run/`. `./gradlew smokeTest` boots both headless and runs your `SelfTest`s (`SelfTests.of(lib)...
+  runIfRequested()` in `MyPlugin`); it fails unless both report PASS. Extra plugins (Vault, an economy, PacketEvents): the
+  `extraPlugins` block in `build.gradle.kts`. Items, worlds and inventories are tested this way, plain SQL with unit tests.
 - Library version: `synthetixVersion` in `gradle.properties` (a JitPack tag, e.g. `v0.8.0`). If it is older than the
   skill, read the skill's CHANGELOG.md before using a newer API.
 - Using a local SynthetixLib checkout: `-PsynthetixLocal=true` (reads `synthetixLocalVersion`, from `publishToMavenLocal`).

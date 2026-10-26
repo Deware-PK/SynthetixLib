@@ -1,5 +1,5 @@
 # P4-04 Self-test kit for products: `synthetixlib-selftest` + dev/smoke servers in the template
-Status: todo · Approved: yes · Model: sonnet · Effort: high
+Status: review · Approved: yes · Model: sonnet · Effort: high
 Module: synthetixlib-selftest (new) · Depends on: P4-03 · Design: this task (owner approves by approving the task)
 Requested by: InteractiveAuction 2.0 (items, players, displays can only be tested in a real server), lib gap L-5 part 2
 
@@ -62,14 +62,46 @@ uses, without copying the example's code: one small published module + three Gra
   versions (paste the two JSON summaries in Result).
 
 ## Acceptance criteria
-- [ ] module published locally, relocated in the template jar (`verifyRelocation` green)
-- [ ] lib smoke count unchanged and green on 1.21.11 + 26.x
-- [ ] a fresh template project runs `smokeTest` green on both versions
-- [ ] without the property: no listener, no output, no shutdown (unit + manual start)
-- [ ] reference, rule, SKILL.md map, CHANGELOG; `checkSnippets` green
+- [x] module published locally, relocated in the template jar (`verifyRelocation` green)
+- [x] lib smoke count unchanged and green on 1.21.11 + 26.x
+- [x] a fresh template project runs `smokeTest` green on both versions
+- [x] without the property: no listener, no output, no shutdown (unit + manual start)
+- [x] reference, rule, SKILL.md map, CHANGELOG; `checkSnippets` green
 
 ## Verify
 gradlew.bat check smokeTest publishToMavenLocal · then in a fresh template copy: gradlew.bat build smokeTest -PsynthetixLocal=true
 
 ## Result
-(agent fills in)
+Done as specified; two small additions and one deviation (see below). Not committed.
+
+**Ran**
+- `gradlew.bat check smokeTest publishToMavenLocal` → BUILD SUCCESSFUL (1m41s). Smoke: 1.21.11 PASS, 26.3 PASS, **89 tests each**
+  (63 sync + 26 async, same as before the move; 0 skipped).
+  `{"status":"PASS","minecraftVersion":"1.21.11","total":89,"failed":0,"skipped":0,...}` and the same for `"26.3"`.
+- `syncSnippets` + `checkSnippets` green (new snippets: `template-selftest`, `template-dev-servers`, `selftest-wiring`).
+- Fresh template copy (`new-plugin.sh <dir> com.acme.demo Demo`), `gradlew.bat build smokeTest -PsynthetixLocal=true` →
+  BUILD SUCCESSFUL (59s, `verifyRelocation` ran in `build`):
+  - `{"status":"PASS","minecraftVersion":"1.21.11","total":1,"failed":0,"skipped":0,"tests":[{"name":"template.lang-loaded","passed":true,"durationMs":21}]}`
+  - `{"status":"PASS","minecraftVersion":"26.3","total":1,"failed":0,"skipped":0,"tests":[{"name":"template.lang-loaded","passed":true,"durationMs":146}]}`
+- Without the property: unit test `withoutThePropertyNothingIsRegistered` (no listener, no log, no file, no shutdown) and a manual
+  start of the template jar on Paper 1.21.11 without `-Dsynthetix.selftest`: `[Demo] Enabling Demo v1.0.0`, "Done", no `[selftest]` line, no
+  result file, server ran until `stop` was typed.
+
+**What changed**
+- New module `synthetixlib-selftest`: `SelfTest` (moved from the example, + `withPlayer`, `skip`, `Skipped`), `Checks`, `SelfTests`
+  builder, package-private `SelfTestRun` / `SelfTestResult` (JSON) / `SelfTestHost` + `ServerHost`. Unit tests: `SelfTestsTest`
+  (inert without the property, run order + shutdown, fail/skip counting + JSON escaping, failing set-up, global cap, `Checks`).
+- Example: `SelfTestTrigger` removed, `ExampleSelfTests.install` builds the list; the library's own tests run through the kit.
+- build-logic: `smokeTest` matches `{"status":"PASS"` at the start of the file (was `contains`).
+- Template: run-paper, `runServer` / `runServer26` / `smokeTest`, `extraPlugins` block (commented Vault / EssentialsX / PacketEvents),
+  `selftest` module, one self-test `template.lang-loaded`. Root and template version `0.9.0-SNAPSHOT`.
+- Docs: `references/selftest.md`, rule `test-in-server-for-bukkit-state` (MEDIUM), SKILL.md map + rule list, CHANGELOG 0.9.0,
+  `docs/design/README.md`, AGENTS.md (modules, layout), module and example AGENTS.md, template AGENTS.md / README.
+
+**Deviations / additions (owner may veto)**
+- Added `SelfTests#addLater(Supplier<Collection<SelfTest>>)`: the library's tests do real work while being built
+  (`Configs.create`, `DialogService.create`) that must happen after the server loaded, not in `onEnable`. Also useful for products.
+- Added `SelfTest.skip(reason)` + `SelfTest.Skipped` (needed for "plugin not installed" tests, same SKIP path as `withPlayer`).
+- JSON per test keeps `passed` and gains `skipped` / `reason` (no per-test `status` key, it would fool a `contains("status":"PASS")` check).
+  Global cap default is now 120 s (was 60 s in the example), property `synthetix.selftest.cap`.
+- Not done by this task: `Written for SynthetixLib` line and `synthetixVersion` in the template (P4-05 ship script does them).

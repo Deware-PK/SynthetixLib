@@ -1,6 +1,6 @@
 package com.github.dewarepk.synthetixexample.selftest;
 
-import static com.github.dewarepk.synthetixexample.selftest.SelfTest.require;
+import static com.github.dewarepk.synthetixlib.selftest.SelfTest.require;
 
 import com.github.dewarepk.synthetixexample.demo.recipes.CooldownRecipe;
 import com.github.dewarepk.synthetixexample.demo.recipes.RecipeMessages;
@@ -13,6 +13,7 @@ import com.github.dewarepk.synthetixlib.database.Database;
 import com.github.dewarepk.synthetixlib.database.DatabaseSettings;
 import com.github.dewarepk.synthetixlib.dialog.DialogService;
 import com.github.dewarepk.synthetixlib.gui.GuiService;
+import com.github.dewarepk.synthetixlib.selftest.SelfTest;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;

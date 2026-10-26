@@ -7,4 +7,5 @@ A Paper plugin built on SynthetixLib: a typed config, a language file, a command
 - `/myplugin reload` — reloads `config.yml` and `lang/`.
 
 Build: `./gradlew build` (JDK 21+). The jar is `build/libs/myplugin-1.0.0.jar`.
+Dev servers: `./gradlew runServer` (1.21.11) / `runServer26`; `./gradlew smokeTest` runs the self-tests on both.
 Contributors and AI agents: read AGENTS.md.

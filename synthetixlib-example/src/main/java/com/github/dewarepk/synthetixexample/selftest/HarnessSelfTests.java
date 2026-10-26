@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
+import com.github.dewarepk.synthetixlib.selftest.SelfTest;
 
 /** Self-tests for the test harness itself. */
 final class HarnessSelfTests {

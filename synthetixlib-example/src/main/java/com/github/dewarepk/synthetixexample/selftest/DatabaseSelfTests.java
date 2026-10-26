@@ -1,6 +1,6 @@
 package com.github.dewarepk.synthetixexample.selftest;
 
-import static com.github.dewarepk.synthetixexample.selftest.SelfTest.require;
+import static com.github.dewarepk.synthetixlib.selftest.SelfTest.require;
 
 import com.github.dewarepk.synthetixlib.core.SynthetixLib;
 import com.github.dewarepk.synthetixlib.database.Copy;
@@ -8,6 +8,7 @@ import com.github.dewarepk.synthetixlib.database.Database;
 import com.github.dewarepk.synthetixlib.database.DatabaseSettings;
 import com.github.dewarepk.synthetixlib.database.Dialect;
 import com.github.dewarepk.synthetixlib.database.Migrations;
+import com.github.dewarepk.synthetixlib.selftest.SelfTest;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import java.io.IOException;

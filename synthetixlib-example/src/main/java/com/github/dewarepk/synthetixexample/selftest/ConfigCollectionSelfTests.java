@@ -1,6 +1,6 @@
 package com.github.dewarepk.synthetixexample.selftest;
 
-import static com.github.dewarepk.synthetixexample.selftest.SelfTest.require;
+import static com.github.dewarepk.synthetixlib.selftest.SelfTest.require;
 
 import com.github.dewarepk.synthetixlib.config.Change;
 import com.github.dewarepk.synthetixlib.config.ConfigCollection;
@@ -8,6 +8,7 @@ import com.github.dewarepk.synthetixlib.config.Configs;
 import com.github.dewarepk.synthetixlib.config.annotation.Comment;
 import com.github.dewarepk.synthetixlib.config.annotation.Range;
 import com.github.dewarepk.synthetixlib.core.SynthetixLib;
+import com.github.dewarepk.synthetixlib.selftest.SelfTest;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;

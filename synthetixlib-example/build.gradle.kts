@@ -15,6 +15,7 @@ dependencies {
     implementation(project(":synthetixlib-gui"))
     implementation(project(":synthetixlib-database"))
     implementation(project(":synthetixlib-dialog"))
+    implementation(project(":synthetixlib-selftest"))
 
     // Loaded at runtime by ExampleLoader (paper-plugin.yml), never shaded.
     compileOnly(libs.hikaricp)

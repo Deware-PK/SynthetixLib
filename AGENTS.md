@@ -69,10 +69,11 @@ build-logic/              convention plugins: synthetix.java-base | synthetix.li
 gradle/libs.versions.toml all versions
 synthetixlib-core/        init, scheduler, text, ItemBuilder, utils         (published)
 synthetixlib-example/     example plugin = smoke-test bed + docs examples   (not published)
+synthetixlib-selftest/   in-server self-test kit for products              (published)
 synthetixlib-archtest/    ArchUnit rules over every library module           (not published)
 docs/adr/                 decisions        docs/plan/  roadmap + tasks        docs/design/  API design per module
 ```
-Modules: core, config, command, gui, database, dialog (complete; no npc module, ADR 0016). See docs/plan/ROADMAP.md.
+Modules: core, config, command, gui, database, dialog (complete; no npc module, ADR 0016), selftest (0.9.0). See docs/plan/ROADMAP.md.
 
 ## Adding a library module (checklist)
 1. `synthetixlib-<m>/build.gradle.kts` with `id("synthetix.library")`; `include(...)` in settings.gradle.kts.

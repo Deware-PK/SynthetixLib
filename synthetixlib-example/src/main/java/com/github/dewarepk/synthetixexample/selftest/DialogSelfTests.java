@@ -1,6 +1,6 @@
 package com.github.dewarepk.synthetixexample.selftest;
 
-import static com.github.dewarepk.synthetixexample.selftest.SelfTest.require;
+import static com.github.dewarepk.synthetixlib.selftest.SelfTest.require;
 
 import com.github.dewarepk.synthetixlib.config.Configs;
 import com.github.dewarepk.synthetixlib.config.FilesReloadResult;
@@ -24,6 +24,7 @@ import com.github.dewarepk.synthetixlib.dialog.file.DialogInput;
 import com.github.dewarepk.synthetixlib.dialog.file.DialogKind;
 import com.github.dewarepk.synthetixlib.dialog.DialogView;
 import com.github.dewarepk.synthetixlib.config.LocaleHandle;
+import com.github.dewarepk.synthetixlib.selftest.SelfTest;
 import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.dialog.DialogResponseView;
 import java.io.InputStream;

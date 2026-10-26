@@ -1,6 +1,6 @@
 package com.github.dewarepk.synthetixexample.selftest;
 
-import static com.github.dewarepk.synthetixexample.selftest.SelfTest.require;
+import static com.github.dewarepk.synthetixlib.selftest.SelfTest.require;
 
 import com.github.dewarepk.synthetixlib.config.Configs;
 import com.github.dewarepk.synthetixlib.config.FilesReloadResult;
@@ -12,6 +12,7 @@ import com.github.dewarepk.synthetixlib.gui.file.ClickAction;
 import com.github.dewarepk.synthetixlib.gui.file.ClickKind;
 import com.github.dewarepk.synthetixlib.gui.file.MenuFile;
 import com.github.dewarepk.synthetixlib.gui.file.MenuKind;
+import com.github.dewarepk.synthetixlib.selftest.SelfTest;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;

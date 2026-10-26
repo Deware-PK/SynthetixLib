@@ -1,6 +1,6 @@
 package com.github.dewarepk.synthetixexample.selftest;
 
-import static com.github.dewarepk.synthetixexample.selftest.SelfTest.require;
+import static com.github.dewarepk.synthetixlib.selftest.SelfTest.require;
 
 import com.github.dewarepk.synthetixexample.demo.Messages;
 import com.github.dewarepk.synthetixlib.config.Configs;
@@ -9,6 +9,7 @@ import com.github.dewarepk.synthetixlib.core.SynthetixLib;
 import com.github.dewarepk.synthetixlib.dialog.DialogService;
 import com.github.dewarepk.synthetixlib.dialog.DialogType;
 import com.github.dewarepk.synthetixlib.dialog.file.DialogInput;
+import com.github.dewarepk.synthetixlib.selftest.SelfTest;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;

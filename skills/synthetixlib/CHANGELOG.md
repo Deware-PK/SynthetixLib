@@ -17,6 +17,15 @@ Releases are git tags `v<x.y.z>` (0.1.0 and 0.2.0 were never tagged). JitPack wo
   `gui.action-failed` if the lang `gui` map has the key `action-failed`. Your update must still be atomic.
 - gui: menu items may set `busy:` (an item, shown in the slot while an `actionAsync` started from it runs).
 - docs: rule `gui-async-action-for-io`; the template's `Messages` gains the `action-failed` gui key.
+- selftest (new module `synthetixlib-selftest`): in-server checks for your plugin. `SelfTests.of(lib).add(...).runIfRequested()`
+  runs `SelfTest`s (`sync`, `async`, `withPlayer` = SKIP without a player, `skip`) after the server loaded, writes a JSON result
+  and stops the server, only with `-Dsynthetix.selftest=true` (inert otherwise). `Checks.equal / isTrue / throwsType`.
+  `before(Runnable)`, `addLater(Supplier)` for set-up that needs worlds or other plugins. Cap `-Dsynthetix.selftest.cap` (120 s).
+  The module is shaded and relocated like the others; the library's own 89 self-tests run through it.
+- template: `runServer` (Paper 1.21.11, Java 21), `runServer26` (26.x, Java 25) and `smokeTest` (both headless, fails unless
+  both PASS) via run-paper; an `extraPlugins` block downloads Vault / EssentialsX / PacketEvents for the test servers; the
+  template plugin has one self-test. `synthetixLocalVersion=0.9.0-SNAPSHOT`.
+- docs: reference `selftest`, rule `test-in-server-for-bukkit-state` (items, worlds, inventories in a server; plain SQL in a unit test).
 
 ## 0.8.0
 - command: `cooldown(Function<CommandSender, Duration>)` and `cooldown(fn, bypassPermission)`: the length is asked at every

@@ -7,7 +7,11 @@ import com.github.dewarepk.synthetixlib.config.LocaleHandle;
 import com.github.dewarepk.synthetixlib.core.SynthetixLib;
 import com.github.dewarepk.synthetixlib.dialog.DialogService;
 import com.github.dewarepk.synthetixlib.gui.GuiService;
+import com.github.dewarepk.synthetixlib.selftest.Checks;
+import com.github.dewarepk.synthetixlib.selftest.SelfTest;
+import com.github.dewarepk.synthetixlib.selftest.SelfTests;
 import java.util.Locale;
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -41,6 +45,17 @@ public final class MyPlugin extends JavaPlugin implements Listener {
 
         // Database module: Database.create(lib, <DatabaseSettings from config.yml>); closed together with lib.
         getServer().getPluginManager().registerEvents(this, this);
+        // @end
+
+        // In-server checks: inert on a live server, run by `./gradlew smokeTest` (-Dsynthetix.selftest=true).
+        // @snippet:template-selftest
+        SelfTests.of(lib)
+                .add(SelfTest.sync("template.lang-loaded", () -> {
+                    Checks.equal(Locale.US, lang.defaultLocale(), "default locale");
+                    final Component welcome = lang.get(Locale.US, Messages::welcome, Placeholder.unparsed("name", "Test"));
+                    Checks.isTrue(!Component.empty().equals(welcome), "welcome text is not empty");
+                }))
+                .runIfRequested();
         // @end
     }
 

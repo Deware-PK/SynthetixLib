@@ -1,10 +1,11 @@
 package com.github.dewarepk.synthetixexample.selftest;
 
-import static com.github.dewarepk.synthetixexample.selftest.SelfTest.require;
+import static com.github.dewarepk.synthetixlib.selftest.SelfTest.require;
 
 import com.github.dewarepk.synthetixlib.core.SynthetixLib;
 import com.github.dewarepk.synthetixlib.core.item.ItemBuilder;
 import com.github.dewarepk.synthetixlib.core.pdc.PdcKey;
+import com.github.dewarepk.synthetixlib.selftest.SelfTest;
 import java.util.List;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;

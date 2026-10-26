@@ -50,7 +50,7 @@ dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
 
     // Shaded into your jar and relocated (see shadowJar below). Add only the modules you use.
-    for (module in listOf("core", "config", "command", "gui", "dialog" /*, "database" */)) {
+    for (module in listOf("core", "config", "command", "gui", "dialog", "selftest" /*, "database" */)) {
         implementation("$synthetixGroup:synthetixlib-$module:$synthetixVersion")
     }
     // Database module: add "database" to the list above, enable the line in MyPluginLoader and add
